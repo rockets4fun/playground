@@ -1,0 +1,50 @@
+// -------------------------------------------------------------------------------------------------
+/// @author Martin Moerth (MARTINMO)
+/// @date 02.01.2015
+// -------------------------------------------------------------------------------------------------
+
+#ifndef RENDERER_HPP
+#define RENDERER_HPP
+
+#include "Common.hpp"
+
+#include <memory>
+
+#include <glm/vec4.hpp>
+#include <glm/gtc/quaternion.hpp>
+
+#include "ModuleIf.hpp"
+
+// -------------------------------------------------------------------------------------------------
+/// @brief ...
+struct Renderer : public ModuleIf
+{
+    struct MeshInfo
+    {
+        glm::dvec4 position;
+        glm::dquat orientation;
+        size_t meshId = 0;
+    };
+
+    Renderer();
+    virtual ~Renderer();
+
+public: // Implementation of module interface
+    virtual bool initialize(Platform &platform);
+    virtual void shutdown();
+    virtual void update(Platform &platform, real64 deltaTimeInS);
+
+private:
+    struct GlFuncs;
+    struct GlState;
+
+    std::shared_ptr< GlFuncs > glFuncs;
+    std::shared_ptr< GlState > glState;
+
+    bool initializeGl();
+
+private:
+    COMMON_DISABLE_COPY(Renderer);
+};
+
+#endif
