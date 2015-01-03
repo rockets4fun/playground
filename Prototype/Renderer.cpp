@@ -67,16 +67,16 @@ void Renderer::update(Platform &platform, real64 deltaTimeInS)
 }
 
 // -------------------------------------------------------------------------------------------------
-#define RENDERER_FUNC(Name) \
-    if (!(Name = (decltype(Name))(SDL_GL_GetProcAddress(#Name)))) return false;
+#define RENDERER_GL_FUNC(Name) \
+    { Name = (decltype(Name))(SDL_GL_GetProcAddress(#Name)); if (!Name) return false; }
 bool Renderer::initializeGl()
 {
     glFuncs = std::shared_ptr< GlFuncs >(new GlFuncs);
-    RENDERER_FUNC(glFuncs->glClear);
-    RENDERER_FUNC(glFuncs->glClearColor);
+    RENDERER_GL_FUNC(glFuncs->glClear);
+    RENDERER_GL_FUNC(glFuncs->glClearColor);
 
     glState = std::shared_ptr< GlState >(new GlState);
 
     return true;
 }
-#undef RENDERER_FUNC
+#undef RENDERER_GL_FUNC
