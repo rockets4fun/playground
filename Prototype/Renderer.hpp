@@ -37,9 +37,11 @@ public: // Implementation of module interface
 private:
     struct GlFuncs;
     struct GlState;
+    struct GlHelpers;
 
-    std::shared_ptr< GlFuncs > glFuncs;
-    std::shared_ptr< GlState > glState;
+    std::shared_ptr< GlFuncs > funcs;
+    std::shared_ptr< GlState > state;
+    std::shared_ptr< GlHelpers > helpers;
 
     bool initializeGl();
 
