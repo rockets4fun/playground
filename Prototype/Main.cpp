@@ -13,6 +13,7 @@
 #include "StateDb.hpp"
 #include "Platform.hpp"
 #include "Renderer.hpp"
+#include "RocketScience.hpp"
 
 // -------------------------------------------------------------------------------------------------
 int main(int argc, char *argv[])
@@ -33,7 +34,7 @@ int main(int argc, char *argv[])
 #endif
 
     // TODO(MARTINMO): Implement properly resizable window (propagate to renderer)
-    SDL_Window *window = SDL_CreateWindow("RocketScience",
+    SDL_Window *window = SDL_CreateWindow("RocketScience Prototype",
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
         640, 480, SDL_WINDOW_OPENGL);
 
@@ -52,10 +53,18 @@ int main(int argc, char *argv[])
     StateDb stateDb;
     Platform platform(stateDb);
     Renderer renderer;
+    RocketScience rocketScience;
 
     if (!renderer.initialize(platform))
     {
-        SDL_Log("ERROR: Failed to initialize renderer");
+        SDL_Log("ERROR: Failed to initialize renderer module");
+        return EXIT_FAILURE;
+    }
+    if (!rocketScience.initialize(platform))
+    {
+        SDL_Log("ERROR: Failed to initialize rocket science module");
+        // FIXME(MARTINMO): This return will not implicitly call shutdown of renderer module
+        // FIXME(MARTINMO): --> Should be care about this? (internet says: rather no...)
         return EXIT_FAILURE;
     }
 
@@ -71,10 +80,15 @@ int main(int argc, char *argv[])
             }
         }
 
-        renderer.update(platform, 0.0);
+        double deltaTimeInS = 1.0 / 60.0;
+        rocketScience.update(platform, deltaTimeInS);
+        renderer.update(platform, deltaTimeInS);
 
         SDL_GL_SwapWindow(window);
     }
+
+    rocketScience.shutdown(platform);
+    renderer.shutdown(platform);
 
     SDL_GL_DeleteContext(context);
 
