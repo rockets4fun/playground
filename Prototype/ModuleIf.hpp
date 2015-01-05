@@ -15,7 +15,7 @@ struct Platform;
 struct ModuleIf
 {
     virtual bool initialize(Platform &platform) = 0;
-    virtual void shutdown() = 0;
+    virtual void shutdown(Platform &platform) = 0;
     virtual void update(Platform &platform, real64 deltaTimeInS) = 0;
 };
 
