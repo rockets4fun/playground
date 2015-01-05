@@ -78,6 +78,7 @@ struct Renderer::GlState
 
     GLint  defProgUniformModelViewMatrix;
     GLint  defProgUniformProjectionMatrix;
+
     GLint  defProgAttribPosition;
     GLint  defProgAttribColor;
 
@@ -111,7 +112,8 @@ Renderer::GlHelpers::GlHelpers(GlFuncs *funcs) : funcs(funcs)
 }
 
 // -------------------------------------------------------------------------------------------------
-bool Renderer::GlHelpers::createAndCompileShader(GLuint &shader, GLenum type, const std::string &src)
+bool Renderer::GlHelpers::createAndCompileShader(
+    GLuint &shader, GLenum type, const std::string &src)
 {
     shader = funcs->glCreateShader(type);
     if (!shader)
@@ -183,6 +185,13 @@ void Renderer::GlHelpers::printInfoLog(GLuint object, GetProc getProc, InfoLogPr
 }
 
 // -------------------------------------------------------------------------------------------------
+void APIENTRY debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
+    GLsizei length, const GLchar *message, const void *userParam)
+{
+    SDL_Log("GL: %s", message);
+}
+
+// -------------------------------------------------------------------------------------------------
 Renderer::Renderer()
 {
     funcs = std::shared_ptr< GlFuncs >(new GlFuncs);
@@ -193,13 +202,6 @@ Renderer::Renderer()
 // -------------------------------------------------------------------------------------------------
 Renderer::~Renderer()
 {
-}
-
-// -------------------------------------------------------------------------------------------------
-void APIENTRY debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
-    GLsizei length, const GLchar *message, const void *userParam)
-{
-    SDL_Log("GL: %s", message);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -249,14 +251,19 @@ bool Renderer::initialize(Platform &platform)
     helpers->createAndCompileShader(state->defFs, GL_FRAGMENT_SHADER, defFsSrc);
 
     helpers->createAndLinkSimpleProgram(state->defProg, state->defVs, state->defFs);
-    // TODO(MARTINMO): Use 'glBindAttribLocation()' before linking the program to force
-    // TODO(MARTINMO): assignment of attributes to locations (e.g. position always 0, color always 1 etc.)
-    // TODO(MARTINMO): --> This allows us to use the same VAO for different shader programs
+
+    // TODO(MARTINMO): Use Uniform Buffer Objects to pass uniforms to shaders
 
     state->defProgUniformModelViewMatrix =
         funcs->glGetUniformLocation(state->defProg, "ModelViewMatrix");
     state->defProgUniformProjectionMatrix =
         funcs->glGetUniformLocation(state->defProg, "ProjectionMatrix");
+
+    // TODO(MARTINMO): Use 'glBindAttribLocation()' before linking the program to force
+    // TODO(MARTINMO): assignment of attributes to specific fixed locations
+    // TODO(MARTINMO): (e.g. position always 0, color always 1 etc.)
+    // TODO(MARTINMO): --> This allows us to use the same VAO for different shader programs
+
     state->defProgAttribPosition =
         funcs->glGetAttribLocation(state->defProg, "Position");
     state->defProgAttribColor =
@@ -328,7 +335,7 @@ bool Renderer::initialize(Platform &platform)
 }
 
 // -------------------------------------------------------------------------------------------------
-void Renderer::shutdown()
+void Renderer::shutdown(Platform &platform)
 {
     if (state->cubeColVbo) funcs->glDeleteBuffers(1, &state->cubeColVbo);
     if (state->cubePosVbo) funcs->glDeleteBuffers(1, &state->cubePosVbo);

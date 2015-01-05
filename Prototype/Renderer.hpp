@@ -25,13 +25,18 @@ struct Renderer : public ModuleIf
         glm::dquat orientation;
         size_t meshId = 0;
     };
+    struct Camera
+    {
+        glm::dvec4 position;
+        glm::dvec4 target;
+    };
 
     Renderer();
     virtual ~Renderer();
 
 public: // Implementation of module interface
     virtual bool initialize(Platform &platform);
-    virtual void shutdown();
+    virtual void shutdown(Platform &platform);
     virtual void update(Platform &platform, real64 deltaTimeInS);
 
 private:
