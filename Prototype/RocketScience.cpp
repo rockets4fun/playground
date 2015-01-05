@@ -7,6 +7,9 @@
 
 #include "Platform.hpp"
 #include "StateDb.hpp"
+#include "Renderer.hpp"
+
+#include <SDL.h>
 
 // -------------------------------------------------------------------------------------------------
 RocketScience::RocketScience()
@@ -34,4 +37,10 @@ void RocketScience::shutdown(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void RocketScience::update(Platform &platform, real64 deltaTimeInS)
 {
+    Renderer::CameraInfo *cameraInfo = (Renderer::CameraInfo *)
+        platform.stateDb.state(platform.RendererCameraInfo, m_camera);
+
+    const Uint8 *state = SDL_GetKeyboardState(NULL);
+    if (state[SDL_SCANCODE_LEFT])  cameraInfo->target.x += deltaTimeInS;
+    if (state[SDL_SCANCODE_RIGHT]) cameraInfo->target.x -= deltaTimeInS;
 }

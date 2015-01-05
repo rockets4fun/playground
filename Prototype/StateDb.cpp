@@ -98,6 +98,7 @@ size_t StateDb::registerState(size_t typeId, const std::string &name, size_t ele
     State newState;
     newState.name = name;
     newState.id = m_states.size();
+    newState.typeId = typeId;
     newState.elemSize = elemSize;
 
     m_states.push_back(newState);

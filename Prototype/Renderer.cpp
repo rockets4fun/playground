@@ -353,10 +353,12 @@ void Renderer::update(Platform &platform, real64 deltaTimeInS)
     funcs->glClearColor(0.95f, 0.95f, 0.95f, 1.0);
     funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+    CameraInfo *cameraInfo = (CameraInfo *)platform.stateDb.state(platform.RendererCameraInfo, 1);
+
     float aspect = 640.0f / 480.0f;
     glm::fmat4 projection = glm::perspective(90.0f * aspect, aspect, 0.1f, 10.0f);
     glm::fmat4 view = glm::lookAt(glm::fvec3(-3.00f, -2.0f, 1.0f),
-        glm::fvec3(), glm::fvec3(0.0f, 0.0f, 1.0f));
+        cameraInfo->target, glm::fvec3(0.0f, 0.0f, 1.0f));
 
     funcs->glUniformMatrix4fv(
         state->defProgUniformProjectionMatrix, 1, GL_FALSE, glm::value_ptr(projection));

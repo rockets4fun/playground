@@ -25,10 +25,10 @@ struct Renderer : public ModuleIf
         glm::dquat orientation;
         size_t meshId = 0;
     };
-    struct Camera
+    struct CameraInfo
     {
-        glm::dvec4 position;
-        glm::dvec4 target;
+        glm::fvec3 position;
+        glm::fvec3 target;
     };
 
     Renderer();

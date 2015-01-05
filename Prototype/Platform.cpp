@@ -19,7 +19,7 @@ Platform::Platform(StateDb &stateDb) : stateDb(stateDb)
 
     RendererCamera = stateDb.registerType("RendererCamera");
     RendererCameraInfo = stateDb.registerState(
-        RendererCamera, "RendererCameraInfo", sizeof(Renderer::Camera));
+        RendererCamera, "RendererCameraInfo", sizeof(Renderer::CameraInfo));
 }
 
 // -------------------------------------------------------------------------------------------------
