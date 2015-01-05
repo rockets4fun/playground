@@ -23,6 +23,9 @@ public:
     size_t RendererMesh = 0;
     size_t RendererMeshInfo = 0;
 
+    size_t RendererCamera = 0;
+    size_t RendererCameraInfo = 0;
+
 private:
     COMMON_DISABLE_COPY(Platform);
 };
