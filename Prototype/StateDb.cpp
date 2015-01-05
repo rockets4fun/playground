@@ -49,8 +49,14 @@ size_t StateDb::registerType(const std::string &name, size_t maxObjectCount)
     newType.name = name;
     newType.id = m_types.size();
     newType.maxObjectCount = maxObjectCount;
-    m_types.push_back(newType);
 
+    newType.objectIdToIdx.resize(maxObjectCount + 1, 0);
+    for (int id = 0; id < maxObjectCount + 1; ++id)
+    {
+        newType.objectIdToIdx[id] = id;
+    }
+
+    m_types.push_back(newType);
     m_typeIdsByName[name] = newType.id;
 
     return newType.id;
@@ -80,24 +86,67 @@ size_t StateDb::registerState(size_t typeId, const std::string &name, size_t ele
     size_t existingStateId = stateIdByName(name);
     if (existingStateId)
     {
-        State *existingState = &m_states[existingStateId];
-        COMMON_ASSERT(existingState->typeId == typeId);
-        COMMON_ASSERT(existingState->elemSize == elemSize);
+        State &existingState = m_states[existingStateId];
+        COMMON_ASSERT(existingState.typeId == typeId);
+        COMMON_ASSERT(existingState.elemSize == elemSize);
         return existingStateId;
     }
     COMMON_ASSERT(isTypeIdValid(typeId));
-    Type *type = &m_types[typeId];
-    COMMON_ASSERT(type->objectCount == 0);
+    Type &type = m_types[typeId];
+    COMMON_ASSERT(type.objectCount == 0);
 
     State newState;
     newState.name = name;
     newState.id = m_states.size();
     newState.elemSize = elemSize;
-    m_states.push_back(newState);
 
+    m_states.push_back(newState);
+    type.stateIds.push_back(newState.id);
     m_stateIdsByName[name] = newState.id;
 
-    m_stateValues.resize(newState.elemSize * type->maxObjectCount);
+    m_stateValues.resize(newState.id + 1);
+    m_stateValues[newState.id].resize(newState.elemSize * (type.maxObjectCount + 1));
 
     return newState.id;
+}
+
+// -------------------------------------------------------------------------------------------------
+size_t StateDb::createObject(size_t typeId)
+{
+    COMMON_ASSERT(isTypeIdValid(typeId));
+    Type &type = m_types[typeId];
+    if (type.objectCount == type.maxObjectCount)
+    {
+        // TODO(MARTINMO): Out of type memory error
+        return 0;
+    }
+    size_t newObjectId = ++type.objectCount;
+    type.objectIdToIdx[newObjectId] = newObjectId;
+    return newObjectId;
+}
+
+// -------------------------------------------------------------------------------------------------
+void StateDb::deleteObject(size_t typeId, size_t objectId)
+{
+    COMMON_ASSERT(isTypeIdValid(typeId));
+    Type &type = m_types[typeId];
+    if (type.objectCount < 1)
+    {
+        return;
+    }
+    if (type.objectCount > 1)
+    {
+        type.objectIdToIdx[type.objectCount] = objectId;
+    }
+    --type.objectCount;
+}
+
+// -------------------------------------------------------------------------------------------------
+void *StateDb::state(size_t stateId, size_t objectId)
+{
+    COMMON_ASSERT(isStateIdValid(stateId));
+    State &state = m_states[stateId];
+    Type &type = m_types[state.typeId];
+    COMMON_ASSERT(objectId <= type.objectCount);
+    return &m_stateValues[stateId][objectId * state.elemSize];
 }

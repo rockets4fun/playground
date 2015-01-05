@@ -13,7 +13,7 @@
 #include <string>
 
 // -------------------------------------------------------------------------------------------------
-/// @brief Brief implementation module description
+/// @brief ...
 struct StateDb
 {
     StateDb();
@@ -27,11 +27,10 @@ struct StateDb
     size_t stateIdByName(const std::string &name);
     size_t registerState(size_t typeId, const std::string &name, size_t elemSize);
 
-    template< class ElemType >
-    size_t registerState(size_t typeId, const std::string &name)
-    {
-        return registerState(typeId, name, sizeof(ElemType));
-    }
+    size_t createObject(size_t typeId);
+    void deleteObject(size_t typeId, size_t objectId);
+
+    void *state(size_t stateId, size_t objectId);
 
 private:
     struct Type
@@ -40,7 +39,8 @@ private:
         size_t id;
         size_t maxObjectCount = 0;
         size_t objectCount = 0;
-        std::vector< size_t > states;
+        std::vector< size_t > stateIds;
+        std::vector< size_t > objectIdToIdx;
     };
 
     struct State
