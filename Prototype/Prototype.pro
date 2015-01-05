@@ -40,16 +40,22 @@ win32 {
 }
 
 HEADERS += \
-    Common.hpp \
-    ModuleIf.hpp \
-    Platform.hpp \
-    Renderer.hpp \
-    StateDb.hpp \
     Template.hpp \
-    TemplateIf.hpp
+    TemplateIf.hpp \
+    Common.hpp \
+    ModuleIf.hpp
 
 SOURCES += \
-    Main.cpp \
+    Main.cpp
+
+HEADERS += \
+    Platform.hpp \
+    Renderer.hpp \
+    RocketScience.hpp \
+    StateDb.hpp
+
+SOURCES += \
     Platform.cpp \
     Renderer.cpp \
+    RocketScience.cpp \
     StateDb.cpp
