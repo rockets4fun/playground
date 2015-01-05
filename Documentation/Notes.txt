@@ -22,6 +22,8 @@ h2. Prototype Jan 2015
 h1. General Notes
 ----------------------------------------------------------------------------------------------------
 
+* Introduce access context for state database
+** Only one context for write access for each individual state
 * Runtime is design time
 * Write API usage code before (or at least pseudo-usage code while) designing API
 * Save (and load?) C code for defining state machines in a graphical way (use LLVM to parse?)

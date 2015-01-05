@@ -7,7 +7,12 @@
 
 // TODO(MARTINMO): Remove dependency to SDL through OpenGL function retrieval interface
 // TODO(MARTINMO): This can then be implemented in the platform layer through e.g. SDL/Qt
+// TODO(MARTINMO): - 'glProcAddr(name)'
+// TODO(MARTINMO): - 'glIsExtensionSupported(name)'
 #include <SDL.h>
+
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 #include "Platform.hpp"
 #include "StateDb.hpp"
@@ -19,6 +24,8 @@
 // Declared here because we do not want to expose OpenGL implementation details in header
 struct Renderer::GlFuncs
 {
+    // Basic functions
+    PFNGLENABLEPROC glEnable = nullptr;
     // Buffer clearing functions
     PFNGLCLEARCOLORPROC glClearColor = nullptr;
     PFNGLCLEARPROC      glClear = nullptr;
@@ -30,22 +37,52 @@ struct Renderer::GlFuncs
     PFNGLGETSHADERIVPROC      glGetShaderiv = nullptr;
     PFNGLGETSHADERINFOLOGPROC glGetShaderInfoLog = nullptr;
     // Program object functions
-    PFNGLCREATEPROGRAMPROC     glCreateProgram = nullptr;
-    PFNGLATTACHSHADERPROC      glAttachShader = nullptr;
-    PFNGLDETACHSHADERPROC      glDetachShader = nullptr;
-    PFNGLLINKPROGRAMPROC       glLinkProgram = nullptr;
-    PFNGLUSEPROGRAMPROC        glUseProgram = nullptr;
-    PFNGLDELETEPROGRAMPROC     glDeleteProgram = nullptr;
-    PFNGLGETPROGRAMIVPROC      glGetProgramiv = nullptr;
-    PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog = nullptr;
+    PFNGLCREATEPROGRAMPROC      glCreateProgram = nullptr;
+    PFNGLATTACHSHADERPROC       glAttachShader = nullptr;
+    PFNGLDETACHSHADERPROC       glDetachShader = nullptr;
+    PFNGLLINKPROGRAMPROC        glLinkProgram = nullptr;
+    PFNGLUSEPROGRAMPROC         glUseProgram = nullptr;
+    PFNGLDELETEPROGRAMPROC      glDeleteProgram = nullptr;
+    PFNGLGETPROGRAMIVPROC       glGetProgramiv = nullptr;
+    PFNGLGETPROGRAMINFOLOGPROC  glGetProgramInfoLog = nullptr;
+    // Vertex array object functions
+    PFNGLGENVERTEXARRAYSPROC    glGenVertexArrays = nullptr;
+    PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays = nullptr;
+    PFNGLBINDVERTEXARRAYPROC    glBindVertexArray = nullptr;
+    // Buffer object functions
+    PFNGLGENBUFFERSPROC    glGenBuffers = nullptr;
+    PFNGLDELETEBUFFERSPROC glDeleteBuffers = nullptr;
+    PFNGLBINDBUFFERPROC    glBindBuffer = nullptr;
+    PFNGLBUFFERDATAPROC    glBufferData = nullptr;
+    PFNGLBUFFERSUBDATAPROC glBufferSubData = nullptr;
+    // Shader uniform functions
+    PFNGLGETUNIFORMLOCATIONPROC glGetUniformLocation = nullptr;
+    PFNGLUNIFORM4FVPROC         glUniform4fv = nullptr;
+    PFNGLUNIFORMMATRIX4FVPROC   glUniformMatrix4fv = nullptr;
+    // Vertex shader attribute functions
+    PFNGLGETATTRIBLOCATIONPROC       glGetAttribLocation = nullptr;
+    PFNGLVERTEXATTRIBPOINTERPROC     glVertexAttribPointer = nullptr;
+    PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray = nullptr;
+    // Drawing command functions
+    PFNGLDRAWARRAYSPROC glDrawArrays = nullptr;
 };
 
 // Declared here because we do not want to expose OpenGL implementation details in header
 struct Renderer::GlState
 {
-    GLuint defVertexShader = 0;
-    GLuint defFragmentShader = 0;
-    GLuint defProgram = 0;
+    GLuint defVs = 0;
+    GLuint defFs = 0;
+    GLuint defProg = 0;
+
+    GLint  defProgUniformModelViewMatrix;
+    GLint  defProgUniformProjectionMatrix;
+    GLint  defProgAttribPosition;
+    GLint  defProgAttribColor;
+
+    GLuint defVao = 0;
+
+    GLuint cubePosVbo;
+    GLuint cubeColVbo;
 };
 
 // Declared here because we do not want to expose OpenGL implementation details in header
@@ -65,101 +102,6 @@ struct Renderer::GlHelpers
 private:
     GlFuncs *funcs = nullptr;
 };
-
-// -------------------------------------------------------------------------------------------------
-Renderer::Renderer()
-{
-    funcs = std::shared_ptr< GlFuncs >(new GlFuncs);
-    state = std::shared_ptr< GlState >(new GlState);
-    helpers = std::shared_ptr< GlHelpers >(new GlHelpers(funcs.get()));
-}
-
-// -------------------------------------------------------------------------------------------------
-Renderer::~Renderer()
-{
-}
-
-// -------------------------------------------------------------------------------------------------
-bool Renderer::initialize(Platform &platform)
-{
-    if (!initializeGl())
-    {
-        return false;
-    }
-
-    std::string vertexShaderSrc =
-        "attribute vec4 Position;\n"
-        "\n"
-        "uniform mat4 ModelViewMatrix;\n"
-        "uniform mat4 ProjectionMatrix;\n"
-        "\n"
-        "void main()\n"
-        "{\n"
-        "   gl_Position = ProjectionMatrix * ModelViewMatrix * vec4(Position.xyz, 1);\n"
-        "}\n";
-    helpers->createAndCompileShader(state->defVertexShader, GL_VERTEX_SHADER, vertexShaderSrc);
-
-    std::string fragmentShaderSrc =
-        "void main()\n"
-        "{\n"
-        "    gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);\n"
-        "}\n";
-    helpers->createAndCompileShader(
-        state->defFragmentShader, GL_FRAGMENT_SHADER, fragmentShaderSrc);
-
-    helpers->createAndLinkSimpleProgram(
-        state->defProgram, state->defVertexShader, state->defFragmentShader);
-    funcs->glUseProgram(state->defProgram);
-
-    return true;
-}
-
-// -------------------------------------------------------------------------------------------------
-void Renderer::shutdown()
-{
-}
-
-// -------------------------------------------------------------------------------------------------
-void Renderer::update(Platform &platform, real64 deltaTimeInS)
-{
-    funcs->glClearColor(float(rand() % 11) / 10.0f, 0.0, 0.0, 1.0);
-    funcs->glClear(GL_COLOR_BUFFER_BIT);
-}
-
-// -------------------------------------------------------------------------------------------------
-#define RENDERER_GL_FUNC(Name) \
-        { \
-            funcs->Name = (decltype(funcs->Name))(SDL_GL_GetProcAddress(#Name)); \
-            if (funcs->Name == nullptr) \
-            { \
-                SDL_Log("ERROR: Failed to resolve '%s'", #Name); \
-                return false; \
-            } \
-        }
-bool Renderer::initializeGl()
-{
-    RENDERER_GL_FUNC(glClearColor);
-    RENDERER_GL_FUNC(glClear);
-
-    RENDERER_GL_FUNC(glCreateShader);
-    RENDERER_GL_FUNC(glShaderSource);
-    RENDERER_GL_FUNC(glCompileShader);
-    RENDERER_GL_FUNC(glDeleteShader);
-    RENDERER_GL_FUNC(glGetShaderiv);
-    RENDERER_GL_FUNC(glGetShaderInfoLog);
-
-    RENDERER_GL_FUNC(glCreateProgram);
-    RENDERER_GL_FUNC(glAttachShader);
-    RENDERER_GL_FUNC(glDetachShader);
-    RENDERER_GL_FUNC(glLinkProgram);
-    RENDERER_GL_FUNC(glUseProgram);
-    RENDERER_GL_FUNC(glDeleteProgram);
-    RENDERER_GL_FUNC(glGetProgramiv);
-    RENDERER_GL_FUNC(glGetProgramInfoLog);
-
-    return true;
-}
-#undef RENDERER_GL_FUNC
 
 // -------------------------------------------------------------------------------------------------
 Renderer::GlHelpers::GlHelpers(GlFuncs *funcs) : funcs(funcs)
@@ -237,3 +179,233 @@ void Renderer::GlHelpers::printInfoLog(GLuint object, GetProc getProc, InfoLogPr
         SDL_Log("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
     }
 }
+
+// -------------------------------------------------------------------------------------------------
+Renderer::Renderer()
+{
+    funcs = std::shared_ptr< GlFuncs >(new GlFuncs);
+    state = std::shared_ptr< GlState >(new GlState);
+    helpers = std::shared_ptr< GlHelpers >(new GlHelpers(funcs.get()));
+}
+
+// -------------------------------------------------------------------------------------------------
+Renderer::~Renderer()
+{
+}
+
+// -------------------------------------------------------------------------------------------------
+bool Renderer::initialize(Platform &platform)
+{
+    if (!initializeGl())
+    {
+        return false;
+    }
+
+    std::string defVsSrc =
+        "#version 150\n"
+        "\n"
+        "uniform mat4 ModelViewMatrix;\n"
+        "uniform mat4 ProjectionMatrix;\n"
+        "\n"
+        "in vec4 Position;\n"
+        "in vec4 Color;\n"
+        "\n"
+        "out vec4 vertexColor;\n"
+        "\n"
+        "void main()\n"
+        "{\n"
+        "   vertexColor = Color;\n"
+        "   gl_Position = ProjectionMatrix * ModelViewMatrix * vec4(Position.xyz, 1.0);\n"
+        "}\n";
+    helpers->createAndCompileShader(state->defVs, GL_VERTEX_SHADER, defVsSrc);
+
+    std::string defFsSrc =
+        "#version 150\n"
+        "\n"
+        "in vec4 vertexColor;\n"
+        "\n"
+        "out vec4 fragmentColor;\n"
+        "\n"
+        "void main()\n"
+        "{\n"
+        "    float scale = gl_FrontFacing ? 1.0 : 0.5;\n"
+        "    fragmentColor = vec4(vertexColor.rgb * scale, 1.0);\n"
+        "}\n";
+    helpers->createAndCompileShader(state->defFs, GL_FRAGMENT_SHADER, defFsSrc);
+
+    helpers->createAndLinkSimpleProgram(state->defProg, state->defVs, state->defFs);
+    // TODO(MARTINMO): Use 'glBindAttribLocation()' before linking the program to force
+    // TODO(MARTINMO): assignment of attributes to locations (e.g. position always 0, color always 1 etc.)
+    // TODO(MARTINMO): --> This allows us to use the same VAO for different shader programs
+
+    state->defProgUniformModelViewMatrix =
+        funcs->glGetUniformLocation(state->defProg, "ModelViewMatrix");
+    state->defProgUniformProjectionMatrix =
+        funcs->glGetUniformLocation(state->defProg, "ProjectionMatrix");
+    state->defProgAttribPosition =
+        funcs->glGetAttribLocation(state->defProg, "Position");
+    state->defProgAttribColor =
+        funcs->glGetAttribLocation(state->defProg, "Color");
+
+    funcs->glUseProgram(state->defProg);
+
+    funcs->glGenVertexArrays(1, &state->defVao);
+    funcs->glBindVertexArray(state->defVao);
+
+    // World coordinate system: +X=E, +Y=N and +Z=up
+    // Front facing is CCW towards negative axis
+    float cubePositions[] =
+    {
+        // West -X
+        -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, +0.5f, -0.5f, +0.5f, +0.5f,
+        -0.5f, -0.5f, -0.5f, -0.5f, +0.5f, +0.5f, -0.5f, +0.5f, -0.5f,
+        // East +X
+        +0.5f, -0.5f, -0.5f, +0.5f, +0.5f, +0.5f, +0.5f, -0.5f, +0.5f,
+        +0.5f, -0.5f, -0.5f, +0.5f, +0.5f, -0.5f, +0.5f, +0.5f, +0.5f,
+        // South -Y
+        -0.5f, -0.5f, -0.5f, +0.5f, -0.5f, +0.5f, -0.5f, -0.5f, +0.5f,
+        -0.5f, -0.5f, -0.5f, +0.5f, -0.5f, -0.5f, +0.5f, -0.5f, +0.5f,
+        // North +Y
+        -0.5f, +0.5f, -0.5f, +0.5f, +0.5f, +0.5f, -0.5f, +0.5f, +0.5f,
+        -0.5f, +0.5f, -0.5f, +0.5f, +0.5f, -0.5f, +0.5f, +0.5f, +0.5f,
+        // Bottom -Z
+        -0.5f, -0.5f, -0.5f, -0.5f, +0.5f, -0.5f, +0.5f, +0.5f, -0.5f,
+        -0.5f, -0.5f, -0.5f, +0.5f, +0.5f, -0.5f, +0.5f, -0.5f, -0.5f,
+        // Top +Z
+        -0.5f, -0.5f, +0.5f, +0.5f, +0.5f, +0.5f, -0.5f, +0.5f, +0.5f,
+        -0.5f, -0.5f, +0.5f, +0.5f, -0.5f, +0.5f, +0.5f, +0.5f, +0.5f,
+    };
+    float cubeColors[] =
+    {
+        // West -X (red)
+        +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f,
+        +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f,
+        // East +X (red)
+        +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f,
+        +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f,
+        // South -Y (green)
+         0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,
+         0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,
+        // North +Y (green)
+         0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,
+         0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,
+        // Bottom -Z (blue)
+         0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,
+         0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,
+        // Top +Z (blue)
+         0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,
+         0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,
+    };
+
+    // Create cube VBOs and define data
+
+    funcs->glGenBuffers(1, &state->cubePosVbo);
+    funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubePosVbo);
+    funcs->glBufferData(GL_ARRAY_BUFFER, sizeof(cubePositions), cubePositions, GL_STATIC_DRAW);
+
+    funcs->glGenBuffers(1, &state->cubeColVbo);
+    funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubeColVbo);
+    funcs->glBufferData(GL_ARRAY_BUFFER, sizeof(cubeColors), cubeColors, GL_STATIC_DRAW);
+
+    funcs->glEnable(GL_DEPTH_TEST);
+
+    return true;
+}
+
+// -------------------------------------------------------------------------------------------------
+void Renderer::shutdown()
+{
+    if (state->cubeColVbo) funcs->glDeleteBuffers(1, &state->cubeColVbo);
+    if (state->cubePosVbo) funcs->glDeleteBuffers(1, &state->cubePosVbo);
+
+    if (state->defVao) funcs->glDeleteVertexArrays(1, &state->defVao);
+
+    if (state->defProg) funcs->glDeleteProgram(state->defProg);
+    if (state->defFs) funcs->glDeleteShader(state->defFs);
+    if (state->defVs) funcs->glDeleteShader(state->defVs);
+}
+
+// -------------------------------------------------------------------------------------------------
+void Renderer::update(Platform &platform, real64 deltaTimeInS)
+{
+    funcs->glClearColor(0.95f, 0.95f, 0.95f, 1.0);
+    funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    glm::fmat4 projection = glm::perspectiveFov(90.0f, 640.0f, 480.0f, 0.1f, 10.0f);
+    glm::fmat4 view = glm::lookAt(glm::fvec3(-1.0f, -1.0f, 0.75f),
+        glm::fvec3(), glm::fvec3(0.0f, 0.0f, 1.0f));
+
+    funcs->glUniformMatrix4fv(
+        state->defProgUniformProjectionMatrix, 1, GL_FALSE, glm::value_ptr(projection));
+    funcs->glUniformMatrix4fv(
+        state->defProgUniformModelViewMatrix, 1, GL_FALSE, glm::value_ptr(view));
+
+    // NOTE(MARTINMO): Vertex attribute assignments are stored inside the bound VAO
+    // NOTE(MARTINMO): --> Think about creating one VAO per renderable mesh
+    funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubePosVbo);
+    funcs->glVertexAttribPointer(state->defProgAttribPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    funcs->glEnableVertexAttribArray(state->defProgAttribPosition);
+    funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubeColVbo);
+    funcs->glVertexAttribPointer(state->defProgAttribColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
+    funcs->glEnableVertexAttribArray(state->defProgAttribColor);
+
+    // Render cube at origin
+    funcs->glDrawArrays(GL_TRIANGLES, 0, 36);
+}
+
+// -------------------------------------------------------------------------------------------------
+#define RENDERER_GL_FUNC(Name) \
+        { \
+            funcs->Name = (decltype(funcs->Name))(SDL_GL_GetProcAddress(#Name)); \
+            if (funcs->Name == nullptr) \
+            { \
+                SDL_Log("ERROR: Failed to resolve '%s'", #Name); \
+                return false; \
+            } \
+        }
+bool Renderer::initializeGl()
+{
+    RENDERER_GL_FUNC(glEnable);
+
+    RENDERER_GL_FUNC(glClearColor);
+    RENDERER_GL_FUNC(glClear);
+
+    RENDERER_GL_FUNC(glCreateShader);
+    RENDERER_GL_FUNC(glShaderSource);
+    RENDERER_GL_FUNC(glCompileShader);
+    RENDERER_GL_FUNC(glDeleteShader);
+    RENDERER_GL_FUNC(glGetShaderiv);
+    RENDERER_GL_FUNC(glGetShaderInfoLog);
+
+    RENDERER_GL_FUNC(glCreateProgram);
+    RENDERER_GL_FUNC(glAttachShader);
+    RENDERER_GL_FUNC(glDetachShader);
+    RENDERER_GL_FUNC(glLinkProgram);
+    RENDERER_GL_FUNC(glUseProgram);
+    RENDERER_GL_FUNC(glDeleteProgram);
+    RENDERER_GL_FUNC(glGetProgramiv);
+    RENDERER_GL_FUNC(glGetProgramInfoLog);
+
+    RENDERER_GL_FUNC(glGenVertexArrays);
+    RENDERER_GL_FUNC(glDeleteVertexArrays);
+    RENDERER_GL_FUNC(glBindVertexArray);
+
+    RENDERER_GL_FUNC(glGenBuffers);
+    RENDERER_GL_FUNC(glDeleteBuffers);
+    RENDERER_GL_FUNC(glBindBuffer);
+    RENDERER_GL_FUNC(glBufferData);
+    RENDERER_GL_FUNC(glBufferSubData);
+
+    RENDERER_GL_FUNC(glGetUniformLocation);
+    RENDERER_GL_FUNC(glUniform4fv);
+    RENDERER_GL_FUNC(glUniformMatrix4fv);
+
+    RENDERER_GL_FUNC(glGetAttribLocation);
+    RENDERER_GL_FUNC(glVertexAttribPointer);
+    RENDERER_GL_FUNC(glEnableVertexAttribArray);
+
+    RENDERER_GL_FUNC(glDrawArrays);
+
+    return true;
+}
+#undef RENDERER_GL_FUNC
