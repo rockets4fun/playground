@@ -65,6 +65,8 @@ struct Renderer::GlFuncs
     PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray = nullptr;
     // Drawing command functions
     PFNGLDRAWARRAYSPROC glDrawArrays = nullptr;
+    // ARB_debug_output (extension to 3.2 core)
+    PFNGLDEBUGMESSAGECALLBACKARBPROC glDebugMessageCallbackARB = nullptr;
 };
 
 // Declared here because we do not want to expose OpenGL implementation details in header
@@ -194,11 +196,24 @@ Renderer::~Renderer()
 }
 
 // -------------------------------------------------------------------------------------------------
+void APIENTRY debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
+    GLsizei length, const GLchar *message, const void *userParam)
+{
+    SDL_Log("GL: %s", message);
+}
+
+// -------------------------------------------------------------------------------------------------
 bool Renderer::initialize(Platform &platform)
 {
     if (!initializeGl())
     {
         return false;
+    }
+
+    if (SDL_GL_ExtensionSupported("GL_ARB_debug_output"))
+    {
+        funcs->glDebugMessageCallbackARB(debugMessageCallback, this);
+        funcs->glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB);
     }
 
     std::string defVsSrc =
@@ -331,8 +346,9 @@ void Renderer::update(Platform &platform, real64 deltaTimeInS)
     funcs->glClearColor(0.95f, 0.95f, 0.95f, 1.0);
     funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    glm::fmat4 projection = glm::perspectiveFov(90.0f, 640.0f, 480.0f, 0.1f, 10.0f);
-    glm::fmat4 view = glm::lookAt(glm::fvec3(-1.0f, -1.0f, 0.75f),
+    float aspect = 640.0f / 480.0f;
+    glm::fmat4 projection = glm::perspective(90.0f * aspect, aspect, 0.1f, 10.0f);
+    glm::fmat4 view = glm::lookAt(glm::fvec3(-3.00f, -2.0f, 1.0f),
         glm::fvec3(), glm::fvec3(0.0f, 0.0f, 1.0f));
 
     funcs->glUniformMatrix4fv(
@@ -405,6 +421,8 @@ bool Renderer::initializeGl()
     RENDERER_GL_FUNC(glEnableVertexAttribArray);
 
     RENDERER_GL_FUNC(glDrawArrays);
+
+    RENDERER_GL_FUNC(glDebugMessageCallbackARB);
 
     return true;
 }
