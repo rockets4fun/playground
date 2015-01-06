@@ -374,8 +374,9 @@ void Renderer::update(Platform &platform, real64 deltaTimeInS)
     funcs->glVertexAttribPointer(state->defProgAttribColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
     funcs->glEnableVertexAttribArray(state->defProgAttribColor);
 
-    // Pseudo-instanced rendering of meshes as cubes
     glm::fmat4 model, modelView;
+
+    // Pseudo-instanced rendering of meshes as cubes
     MeshInfo *end, *first = platform.stateDb.fullState(platform.RendererMeshInfo, &end);
     for (MeshInfo *mesh = first; mesh < end; ++mesh)
     {

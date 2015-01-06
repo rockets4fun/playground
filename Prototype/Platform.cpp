@@ -13,7 +13,7 @@ Platform::Platform(StateDb &stateDb) : stateDb(stateDb)
 {
     // TODO(MARTINMO): Think about separate 'Type' and 'State' structs that hold IDs
 
-    RendererMesh = stateDb.registerType("RendererMesh");
+    RendererMesh = stateDb.registerType("RendererMesh", 4096);
     RendererMeshInfo = stateDb.registerState(
         RendererMesh, "RendererMeshInfo", sizeof(Renderer::MeshInfo));
 

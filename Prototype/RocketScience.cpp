@@ -35,7 +35,7 @@ bool RocketScience::initialize(Platform &platform)
     camera->position = glm::fvec4(1.0f, 1.0f, 0.8f, 1.0f);
     camera->target   = glm::fvec4(0.0f, 0.0f, 0.0f, 1.0f);
 
-    for (int cubeIdx = 0; cubeIdx < 200; ++cubeIdx)
+    for (int cubeIdx = 0; cubeIdx < 128; ++cubeIdx)
     {
         size_t meshId = platform.stateDb.createObject(platform.RendererMesh);
         Renderer::MeshInfo *mesh = (Renderer::MeshInfo *)
@@ -50,19 +50,23 @@ bool RocketScience::initialize(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void RocketScience::shutdown(Platform &platform)
 {
+    // FIXME(MARTINMO): Delete/destroy all created meshes from 'vector< size_t >'
+
     platform.stateDb.deleteObject(platform.RendererCamera, m_cameraId);
 }
 
 // -------------------------------------------------------------------------------------------------
 void RocketScience::update(Platform &platform, real64 deltaTimeInS)
 {
+    // FIXME(MARTINMO): Add keyboard input to platform abstraction (remove dependency to SDL)
     const Uint8 *state = SDL_GetKeyboardState(NULL);
+
     double horizontalRotationInDeg = 0.0f;
     if (state[SDL_SCANCODE_RIGHT]) horizontalRotationInDeg += deltaTimeInS * 90.0;
     if (state[SDL_SCANCODE_LEFT])  horizontalRotationInDeg -= deltaTimeInS * 90.0;
     double verticalRotationInDeg = 0.0f;
-    if (state[SDL_SCANCODE_DOWN]) verticalRotationInDeg   += deltaTimeInS * 90.0;
-    if (state[SDL_SCANCODE_UP])   verticalRotationInDeg   -= deltaTimeInS * 90.0;
+    if (state[SDL_SCANCODE_DOWN]) verticalRotationInDeg += deltaTimeInS * 90.0;
+    if (state[SDL_SCANCODE_UP])   verticalRotationInDeg -= deltaTimeInS * 90.0;
     double translationInM = 0.0f;
     if (state[SDL_SCANCODE_W]) translationInM += deltaTimeInS * 10.0;
     if (state[SDL_SCANCODE_S]) translationInM -= deltaTimeInS * 10.0;
@@ -70,8 +74,10 @@ void RocketScience::update(Platform &platform, real64 deltaTimeInS)
     Renderer::CameraInfo *camera = (Renderer::CameraInfo *)
         platform.stateDb.state(platform.RendererCameraInfo, m_cameraId);
 
-    // Vertical rotation axis in world space
     glm::fvec3 cameraDir = (camera->target - camera->position).xyz();
+
+    // Vertical rotation axis in world space
+    // FIXME(MARTINMO): Correctly handle near +/- 90 deg
     glm::fvec3 verticalRotationAxis = cameraDir;
     std::swap(verticalRotationAxis.x, verticalRotationAxis.y);
     verticalRotationAxis.y = -verticalRotationAxis.y;
