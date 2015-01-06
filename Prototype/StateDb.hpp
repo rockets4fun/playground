@@ -32,6 +32,18 @@ struct StateDb
 
     void *state(size_t stateId, size_t objectId);
 
+    template< class ElementType >
+    ElementType *fullState(size_t stateId, ElementType **end)
+    {
+        COMMON_ASSERT(isStateIdValid(stateId));
+        State &state = m_states[stateId];
+        Type &type = m_types[state.typeId];
+        COMMON_ASSERT(state.elemSize == sizeof(ElementType));
+        unsigned char *first = &m_stateValues[stateId][state.elemSize];
+        *end = (ElementType *)(first + state.elemSize * type.objectCount);
+        return (ElementType *)first;
+    }
+
 private:
     struct Type
     {

@@ -23,7 +23,7 @@ public: // Implementation of module interface
     virtual void update(Platform &platform, real64 deltaTimeInS);
 
 private:
-    size_t m_camera = 0;
+    size_t m_cameraId = 0;
 
 private:
     COMMON_DISABLE_COPY(RocketScience);

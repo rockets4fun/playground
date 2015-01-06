@@ -21,8 +21,8 @@ struct Renderer : public ModuleIf
 {
     struct MeshInfo
     {
-        glm::dvec4 position;
-        glm::dquat orientation;
+        glm::fvec4 position;
+        glm::fvec4 orientation;
         size_t meshId = 0;
     };
     struct CameraInfo

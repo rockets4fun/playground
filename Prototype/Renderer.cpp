@@ -331,6 +331,7 @@ bool Renderer::initialize(Platform &platform)
     funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubeColVbo);
     funcs->glBufferData(GL_ARRAY_BUFFER, sizeof(cubeColors), cubeColors, GL_STATIC_DRAW);
 
+    funcs->glClearColor(0.15f, 0.15f, 0.15f, 1.0);
     funcs->glEnable(GL_DEPTH_TEST);
 
     return true;
@@ -352,20 +353,17 @@ void Renderer::shutdown(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void Renderer::update(Platform &platform, real64 deltaTimeInS)
 {
-    funcs->glClearColor(0.95f, 0.95f, 0.95f, 1.0);
     funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     CameraInfo *cameraInfo = (CameraInfo *)platform.stateDb.state(platform.RendererCameraInfo, 1);
 
     float aspect = 640.0f / 480.0f;
-    glm::fmat4 projection = glm::perspective(glm::radians(60.0f * aspect), aspect, 0.1f, 10.0f);
+    glm::fmat4 projection = glm::perspective(glm::radians(60.0f * aspect), aspect, 0.1f, 200.0f);
     glm::fmat4 view = glm::lookAt(cameraInfo->position.xyz(),
         cameraInfo->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
 
     funcs->glUniformMatrix4fv(
         state->defProgUniformProjectionMatrix, 1, GL_FALSE, glm::value_ptr(projection));
-    funcs->glUniformMatrix4fv(
-        state->defProgUniformModelViewMatrix, 1, GL_FALSE, glm::value_ptr(view));
 
     // NOTE(MARTINMO): Vertex attribute assignments are stored inside the bound VAO
     // NOTE(MARTINMO): --> Think about creating one VAO per renderable mesh
@@ -376,8 +374,17 @@ void Renderer::update(Platform &platform, real64 deltaTimeInS)
     funcs->glVertexAttribPointer(state->defProgAttribColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
     funcs->glEnableVertexAttribArray(state->defProgAttribColor);
 
-    // Render cube at origin
-    funcs->glDrawArrays(GL_TRIANGLES, 0, 36);
+    // Pseudo-instanced rendering of meshes as cubes
+    glm::fmat4 model, modelView;
+    MeshInfo *end, *first = platform.stateDb.fullState(platform.RendererMeshInfo, &end);
+    for (MeshInfo *mesh = first; mesh < end; ++mesh)
+    {
+        model = glm::translate(glm::fmat4(), mesh->position.xyz());
+        modelView = view * model;
+        funcs->glUniformMatrix4fv(
+            state->defProgUniformModelViewMatrix, 1, GL_FALSE, glm::value_ptr(modelView));
+        funcs->glDrawArrays(GL_TRIANGLES, 0, 36);
+    }
 }
 
 // -------------------------------------------------------------------------------------------------

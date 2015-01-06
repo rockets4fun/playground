@@ -149,5 +149,5 @@ void *StateDb::state(size_t stateId, size_t objectId)
     State &state = m_states[stateId];
     Type &type = m_types[state.typeId];
     COMMON_ASSERT(objectId <= type.objectCount);
-    return &m_stateValues[stateId][objectId * state.elemSize];
+    return &m_stateValues[stateId][type.objectIdToIdx[objectId] * state.elemSize];
 }
