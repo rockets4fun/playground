@@ -45,28 +45,35 @@ void RocketScience::shutdown(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void RocketScience::update(Platform &platform, real64 deltaTimeInS)
 {
-    double rotateHorizontalInDeg = 0.0f;
-    double rotateVerticalInDeg = 0.0f;
+    double horizontalRotationInDeg = 0.0f;
+    double verticalRotationInDeg = 0.0f;
 
     const Uint8 *state = SDL_GetKeyboardState(NULL);
-    if (state[SDL_SCANCODE_RIGHT]) rotateHorizontalInDeg += deltaTimeInS * 90.0;
-    if (state[SDL_SCANCODE_LEFT])  rotateHorizontalInDeg -= deltaTimeInS * 90.0;
-    if (state[SDL_SCANCODE_UP])    rotateVerticalInDeg   += deltaTimeInS * 90.0;
-    if (state[SDL_SCANCODE_DOWN])  rotateVerticalInDeg   -= deltaTimeInS * 90.0;
+    if (state[SDL_SCANCODE_RIGHT]) horizontalRotationInDeg += deltaTimeInS * 90.0;
+    if (state[SDL_SCANCODE_LEFT])  horizontalRotationInDeg -= deltaTimeInS * 90.0;
+    if (state[SDL_SCANCODE_DOWN])  verticalRotationInDeg   += deltaTimeInS * 90.0;
+    if (state[SDL_SCANCODE_UP])    verticalRotationInDeg   -= deltaTimeInS * 90.0;
 
-    Renderer::CameraInfo *cameraInfo = (Renderer::CameraInfo *)
+    Renderer::CameraInfo *camera = (Renderer::CameraInfo *)
         platform.stateDb.state(platform.RendererCameraInfo, m_camera);
 
+    // Vertical rotation axis in world space
+    glm::fvec3 verticalRotationAxis = (camera->target - camera->position).xyz();
+    std::swap(verticalRotationAxis.x, verticalRotationAxis.y);
+    verticalRotationAxis.y = -verticalRotationAxis.y;
+    verticalRotationAxis.z = 0.0f;
+    verticalRotationAxis = glm::normalize(verticalRotationAxis);
+
     glm::fmat4 xform;
-    xform = glm::translate(xform, cameraInfo->target.xyz());
-    if (glm::abs(rotateHorizontalInDeg) > 0.1)
+    xform = glm::translate(xform, camera->target.xyz());
+    if (glm::abs(horizontalRotationInDeg) > 0.1)
     {
-        xform = glm::rotate(xform, glm::radians(float(rotateHorizontalInDeg)), glm::fvec3(0.0f, 0.0f, 1.0f));
+        xform = glm::rotate(xform, glm::radians(float(horizontalRotationInDeg)), glm::fvec3(0.0f, 0.0f, 1.0f));
     }
-    if (glm::abs(rotateVerticalInDeg) > 0.1)
+    if (glm::abs(verticalRotationInDeg) > 0.1)
     {
-        xform = glm::rotate(xform, glm::radians(float(rotateVerticalInDeg)),   glm::fvec3(1.0f, 0.0f, 0.0f));
+        xform = glm::rotate(xform, glm::radians(float(verticalRotationInDeg)), verticalRotationAxis);
     }
-    xform = glm::translate(xform, -cameraInfo->target.xyz());
-    cameraInfo->position = xform * cameraInfo->position;
+    xform = glm::translate(xform, -camera->target.xyz());
+    camera->position = xform * camera->position;
 }
