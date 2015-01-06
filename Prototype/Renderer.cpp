@@ -3,6 +3,8 @@
 /// @date 02.01.2015
 // -------------------------------------------------------------------------------------------------
 
+#define GLM_SWIZZLE
+
 #include "Renderer.hpp"
 
 // TODO(MARTINMO): Remove dependency to SDL through OpenGL function retrieval interface
@@ -288,8 +290,8 @@ bool Renderer::initialize(Platform &platform)
         -0.5f, -0.5f, -0.5f, +0.5f, -0.5f, +0.5f, -0.5f, -0.5f, +0.5f,
         -0.5f, -0.5f, -0.5f, +0.5f, -0.5f, -0.5f, +0.5f, -0.5f, +0.5f,
         // North +Y
-        -0.5f, +0.5f, -0.5f, +0.5f, +0.5f, +0.5f, -0.5f, +0.5f, +0.5f,
-        -0.5f, +0.5f, -0.5f, +0.5f, +0.5f, -0.5f, +0.5f, +0.5f, +0.5f,
+        -0.5f, +0.5f, -0.5f, -0.5f, +0.5f, +0.5f, +0.5f, +0.5f, +0.5f, 
+        -0.5f, +0.5f, -0.5f, +0.5f, +0.5f, +0.5f, +0.5f, +0.5f, -0.5f, 
         // Bottom -Z
         -0.5f, -0.5f, -0.5f, -0.5f, +0.5f, -0.5f, +0.5f, +0.5f, -0.5f,
         -0.5f, -0.5f, -0.5f, +0.5f, +0.5f, -0.5f, +0.5f, -0.5f, -0.5f,
@@ -356,9 +358,9 @@ void Renderer::update(Platform &platform, real64 deltaTimeInS)
     CameraInfo *cameraInfo = (CameraInfo *)platform.stateDb.state(platform.RendererCameraInfo, 1);
 
     float aspect = 640.0f / 480.0f;
-    glm::fmat4 projection = glm::perspective(90.0f * aspect, aspect, 0.1f, 10.0f);
-    glm::fmat4 view = glm::lookAt(glm::fvec3(-3.00f, -2.0f, 1.0f),
-        cameraInfo->target, glm::fvec3(0.0f, 0.0f, 1.0f));
+    glm::fmat4 projection = glm::perspective(glm::radians(60.0f * aspect), aspect, 0.1f, 10.0f);
+    glm::fmat4 view = glm::lookAt(cameraInfo->position.xyz(),
+        cameraInfo->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
 
     funcs->glUniformMatrix4fv(
         state->defProgUniformProjectionMatrix, 1, GL_FALSE, glm::value_ptr(projection));

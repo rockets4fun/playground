@@ -27,8 +27,8 @@ struct Renderer : public ModuleIf
     };
     struct CameraInfo
     {
-        glm::fvec3 position;
-        glm::fvec3 target;
+        glm::fvec4 position;
+        glm::fvec4 target;
     };
 
     Renderer();
