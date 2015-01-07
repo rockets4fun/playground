@@ -16,7 +16,7 @@
 #include "ModuleIf.hpp"
 
 // -------------------------------------------------------------------------------------------------
-/// @brief ...
+/// @brief Renderer module
 struct Renderer : public ModuleIf
 {
     struct MeshInfo

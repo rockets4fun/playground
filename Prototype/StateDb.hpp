@@ -13,7 +13,7 @@
 #include <string>
 
 // -------------------------------------------------------------------------------------------------
-/// @brief ...
+/// @brief State database implementation
 struct StateDb
 {
     StateDb();

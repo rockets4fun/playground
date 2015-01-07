@@ -11,7 +11,7 @@
 #include "ModuleIf.hpp"
 
 // -------------------------------------------------------------------------------------------------
-/// @brief Brief implementation module description
+/// @brief Rocket science prototype logic module
 struct RocketScience : public ModuleIf
 {
     RocketScience();

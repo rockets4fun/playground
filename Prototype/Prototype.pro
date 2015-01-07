@@ -39,6 +39,26 @@ win32 {
     INCLUDEPATH += $$THIRDPARTY/glm
 }
 
+# Bullet
+win32 {
+    INCLUDEPATH += $$THIRDPARTY/bullet3/src/BulletDynamics
+    INCLUDEPATH += $$THIRDPARTY/bullet3/src/BulletCollision
+    LIBS += -L$$THIRDPARTY/bullet3/bin
+    win32:contains(QMAKE_HOST.arch, x86_64) {
+        CONFIG(debug, debug|release) {
+            LIBS += -L$$THIRDPARTY/bullet3/bin/BulletCollision_vs2010_x64_debug.lib
+            LIBS += -L$$THIRDPARTY/bullet3/bin/BulletDynamics_vs2010_x64_debug.lib
+        }
+        CONFIG(release, debug|release) {
+            LIBS += -L$$THIRDPARTY/bullet3/bin/BulletCollision_vs2010_x64_release.lib
+            LIBS += -L$$THIRDPARTY/bullet3/bin/BulletDynamics_vs2010_x64_release.lib
+        }
+    }
+    else {
+    }
+    LIBS += SDL2.lib SDL2main.lib
+}
+
 HEADERS += \
     Template.hpp \
     TemplateIf.hpp \
@@ -49,12 +69,14 @@ SOURCES += \
     Main.cpp
 
 HEADERS += \
+    Physics.hpp \
     Platform.hpp \
     Renderer.hpp \
     RocketScience.hpp \
     StateDb.hpp
 
 SOURCES += \
+    Physics.cpp \
     Platform.cpp \
     Renderer.cpp \
     RocketScience.cpp \

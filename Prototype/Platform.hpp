@@ -11,7 +11,7 @@
 struct StateDb;
 
 // -------------------------------------------------------------------------------------------------
-/// @brief Brief implementation module description
+/// @brief Platform abstraction
 struct Platform
 {
     Platform(StateDb &stateDb);
