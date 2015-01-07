@@ -27,19 +27,24 @@ RocketScience::~RocketScience()
 }
 
 // -------------------------------------------------------------------------------------------------
+void RocketScience::registerTypesAndStates(StateDb &stateDb)
+{
+}
+
+// -------------------------------------------------------------------------------------------------
 bool RocketScience::initialize(Platform &platform)
 {
-    m_cameraId = platform.stateDb.createObject(platform.RendererCamera);
-    Renderer::CameraInfo *camera = (Renderer::CameraInfo *)
-        platform.stateDb.state(platform.RendererCameraInfo, m_cameraId);
+    m_cameraId = platform.stateDb.createObject(Renderer::Camera::TYPE);
+    Renderer::Camera::Info *camera = (Renderer::Camera::Info *)
+        platform.stateDb.state(Renderer::Camera::Info::STATE, m_cameraId);
     camera->position = glm::fvec4(1.0f, 1.0f, 0.8f, 1.0f);
     camera->target   = glm::fvec4(0.0f, 0.0f, 0.0f, 1.0f);
 
     for (int cubeIdx = 0; cubeIdx < 128; ++cubeIdx)
     {
-        size_t meshId = platform.stateDb.createObject(platform.RendererMesh);
-        Renderer::MeshInfo *mesh = (Renderer::MeshInfo *)
-            platform.stateDb.state(platform.RendererMeshInfo, meshId);
+        size_t meshId = platform.stateDb.createObject(Renderer::Mesh::TYPE);
+        Renderer::Mesh::Info *mesh = (Renderer::Mesh::Info *)
+            platform.stateDb.state(Renderer::Mesh::Info::STATE, meshId);
         mesh->position = glm::fvec4(glm::clamp(float(cubeIdx), 0.0f, 1.0f) * glm::linearRand(
             glm::fvec3(-20.0f, -20.0f, -20.0f), glm::fvec3(+20.0f, +20.0f, +20.0f)), 1.0);
     }
@@ -52,11 +57,11 @@ void RocketScience::shutdown(Platform &platform)
 {
     // FIXME(MARTINMO): Delete/destroy all created meshes from 'vector< size_t >'
 
-    platform.stateDb.destroyObject(platform.RendererCamera, m_cameraId);
+    platform.stateDb.destroyObject(Renderer::Camera::TYPE, m_cameraId);
 }
 
 // -------------------------------------------------------------------------------------------------
-void RocketScience::update(Platform &platform, real64 deltaTimeInS)
+void RocketScience::update(Platform &platform, double deltaTimeInS)
 {
     // FIXME(MARTINMO): Add keyboard input to platform abstraction (remove dependency to SDL)
     const Uint8 *state = SDL_GetKeyboardState(NULL);
@@ -71,8 +76,8 @@ void RocketScience::update(Platform &platform, real64 deltaTimeInS)
     if (state[SDL_SCANCODE_W]) translationInM += deltaTimeInS * 10.0;
     if (state[SDL_SCANCODE_S]) translationInM -= deltaTimeInS * 10.0;
 
-    Renderer::CameraInfo *camera = (Renderer::CameraInfo *)
-        platform.stateDb.state(platform.RendererCameraInfo, m_cameraId);
+    Renderer::Camera::Info *camera = (Renderer::Camera::Info *)
+        platform.stateDb.state(Renderer::Camera::Info::STATE, m_cameraId);
 
     glm::fvec3 cameraDir = (camera->target - camera->position).xyz();
 

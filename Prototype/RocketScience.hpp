@@ -18,9 +18,10 @@ struct RocketScience : public ModuleIf
     virtual ~RocketScience();
 
 public: // Implementation of module interface
+    virtual void registerTypesAndStates(StateDb &stateDb);
     virtual bool initialize(Platform &platform);
     virtual void shutdown(Platform &platform);
-    virtual void update(Platform &platform, real64 deltaTimeInS);
+    virtual void update(Platform &platform, double deltaTimeInS);
 
 private:
     size_t m_cameraId = 0;
