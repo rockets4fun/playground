@@ -11,6 +11,16 @@
 #include "StateDb.hpp"
 #include "Renderer.hpp"
 
+struct Physics::RigidBody::InternalInfo
+{
+    static size_t STATE;
+    btRigidBody *rigidBody = nullptr;
+};
+
+size_t Physics::RigidBody::TYPE = 0;
+size_t Physics::RigidBody::Info::STATE = 0;
+size_t Physics::RigidBody::InternalInfo::STATE = 0;
+
 struct Physics::State
 {
     std::shared_ptr< btBroadphaseInterface >           broadphase;
@@ -40,6 +50,14 @@ Physics::~Physics()
 }
 
 // -------------------------------------------------------------------------------------------------
+void Physics::registerTypesAndStates(StateDb &stateDb)
+{
+    RigidBody::TYPE = stateDb.registerType("RigidBody", 1024);
+    RigidBody::Info::STATE = stateDb.registerState(
+        RigidBody::TYPE, "Info", sizeof(RigidBody::Info));
+}
+
+// -------------------------------------------------------------------------------------------------
 bool Physics::initialize(Platform &platform)
 {
     state = std::make_shared< State >();
@@ -62,7 +80,7 @@ bool Physics::initialize(Platform &platform)
         state->groundMotionState = std::make_shared< btDefaultMotionState> (
             btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, -1)));
         btRigidBody::btRigidBodyConstructionInfo groundRigidBodyCI(0,
-            state->groundMotionState.get(), state->groundShape.get(), btVector3(0, 0, 0));
+            nullptr, state->groundShape.get(), btVector3(0, 0, 0));
         groundRigidBodyCI.m_restitution = 1.0;
         state->groundRigidBody = std::make_shared< btRigidBody >(groundRigidBodyCI);
     }
@@ -101,12 +119,13 @@ void Physics::shutdown(Platform &platform)
 }
 
 // -------------------------------------------------------------------------------------------------
-void Physics::update(Platform &platform, real64 deltaTimeInS)
+void Physics::update(Platform &platform, double deltaTimeInS)
 {
-    state->dynamicsWorld->stepSimulation(deltaTimeInS, 10);
+    state->dynamicsWorld->stepSimulation(btScalar(deltaTimeInS), 10);
 
     {
-        Renderer::MeshInfo *end, *first = platform.stateDb.fullState(platform.RendererMeshInfo, &end);
+        Renderer::Mesh::Info *end, *first = platform.stateDb.fullState(
+            Renderer::Mesh::Info::STATE, &end);
         if (end > first)
         {
             btTransform worldTrans;

@@ -10,6 +10,8 @@
 
 #include <memory>
 
+#include <glm/glm.hpp>
+
 #include "ModuleIf.hpp"
 
 // -------------------------------------------------------------------------------------------------
@@ -19,10 +21,24 @@ struct Physics : ModuleIf
     Physics();
     virtual ~Physics();
 
+    struct RigidBody
+    {
+        static size_t TYPE;
+        struct Info
+        {
+            static size_t STATE;
+            glm::fvec4 position;
+            glm::fvec4 orientation;
+            size_t rendererMeshId = 0;
+        };
+        struct InternalInfo;
+    };
+
 public: // Implementation of module interface
+    virtual void registerTypesAndStates(StateDb &stateDb);
     virtual bool initialize(Platform &platform);
     virtual void shutdown(Platform &platform);
-    virtual void update(Platform &platform, real64 deltaTimeInS);
+    virtual void update(Platform &platform, double deltaTimeInS);
 
 private:
     struct State;
