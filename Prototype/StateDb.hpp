@@ -28,7 +28,7 @@ struct StateDb
     size_t registerState(size_t typeId, const std::string &name, size_t elemSize);
 
     size_t createObject(size_t typeId);
-    void deleteObject(size_t typeId, size_t objectId);
+    void destroyObject(size_t typeId, size_t objectId);
 
     void *state(size_t stateId, size_t objectId);
 

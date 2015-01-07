@@ -127,7 +127,7 @@ size_t StateDb::createObject(size_t typeId)
 }
 
 // -------------------------------------------------------------------------------------------------
-void StateDb::deleteObject(size_t typeId, size_t objectId)
+void StateDb::destroyObject(size_t typeId, size_t objectId)
 {
     COMMON_ASSERT(isTypeIdValid(typeId));
     Type &type = m_types[typeId];

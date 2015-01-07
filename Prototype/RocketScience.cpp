@@ -52,7 +52,7 @@ void RocketScience::shutdown(Platform &platform)
 {
     // FIXME(MARTINMO): Delete/destroy all created meshes from 'vector< size_t >'
 
-    platform.stateDb.deleteObject(platform.RendererCamera, m_cameraId);
+    platform.stateDb.destroyObject(platform.RendererCamera, m_cameraId);
 }
 
 // -------------------------------------------------------------------------------------------------
