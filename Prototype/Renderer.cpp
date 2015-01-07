@@ -193,6 +193,11 @@ void APIENTRY debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum
     SDL_Log("GL: %s", message);
 }
 
+size_t Renderer::Mesh::TYPE = 0;
+size_t Renderer::Mesh::Info::STATE = 0;
+size_t Renderer::Camera::TYPE = 0;
+size_t Renderer::Camera::Info::STATE = 0;
+
 // -------------------------------------------------------------------------------------------------
 Renderer::Renderer()
 {
@@ -201,6 +206,18 @@ Renderer::Renderer()
 // -------------------------------------------------------------------------------------------------
 Renderer::~Renderer()
 {
+}
+
+// -------------------------------------------------------------------------------------------------
+void Renderer::registerTypesAndStates(StateDb &stateDb)
+{
+    Mesh::TYPE = stateDb.registerType("Mesh", 1024);
+    Mesh::Info::STATE = stateDb.registerState(
+        Mesh::TYPE, "Info", sizeof(Mesh::Info));
+
+    Camera::TYPE = stateDb.registerType("Camera", 1024);
+    Camera::Info::STATE = stateDb.registerState(
+        Camera::TYPE, "Info", sizeof(Camera::Info));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -356,11 +373,11 @@ void Renderer::shutdown(Platform &platform)
 }
 
 // -------------------------------------------------------------------------------------------------
-void Renderer::update(Platform &platform, real64 deltaTimeInS)
+void Renderer::update(Platform &platform, double deltaTimeInS)
 {
     funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    CameraInfo *cameraInfo = (CameraInfo *)platform.stateDb.state(platform.RendererCameraInfo, 1);
+    Camera::Info *cameraInfo = (Camera::Info *)platform.stateDb.state(Camera::Info::STATE, 1);
 
     float aspect = 640.0f / 480.0f;
     glm::fmat4 projection = glm::perspective(glm::radians(60.0f * aspect), aspect, 0.1f, 200.0f);
@@ -382,8 +399,8 @@ void Renderer::update(Platform &platform, real64 deltaTimeInS)
     glm::fmat4 model, modelView;
 
     // Pseudo-instanced rendering of meshes as cubes
-    MeshInfo *end, *first = platform.stateDb.fullState(platform.RendererMeshInfo, &end);
-    for (MeshInfo *mesh = first; mesh < end; ++mesh)
+    Mesh::Info *end, *first = platform.stateDb.fullState(Mesh::Info::STATE, &end);
+    for (Mesh::Info *mesh = first; mesh < end; ++mesh)
     {
         model = glm::translate(glm::fmat4(), mesh->position.xyz());
         modelView = view * model;

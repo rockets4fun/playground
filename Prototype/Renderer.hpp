@@ -10,8 +10,7 @@
 
 #include <memory>
 
-#include <glm/vec4.hpp>
-#include <glm/gtc/quaternion.hpp>
+#include <glm/glm.hpp>
 
 #include "ModuleIf.hpp"
 
@@ -19,25 +18,37 @@
 /// @brief Renderer module
 struct Renderer : public ModuleIf
 {
-    struct MeshInfo
+    struct Mesh
     {
-        glm::fvec4 position;
-        glm::fvec4 orientation;
-        size_t meshId = 0;
+        static size_t TYPE;
+        struct Info
+        {
+            static size_t STATE;
+            glm::fvec4 position;
+            glm::fvec4 orientation;
+            size_t meshId = 0;
+        };
     };
-    struct CameraInfo
+
+    struct Camera
     {
-        glm::fvec4 position;
-        glm::fvec4 target;
+        static size_t TYPE;
+        struct Info
+        {
+            static size_t STATE;
+            glm::fvec4 position;
+            glm::fvec4 target;
+        };
     };
 
     Renderer();
     virtual ~Renderer();
 
 public: // Implementation of module interface
+    virtual void registerTypesAndStates(StateDb &stateDb);
     virtual bool initialize(Platform &platform);
     virtual void shutdown(Platform &platform);
-    virtual void update(Platform &platform, real64 deltaTimeInS);
+    virtual void update(Platform &platform, double deltaTimeInS);
 
 private:
     struct GlFuncs;
