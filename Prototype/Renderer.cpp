@@ -39,14 +39,14 @@ struct Renderer::GlFuncs
     PFNGLGETSHADERIVPROC      glGetShaderiv = nullptr;
     PFNGLGETSHADERINFOLOGPROC glGetShaderInfoLog = nullptr;
     // Program object functions
-    PFNGLCREATEPROGRAMPROC      glCreateProgram = nullptr;
-    PFNGLATTACHSHADERPROC       glAttachShader = nullptr;
-    PFNGLDETACHSHADERPROC       glDetachShader = nullptr;
-    PFNGLLINKPROGRAMPROC        glLinkProgram = nullptr;
-    PFNGLUSEPROGRAMPROC         glUseProgram = nullptr;
-    PFNGLDELETEPROGRAMPROC      glDeleteProgram = nullptr;
-    PFNGLGETPROGRAMIVPROC       glGetProgramiv = nullptr;
-    PFNGLGETPROGRAMINFOLOGPROC  glGetProgramInfoLog = nullptr;
+    PFNGLCREATEPROGRAMPROC     glCreateProgram = nullptr;
+    PFNGLATTACHSHADERPROC      glAttachShader = nullptr;
+    PFNGLDETACHSHADERPROC      glDetachShader = nullptr;
+    PFNGLLINKPROGRAMPROC       glLinkProgram = nullptr;
+    PFNGLUSEPROGRAMPROC        glUseProgram = nullptr;
+    PFNGLDELETEPROGRAMPROC     glDeleteProgram = nullptr;
+    PFNGLGETPROGRAMIVPROC      glGetProgramiv = nullptr;
+    PFNGLGETPROGRAMINFOLOGPROC glGetProgramInfoLog = nullptr;
     // Vertex array object functions
     PFNGLGENVERTEXARRAYSPROC    glGenVertexArrays = nullptr;
     PFNGLDELETEVERTEXARRAYSPROC glDeleteVertexArrays = nullptr;
@@ -78,11 +78,11 @@ struct Renderer::GlState
     GLuint defFs = 0;
     GLuint defProg = 0;
 
-    GLint  defProgUniformModelViewMatrix;
-    GLint  defProgUniformProjectionMatrix;
+    GLint defProgUniformModelViewMatrix;
+    GLint defProgUniformProjectionMatrix;
 
-    GLint  defProgAttribPosition;
-    GLint  defProgAttribColor;
+    GLint defProgAttribPosition;
+    GLint defProgAttribColor;
 
     GLuint defVao = 0;
 
@@ -196,9 +196,6 @@ void APIENTRY debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum
 // -------------------------------------------------------------------------------------------------
 Renderer::Renderer()
 {
-    funcs = std::shared_ptr< GlFuncs >(new GlFuncs);
-    state = std::shared_ptr< GlState >(new GlState);
-    helpers = std::shared_ptr< GlHelpers >(new GlHelpers(funcs.get()));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -209,6 +206,10 @@ Renderer::~Renderer()
 // -------------------------------------------------------------------------------------------------
 bool Renderer::initialize(Platform &platform)
 {
+    funcs = std::make_shared< GlFuncs >();
+    state = std::make_shared< GlState >();
+    helpers = std::make_shared< GlHelpers >(funcs.get());
+
     if (!initializeGl())
     {
         return false;
@@ -348,6 +349,10 @@ void Renderer::shutdown(Platform &platform)
     if (state->defProg) funcs->glDeleteProgram(state->defProg);
     if (state->defFs) funcs->glDeleteShader(state->defFs);
     if (state->defVs) funcs->glDeleteShader(state->defVs);
+
+    helpers = std::make_shared< GlHelpers >(funcs.get());
+    state = std::make_shared< GlState >();
+    funcs = std::make_shared< GlFuncs >();
 }
 
 // -------------------------------------------------------------------------------------------------
