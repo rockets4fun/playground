@@ -12,6 +12,7 @@
 
 #include "StateDb.hpp"
 #include "Platform.hpp"
+
 #include "Renderer.hpp"
 #include "Physics.hpp"
 #include "RocketScience.hpp"
@@ -51,53 +52,57 @@ int main(int argc, char *argv[])
     SDL_Log("OpenGL context: %d.%d (%s)", majorVersion, minorVersion,
         profileMask == SDL_GL_CONTEXT_PROFILE_CORE ? "core" : "non-core");
 
-    StateDb stateDb;
-    Platform platform(stateDb);
-    Renderer renderer;
-    Physics physics;
-    RocketScience rocketScience;
+    {
+        StateDb stateDb;
+        Platform platform(stateDb);
 
-    if (!renderer.initialize(platform))
-    {
-        SDL_Log("ERROR: Failed to initialize renderer module");
-        return EXIT_FAILURE;
-    }
-    if (!physics.initialize(platform))
-    {
-        SDL_Log("ERROR: Failed to initialize physics module");
-        return EXIT_FAILURE;
-    }
-    if (!rocketScience.initialize(platform))
-    {
-        SDL_Log("ERROR: Failed to initialize rocket science module");
-        // FIXME(MARTINMO): This return will not implicitly call shutdown of renderer module
-        // FIXME(MARTINMO): --> Should be care about this? (internet says: rather no...)
-        return EXIT_FAILURE;
-    }
+        Renderer renderer;
+        Physics physics;
+        RocketScience rocketScience;
 
-    bool running = true;
-    SDL_Event event;
-    while (running)
-    {
-        while (SDL_PollEvent(&event))
+        std::vector< ModuleIf * > modules = { &renderer, &physics, &rocketScience };
+        std::vector< ModuleIf * > reverseModules = modules;
+        std::reverse(reverseModules.begin(), reverseModules.end());
+
+        for (auto &module : modules)
         {
-            if (event.type == SDL_QUIT)
+            module->registerTypesAndStates(stateDb);
+        }
+        for (auto &module : modules)
+        {
+            if (!module->initialize(platform))
             {
-                running = false;
+                SDL_Log("ERROR: Failed to initialize module");
+                // FIXME(MARTINMO): Call shutdown of modules already initilized
+                return EXIT_FAILURE;
             }
         }
 
-        double deltaTimeInS = 1.0 / 60.0;
-        physics.update(platform, deltaTimeInS);
-        rocketScience.update(platform, deltaTimeInS);
-        renderer.update(platform, deltaTimeInS);
+        bool running = true;
+        SDL_Event event;
+        while (running)
+        {
+            while (SDL_PollEvent(&event))
+            {
+                if (event.type == SDL_QUIT)
+                {
+                    running = false;
+                }
+            }
 
-        SDL_GL_SwapWindow(window);
+            double deltaTimeInS = 1.0 / 60.0;
+            physics.update(platform, deltaTimeInS);
+            rocketScience.update(platform, deltaTimeInS);
+            renderer.update(platform, deltaTimeInS);
+
+            SDL_GL_SwapWindow(window);
+        }
+
+        for (auto &module : modules)
+        {
+            module->shutdown(platform);
+        }
     }
-
-    rocketScience.shutdown(platform);
-    physics.shutdown(platform);
-    renderer.shutdown(platform);
 
     SDL_GL_DeleteContext(context);
 
