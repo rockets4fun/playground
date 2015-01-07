@@ -8,15 +8,17 @@
 
 #include "Common.hpp"
 
+struct StateDb;
 struct Platform;
 
 // -------------------------------------------------------------------------------------------------
 /// @brief Application module interface
 struct ModuleIf
 {
+    virtual void registerTypesAndStates(StateDb &stateDb) = 0;
     virtual bool initialize(Platform &platform) = 0;
     virtual void shutdown(Platform &platform) = 0;
-    virtual void update(Platform &platform, real64 deltaTimeInS) = 0;
+    virtual void update(Platform &platform, double deltaTimeInS) = 0;
 };
 
 #endif
