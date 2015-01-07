@@ -8,12 +8,22 @@
 
 #include "Common.hpp"
 
-// -------------------------------------------------------------------------------------------------
-Physics::Physics()
-{
-}
+#include "ModuleIf.hpp"
 
 // -------------------------------------------------------------------------------------------------
-Physics::~Physics()
+/// @brief ...
+struct Physics : ModuleIf
 {
-}
+    Physics();
+    virtual ~Physics();
+
+public: // Implementation of module interface
+    virtual bool initialize(Platform &platform);
+    virtual void shutdown(Platform &platform);
+    virtual void update(Platform &platform, real64 deltaTimeInS);
+
+private:
+    COMMON_DISABLE_COPY(Physics);
+};
+
+#endif

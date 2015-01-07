@@ -13,6 +13,7 @@
 #include "StateDb.hpp"
 #include "Platform.hpp"
 #include "Renderer.hpp"
+#include "Physics.hpp"
 #include "RocketScience.hpp"
 
 // -------------------------------------------------------------------------------------------------
@@ -53,11 +54,17 @@ int main(int argc, char *argv[])
     StateDb stateDb;
     Platform platform(stateDb);
     Renderer renderer;
+    Physics physics;
     RocketScience rocketScience;
 
     if (!renderer.initialize(platform))
     {
         SDL_Log("ERROR: Failed to initialize renderer module");
+        return EXIT_FAILURE;
+    }
+    if (!physics.initialize(platform))
+    {
+        SDL_Log("ERROR: Failed to initialize physics module");
         return EXIT_FAILURE;
     }
     if (!rocketScience.initialize(platform))
@@ -81,6 +88,7 @@ int main(int argc, char *argv[])
         }
 
         double deltaTimeInS = 1.0 / 60.0;
+        physics.update(platform, deltaTimeInS);
         rocketScience.update(platform, deltaTimeInS);
         renderer.update(platform, deltaTimeInS);
 
@@ -88,6 +96,7 @@ int main(int argc, char *argv[])
     }
 
     rocketScience.shutdown(platform);
+    physics.shutdown(platform);
     renderer.shutdown(platform);
 
     SDL_GL_DeleteContext(context);
