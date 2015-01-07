@@ -6,9 +6,6 @@
 #ifndef COMMON_HPP
 #define COMMON_HPP
 
-typedef float  real32;
-typedef double real64;
-
 #define COMMON_DISABLE_COPY(Class) \
 private: \
      Class(const Class &); \
