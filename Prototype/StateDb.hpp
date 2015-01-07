@@ -61,6 +61,7 @@ private:
         std::string name;
         size_t id;
         size_t elemSize;
+        // TODO(MARTINMO): Add version info here for protocol/struct changes
     };
 
     std::map< std::string, size_t > m_typeIdsByName;

@@ -82,8 +82,13 @@ size_t StateDb::stateIdByName(const std::string &name)
 // -------------------------------------------------------------------------------------------------
 size_t StateDb::registerState(size_t typeId, const std::string &name, size_t elemSize)
 {
-    COMMON_ASSERT(name.length() > 0);
-    size_t existingStateId = stateIdByName(name);
+    COMMON_ASSERT(isTypeIdValid(typeId));
+    Type &type = m_types[typeId];
+    COMMON_ASSERT(type.objectCount == 0);
+
+    std::string internalName = type.name + "::" + name;
+    COMMON_ASSERT(internalName.length() > 0);
+    size_t existingStateId = stateIdByName(internalName);
     if (existingStateId)
     {
         State &existingState = m_states[existingStateId];
@@ -91,19 +96,16 @@ size_t StateDb::registerState(size_t typeId, const std::string &name, size_t ele
         COMMON_ASSERT(existingState.elemSize == elemSize);
         return existingStateId;
     }
-    COMMON_ASSERT(isTypeIdValid(typeId));
-    Type &type = m_types[typeId];
-    COMMON_ASSERT(type.objectCount == 0);
 
     State newState;
-    newState.name = name;
+    newState.name = internalName;
     newState.id = m_states.size();
     newState.typeId = typeId;
     newState.elemSize = elemSize;
 
     m_states.push_back(newState);
     type.stateIds.push_back(newState.id);
-    m_stateIdsByName[name] = newState.id;
+    m_stateIdsByName[internalName] = newState.id;
 
     m_stateValues.resize(newState.id + 1);
     m_stateValues[newState.id].resize(newState.elemSize * (type.maxObjectCount + 1));
@@ -137,8 +139,13 @@ void StateDb::destroyObject(size_t typeId, size_t objectId)
     }
     if (type.objectCount > 1)
     {
+        // FIXME(MARTINMO): Fix/think through object ID indirection/object handle mechanism
         type.objectIdToIdx[type.objectCount] = objectId;
     }
+
+    // FIXME(MARTINMO): Swap in last state to fill hole
+    // FIXME(MARTINMO): Zero swapped in/destroyed element's memory
+
     --type.objectCount;
 }
 
