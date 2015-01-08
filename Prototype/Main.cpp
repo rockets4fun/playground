@@ -91,9 +91,10 @@ int main(int argc, char *argv[])
             }
 
             double deltaTimeInS = 1.0 / 60.0;
-            physics.update(platform, deltaTimeInS);
-            rocketScience.update(platform, deltaTimeInS);
-            renderer.update(platform, deltaTimeInS);
+            for (auto &module : modules)
+            {
+                module->update(platform, deltaTimeInS);
+            }
 
             SDL_GL_SwapWindow(window);
         }
