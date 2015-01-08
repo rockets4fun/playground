@@ -18,15 +18,15 @@ StateDb::~StateDb()
 }
 
 // -------------------------------------------------------------------------------------------------
-bool StateDb::isTypeIdValid(size_t typeId)
+bool StateDb::isTypeIdValid(u64 typeId)
 {
     return typeId > 0 && typeId < m_types.size();
 }
 
 // -------------------------------------------------------------------------------------------------
-size_t StateDb::typeIdByName(const std::string &name)
+u64 StateDb::typeIdByName(const std::string &name)
 {
-    std::map< std::string, size_t >::const_iterator foundType = m_typeIdsByName.find(name);
+    std::map< std::string, u64 >::const_iterator foundType = m_typeIdsByName.find(name);
     if (foundType == m_typeIdsByName.end())
     {
         return 0;
@@ -35,10 +35,10 @@ size_t StateDb::typeIdByName(const std::string &name)
 }
 
 // -------------------------------------------------------------------------------------------------
-size_t StateDb::registerType(const std::string &name, size_t maxObjectCount)
+u64 StateDb::registerType(const std::string &name, u64 maxObjectCount)
 {
     COMMON_ASSERT(name.length() > 0);
-    size_t existingTypeId = typeIdByName(name);
+    u64 existingTypeId = typeIdByName(name);
     if (existingTypeId)
     {
         Type *existingType = &m_types[existingTypeId];
@@ -47,13 +47,22 @@ size_t StateDb::registerType(const std::string &name, size_t maxObjectCount)
 
     Type newType;
     newType.name = name;
-    newType.id = m_types.size();
-    newType.maxObjectCount = maxObjectCount;
 
+    newType.id = m_types.size();
+    // Make sure we can store the type ID in an object objectHandle
+    COMMON_ASSERT(newType.id <= 0xffff);
+
+    newType.maxObjectCount = maxObjectCount;
+    // Make sure we can store the highest object ID in an object objectHandle
+    COMMON_ASSERT(newType.maxObjectCount <= 0xffffffff);
+
+    newType.lifecycleByObjectId.resize(maxObjectCount + 1, 0);
     newType.objectIdToIdx.resize(maxObjectCount + 1, 0);
+    newType.idxToObjectId.resize(maxObjectCount + 1, 0);
     for (int id = 0; id < maxObjectCount + 1; ++id)
     {
         newType.objectIdToIdx[id] = id;
+        newType.idxToObjectId[id] = id;
     }
 
     m_types.push_back(newType);
@@ -63,15 +72,15 @@ size_t StateDb::registerType(const std::string &name, size_t maxObjectCount)
 }
 
 // -------------------------------------------------------------------------------------------------
-bool StateDb::isStateIdValid(size_t stateId)
+bool StateDb::isStateIdValid(u64 stateId)
 {
     return stateId > 0 && stateId < m_states.size();
 }
 
 // -------------------------------------------------------------------------------------------------
-size_t StateDb::stateIdByName(const std::string &name)
+u64 StateDb::stateIdByName(const std::string &name)
 {
-    std::map< std::string, size_t >::const_iterator foundState = m_stateIdsByName.find(name);
+    std::map< std::string, u64 >::const_iterator foundState = m_stateIdsByName.find(name);
     if (foundState == m_stateIdsByName.end())
     {
         return 0;
@@ -80,7 +89,7 @@ size_t StateDb::stateIdByName(const std::string &name)
 }
 
 // -------------------------------------------------------------------------------------------------
-size_t StateDb::registerState(size_t typeId, const std::string &name, size_t elemSize)
+u64 StateDb::registerState(u64 typeId, const std::string &name, u64 elemSize)
 {
     COMMON_ASSERT(isTypeIdValid(typeId));
     Type &type = m_types[typeId];
@@ -88,7 +97,7 @@ size_t StateDb::registerState(size_t typeId, const std::string &name, size_t ele
 
     std::string internalName = type.name + "::" + name;
     COMMON_ASSERT(internalName.length() > 0);
-    size_t existingStateId = stateIdByName(internalName);
+    u64 existingStateId = stateIdByName(internalName);
     if (existingStateId)
     {
         State &existingState = m_states[existingStateId];
@@ -114,24 +123,52 @@ size_t StateDb::registerState(size_t typeId, const std::string &name, size_t ele
 }
 
 // -------------------------------------------------------------------------------------------------
-size_t StateDb::createObject(size_t typeId)
+bool StateDb::isObjectHandleValid(u64 objectHandle)
 {
-    COMMON_ASSERT(isTypeIdValid(typeId));
-    Type &type = m_types[typeId];
-    if (type.objectCount == type.maxObjectCount)
+    u32 objectId;
+    u16 typeId, lifecycle;
+    decomposeObjectHandle(objectHandle, typeId, lifecycle, objectId);
+    if (!isTypeIdValid(typeId))
     {
-        // TODO(MARTINMO): Out of type memory error
-        return 0;
+        return false;
     }
-    size_t newObjectId = ++type.objectCount;
-    type.objectIdToIdx[newObjectId] = newObjectId;
-    return newObjectId;
+    Type &type = m_types[typeId];
+    if (objectId < 1 || objectId > type.maxObjectCount)
+    {
+        return false;
+    }
+    if (type.lifecycleByObjectId[objectId] != lifecycle)
+    {
+        return false;
+    }
+    return true;
 }
 
 // -------------------------------------------------------------------------------------------------
-void StateDb::destroyObject(size_t typeId, size_t objectId)
+u64 StateDb::createObject(u64 typeId)
 {
     COMMON_ASSERT(isTypeIdValid(typeId));
+    Type &type = m_types[typeId];
+    if (type.objectCount >= type.maxObjectCount)
+    {
+        // TODO(MARTINMO): Out of type memory error
+        return u64();
+    }
+    u64 objectId = type.idxToObjectId[++type.objectCount];
+    ++type.lifecycleByObjectId[objectId];
+    return composeObjectHandle(u16(typeId),
+        u16(type.lifecycleByObjectId[objectId]), u32(objectId));
+}
+
+// -------------------------------------------------------------------------------------------------
+void StateDb::destroyObject(u64 objectHandle)
+{
+    COMMON_ASSERT(isObjectHandleValid(objectHandle));
+
+    u32 objectId;
+    u16 typeId, lifecycle;
+    decomposeObjectHandle(objectHandle, typeId, lifecycle, objectId);
+
     Type &type = m_types[typeId];
     if (type.objectCount < 1)
     {
@@ -139,22 +176,51 @@ void StateDb::destroyObject(size_t typeId, size_t objectId)
     }
     if (type.objectCount > 1)
     {
-        // FIXME(MARTINMO): Fix/think through object ID indirection/object handle mechanism
-        type.objectIdToIdx[type.objectCount] = objectId;
+        u64 idxToDestroy = type.objectIdToIdx[objectId];
+        u64 objectIdToSwapIn = type.idxToObjectId[type.objectCount];
+        for (u64 stateId : type.stateIds)
+        {
+            State &state = m_states[stateId];
+            // Swap in last state to fill hole
+            memcpy(
+                &m_stateValues[stateId][state.elemSize * idxToDestroy],
+                &m_stateValues[stateId][state.elemSize * type.objectCount], state.elemSize);
+            // Zero memory of swapped in element
+            memset(
+                &m_stateValues[stateId][state.elemSize * type.objectCount], 0, state.elemSize);
+        }
+        std::swap(type.objectIdToIdx[objectIdToSwapIn], type.objectIdToIdx[objectId]);
+        std::swap(type.idxToObjectId[type.objectCount], type.idxToObjectId[idxToDestroy]);
+
+        ++type.lifecycleByObjectId[objectId];
+        COMMON_ASSERT(lifecycle != type.lifecycleByObjectId[objectId]);
     }
-
-    // FIXME(MARTINMO): Swap in last state to fill hole
-    // FIXME(MARTINMO): Zero swapped in/destroyed element's memory
-
     --type.objectCount;
 }
 
 // -------------------------------------------------------------------------------------------------
-void *StateDb::state(size_t stateId, size_t objectId)
+void *StateDb::state(u64 stateId, u64 objectHandle)
 {
     COMMON_ASSERT(isStateIdValid(stateId));
     State &state = m_states[stateId];
+
+    COMMON_ASSERT(objectHandle >> 48 == state.typeId);
+    COMMON_ASSERT(isObjectHandleValid(objectHandle));
+
     Type &type = m_types[state.typeId];
-    COMMON_ASSERT(objectId <= type.objectCount);
-    return &m_stateValues[stateId][type.objectIdToIdx[objectId] * state.elemSize];
+    return &m_stateValues[stateId][type.objectIdToIdx[objectHandle & 0xffffffff] * state.elemSize];
+}
+
+// -------------------------------------------------------------------------------------------------
+u64 StateDb::composeObjectHandle(u16 typeId, u16 lifecycle, u32 objectId)
+{
+    return u64(typeId) << 48 | u64(lifecycle) << 32 | objectId;
+}
+
+// -------------------------------------------------------------------------------------------------
+void StateDb::decomposeObjectHandle(u64 objectHandle, u16 &typeId, u16 &lifecycle, u32 &objectId)
+{
+    typeId = objectHandle >> 48;
+    lifecycle = (objectHandle >> 32) & 0xffff;
+    objectId = objectHandle & 0xffffffff;
 }

@@ -19,21 +19,22 @@ struct StateDb
     StateDb();
     virtual ~StateDb();
 
-    bool isTypeIdValid(size_t typeId);
-    size_t typeIdByName(const std::string &name);
-    size_t registerType(const std::string &name, size_t maxObjectCount = 128ull);
+    bool isTypeIdValid(u64 typeId);
+    u64 typeIdByName(const std::string &name);
+    u64 registerType(const std::string &name, u64 maxObjectCount = 128ull);
 
-    bool isStateIdValid(size_t stateId);
-    size_t stateIdByName(const std::string &name);
-    size_t registerState(size_t typeId, const std::string &name, size_t elemSize);
+    bool isStateIdValid(u64 stateId);
+    u64 stateIdByName(const std::string &name);
+    u64 registerState(u64 typeId, const std::string &name, u64 elemSize);
 
-    size_t createObject(size_t typeId);
-    void destroyObject(size_t typeId, size_t objectId);
+    bool isObjectHandleValid(u64 objectHandle);
+    u64 createObject(u64 typeId);
+    void destroyObject(u64 objectHandle);
 
-    void *state(size_t stateId, size_t objectId);
+    void *state(u64 stateId, u64 objectHandle);
 
     template< class ElementType >
-    ElementType *fullState(size_t stateId, ElementType **end)
+    ElementType *fullState(u64 stateId, ElementType **end)
     {
         COMMON_ASSERT(isStateIdValid(stateId));
         State &state = m_states[stateId];
@@ -48,29 +49,34 @@ private:
     struct Type
     {
         std::string name;
-        size_t id;
-        size_t maxObjectCount = 0;
-        size_t objectCount = 0;
-        std::vector< size_t > stateIds;
-        std::vector< size_t > objectIdToIdx;
+        u64 id;
+        u64 maxObjectCount = 0;
+        u64 objectCount = 0;
+        std::vector< u64 > stateIds;
+        std::vector< u64 > objectIdToIdx;
+        std::vector< u64 > idxToObjectId;
+        std::vector< u16 > lifecycleByObjectId;
     };
 
     struct State
     {
-        size_t typeId = 0;
+        u64 typeId = 0;
         std::string name;
-        size_t id;
-        size_t elemSize;
+        u64 id;
+        u64 elemSize;
         // TODO(MARTINMO): Add version info here for protocol/struct changes
     };
 
-    std::map< std::string, size_t > m_typeIdsByName;
+    std::map< std::string, u64 > m_typeIdsByName;
     std::vector< Type > m_types;
 
-    std::map< std::string, size_t > m_stateIdsByName;
+    std::map< std::string, u64 > m_stateIdsByName;
     std::vector< State > m_states;
 
     std::vector< std::vector< unsigned char > > m_stateValues;
+
+    static u64 composeObjectHandle(u16 typeId, u16 lifecycle, u32 objectId);
+    static void decomposeObjectHandle(u64 objectHandle, u16 &typeId, u16 &lifecycle, u32 &objectId);
 
 private:
     COMMON_DISABLE_COPY(StateDb);
