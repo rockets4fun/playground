@@ -6,6 +6,15 @@
 #ifndef COMMON_HPP
 #define COMMON_HPP
 
+typedef unsigned short int u16;
+typedef signed   short int s16;
+
+typedef unsigned long int u32;
+typedef signed   long int s32;
+
+typedef unsigned long long int u64;
+typedef signed   long long int s64;
+
 #define COMMON_DISABLE_COPY(Class) \
 private: \
      Class(const Class &); \
