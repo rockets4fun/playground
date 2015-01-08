@@ -13,13 +13,13 @@
 
 struct Physics::RigidBody::InternalInfo
 {
-    static size_t STATE;
+    static u64 STATE;
     btRigidBody *rigidBody = nullptr;
 };
 
-size_t Physics::RigidBody::TYPE = 0;
-size_t Physics::RigidBody::Info::STATE = 0;
-size_t Physics::RigidBody::InternalInfo::STATE = 0;
+u64 Physics::RigidBody::TYPE = 0;
+u64 Physics::RigidBody::Info::STATE = 0;
+u64 Physics::RigidBody::InternalInfo::STATE = 0;
 
 struct Physics::State
 {

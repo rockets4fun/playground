@@ -23,13 +23,13 @@ struct Physics : ModuleIf
 
     struct RigidBody
     {
-        static size_t TYPE;
+        static u64 TYPE;
         struct Info
         {
-            static size_t STATE;
-            glm::fvec4 position;
-            glm::fvec4 orientation;
-            size_t rendererMeshId = 0;
+            static u64 STATE;
+            u64 rendererMeshId = 0;
+            // TODO(MARTINMO): Add additional physics state here
+            // TODO(MARTINMO): Orientation and position are already stored in mesh
         };
         struct InternalInfo;
     };
