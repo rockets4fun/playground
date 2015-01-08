@@ -34,17 +34,19 @@ void RocketScience::registerTypesAndStates(StateDb &stateDb)
 // -------------------------------------------------------------------------------------------------
 bool RocketScience::initialize(Platform &platform)
 {
-    m_cameraId = platform.stateDb.createObject(Renderer::Camera::TYPE);
+    m_cameraHandle = platform.stateDb.createObject(Renderer::Camera::TYPE);
     Renderer::Camera::Info *camera = (Renderer::Camera::Info *)
-        platform.stateDb.state(Renderer::Camera::Info::STATE, m_cameraId);
+        platform.stateDb.state(Renderer::Camera::Info::STATE, m_cameraHandle);
     camera->position = glm::fvec4(1.0f, 1.0f, 0.8f, 1.0f);
     camera->target   = glm::fvec4(0.0f, 0.0f, 0.0f, 1.0f);
 
+    platform.renderer.activeCameraHandle = m_cameraHandle;
+
     for (int cubeIdx = 0; cubeIdx < 128; ++cubeIdx)
     {
-        size_t meshId = platform.stateDb.createObject(Renderer::Mesh::TYPE);
+        u64 meshHandle = platform.stateDb.createObject(Renderer::Mesh::TYPE);
         Renderer::Mesh::Info *mesh = (Renderer::Mesh::Info *)
-            platform.stateDb.state(Renderer::Mesh::Info::STATE, meshId);
+            platform.stateDb.state(Renderer::Mesh::Info::STATE, meshHandle);
         mesh->position = glm::fvec4(glm::clamp(float(cubeIdx), 0.0f, 1.0f) * glm::linearRand(
             glm::fvec3(-20.0f, -20.0f, -20.0f), glm::fvec3(+20.0f, +20.0f, +20.0f)), 1.0);
     }
@@ -55,9 +57,9 @@ bool RocketScience::initialize(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void RocketScience::shutdown(Platform &platform)
 {
-    // FIXME(MARTINMO): Delete/destroy all created meshes from 'vector< size_t >'
+    // FIXME(MARTINMO): Delete/destroy all created meshes from 'vector< u64 >'
 
-    platform.stateDb.destroyObject(Renderer::Camera::TYPE, m_cameraId);
+    platform.stateDb.destroyObject(m_cameraHandle);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -77,7 +79,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
     if (state[SDL_SCANCODE_S]) translationInM -= deltaTimeInS * 10.0;
 
     Renderer::Camera::Info *camera = (Renderer::Camera::Info *)
-        platform.stateDb.state(Renderer::Camera::Info::STATE, m_cameraId);
+        platform.stateDb.state(Renderer::Camera::Info::STATE, m_cameraHandle);
 
     glm::fvec3 cameraDir = (camera->target - camera->position).xyz();
 

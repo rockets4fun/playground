@@ -20,26 +20,28 @@ struct Renderer : public ModuleIf
 {
     struct Mesh
     {
-        static size_t TYPE;
+        static u64 TYPE;
         struct Info
         {
-            static size_t STATE;
+            static u64 STATE;
             glm::fvec4 position;
             glm::fvec4 orientation;
-            size_t meshId = 0;
+            u64 meshId = 0;
         };
     };
 
     struct Camera
     {
-        static size_t TYPE;
+        static u64 TYPE;
         struct Info
         {
-            static size_t STATE;
+            static u64 STATE;
             glm::fvec4 position;
             glm::fvec4 target;
         };
     };
+
+    u64 activeCameraHandle = 0;
 
     Renderer();
     virtual ~Renderer();

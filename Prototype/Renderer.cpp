@@ -193,10 +193,10 @@ void APIENTRY debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum
     SDL_Log("GL: %s", message);
 }
 
-size_t Renderer::Mesh::TYPE = 0;
-size_t Renderer::Mesh::Info::STATE = 0;
-size_t Renderer::Camera::TYPE = 0;
-size_t Renderer::Camera::Info::STATE = 0;
+u64 Renderer::Mesh::TYPE = 0;
+u64 Renderer::Mesh::Info::STATE = 0;
+u64 Renderer::Camera::TYPE = 0;
+u64 Renderer::Camera::Info::STATE = 0;
 
 // -------------------------------------------------------------------------------------------------
 Renderer::Renderer()
@@ -377,15 +377,19 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
 {
     funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    Camera::Info *cameraInfo = (Camera::Info *)platform.stateDb.state(Camera::Info::STATE, 1);
-
     float aspect = 640.0f / 480.0f;
     glm::fmat4 projection = glm::perspective(glm::radians(60.0f * aspect), aspect, 0.1f, 200.0f);
-    glm::fmat4 view = glm::lookAt(cameraInfo->position.xyz(),
-        cameraInfo->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
-
     funcs->glUniformMatrix4fv(
         state->defProgUniformProjectionMatrix, 1, GL_FALSE, glm::value_ptr(projection));
+
+    glm::fmat4 view;
+    if (activeCameraHandle)
+    {
+        Camera::Info *cameraInfo =
+            (Camera::Info *)platform.stateDb.state(Camera::Info::STATE, activeCameraHandle);
+        view = glm::lookAt(cameraInfo->position.xyz(),
+            cameraInfo->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
+    }
 
     // NOTE(MARTINMO): Vertex attribute assignments are stored inside the bound VAO
     // NOTE(MARTINMO): --> Think about creating one VAO per renderable mesh

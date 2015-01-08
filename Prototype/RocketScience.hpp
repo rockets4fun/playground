@@ -24,7 +24,7 @@ public: // Implementation of module interface
     virtual void update(Platform &platform, double deltaTimeInS);
 
 private:
-    size_t m_cameraId = 0;
+    u64 m_cameraHandle = 0;
 
 private:
     COMMON_DISABLE_COPY(RocketScience);
