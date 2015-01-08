@@ -11,6 +11,7 @@
 #include <memory>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include "ModuleIf.hpp"
 
@@ -25,7 +26,7 @@ struct Renderer : public ModuleIf
         {
             static u64 STATE;
             glm::fvec4 position;
-            glm::fvec4 orientation;
+            glm::fquat orientation;
             u64 meshId = 0;
         };
     };
