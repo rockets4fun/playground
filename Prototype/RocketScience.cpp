@@ -37,8 +37,8 @@ bool RocketScience::initialize(Platform &platform)
     m_cameraHandle = platform.stateDb.createObject(Renderer::Camera::TYPE);
     Renderer::Camera::Info *camera = (Renderer::Camera::Info *)
         platform.stateDb.state(Renderer::Camera::Info::STATE, m_cameraHandle);
-    camera->position = glm::fvec4(1.0f, 1.0f, 0.8f, 1.0f);
-    camera->target   = glm::fvec4(0.0f, 0.0f, 0.0f, 1.0f);
+    camera->position = glm::fvec4(20.0f, 20.0f, 20.0f, 1.0f);
+    camera->target   = glm::fvec4( 0.0f,  0.0f,  0.0f, 1.0f);
 
     platform.renderer.activeCameraHandle = m_cameraHandle;
 
@@ -48,7 +48,7 @@ bool RocketScience::initialize(Platform &platform)
         Renderer::Mesh::Info *mesh = (Renderer::Mesh::Info *)
             platform.stateDb.state(Renderer::Mesh::Info::STATE, meshHandle);
         mesh->position = glm::fvec4(glm::clamp(float(cubeIdx), 0.0f, 1.0f) * glm::linearRand(
-            glm::fvec3(-20.0f, -20.0f, -20.0f), glm::fvec3(+20.0f, +20.0f, +20.0f)), 1.0);
+            glm::fvec3(-20.0f, -20.0f, 0.0f), glm::fvec3(+20.0f, +20.0f, +40.0f)), 1.0);
     }
 
     return true;
