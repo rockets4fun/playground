@@ -5,6 +5,8 @@
 
 #include "Physics.hpp"
 
+#include <glm/gtc/type_ptr.hpp>
+
 #include <btBulletDynamicsCommon.h>
 
 #include "Platform.hpp"
@@ -80,26 +82,25 @@ bool Physics::initialize(Platform &platform)
         state->groundMotionState = std::make_shared< btDefaultMotionState> (
             btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, -1)));
         btRigidBody::btRigidBodyConstructionInfo groundRigidBodyCI(0,
-            nullptr, state->groundShape.get(), btVector3(0, 0, 0));
-        groundRigidBodyCI.m_restitution = 1.0;
+            state->groundMotionState.get(), state->groundShape.get(), btVector3(0, 0, 0));
+        groundRigidBodyCI.m_restitution = 0.5;
+        groundRigidBodyCI.m_friction = 0.8;
         state->groundRigidBody = std::make_shared< btRigidBody >(groundRigidBodyCI);
     }
 
     {
-        state->fallShape = std::make_shared< btSphereShape >(1.0f);
+        state->fallShape = std::make_shared< btBoxShape >(btVector3(0.5, 0.5, 0.5));
 
-        btScalar fallMass = 1;
+        btScalar fallMass = 20;
         btVector3 fallInertia(0, 0, 0);
         state->fallShape->calculateLocalInertia(fallMass, fallInertia);
 
         state->fallMotionState = std::make_shared< btDefaultMotionState >(
-            btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, 50)));
+            btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, 20)));
         btRigidBody::btRigidBodyConstructionInfo fallRigidBodyCI(
-            fallMass,
-            state->fallMotionState.get(),
-            state->fallShape.get(),
-            fallInertia);
+            fallMass, state->fallMotionState.get(), state->fallShape.get(), fallInertia);
         fallRigidBodyCI.m_restitution = 0.5;
+        fallRigidBodyCI.m_friction = 0.8;
         state->fallRigidBody = std::make_shared< btRigidBody >(fallRigidBodyCI);
     }
 
@@ -121,7 +122,7 @@ void Physics::shutdown(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void Physics::update(Platform &platform, double deltaTimeInS)
 {
-    state->dynamicsWorld->stepSimulation(btScalar(deltaTimeInS), 10);
+    int steps = state->dynamicsWorld->stepSimulation(btScalar(deltaTimeInS), 10, 1.0 / 100.0);
 
     {
         Renderer::Mesh::Info *end, *first = platform.stateDb.fullState(
@@ -130,7 +131,14 @@ void Physics::update(Platform &platform, double deltaTimeInS)
         {
             btTransform worldTrans;
             state->fallRigidBody->getMotionState()->getWorldTransform(worldTrans);
-            memcpy(&first->position.x, worldTrans.getOrigin().m_floats, sizeof(first->position));
+
+            btVector3 origin = worldTrans.getOrigin();
+            first->position =
+                glm::fvec4(origin.x(), origin.y(), origin.z(), 1.0);
+
+            btQuaternion basisQuat = worldTrans.getRotation();
+            first->orientation =
+                glm::fquat(basisQuat.w(), basisQuat.x(), basisQuat.y(), basisQuat.z());
         }
     }
 }
