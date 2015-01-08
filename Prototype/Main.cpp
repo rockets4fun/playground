@@ -53,12 +53,12 @@ int main(int argc, char *argv[])
         profileMask == SDL_GL_CONTEXT_PROFILE_CORE ? "core" : "non-core");
 
     {
-        StateDb stateDb;
-        Platform platform(stateDb);
-
         Renderer renderer;
         Physics physics;
         RocketScience rocketScience;
+
+        StateDb stateDb;
+        Platform platform(stateDb, renderer);
 
         std::vector< ModuleIf * > modules = { &renderer, &physics, &rocketScience };
         std::vector< ModuleIf * > reverseModules = modules;

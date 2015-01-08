@@ -9,16 +9,18 @@
 #include "Common.hpp"
 
 struct StateDb;
+struct Renderer;
 
 // -------------------------------------------------------------------------------------------------
 /// @brief Platform abstraction
 struct Platform
 {
-    Platform(StateDb &stateDb);
+    Platform(StateDb &stateDb, Renderer &renderer);
     virtual ~Platform();
 
 public:
     StateDb &stateDb;
+    Renderer &renderer;
 
 private:
     COMMON_DISABLE_COPY(Platform);
