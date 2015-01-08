@@ -407,6 +407,7 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     for (Mesh::Info *mesh = first; mesh < end; ++mesh)
     {
         model = glm::translate(glm::fmat4(), mesh->position.xyz());
+        model = model * glm::mat4_cast(mesh->orientation);
         modelView = view * model;
         funcs->glUniformMatrix4fv(
             state->defProgUniformModelViewMatrix, 1, GL_FALSE, glm::value_ptr(modelView));
