@@ -13,6 +13,7 @@
 #include "Platform.hpp"
 #include "StateDb.hpp"
 #include "Renderer.hpp"
+#include "Physics.hpp"
 
 #include <SDL.h>
 
@@ -42,6 +43,7 @@ bool RocketScience::initialize(Platform &platform)
 
     platform.renderer.activeCameraHandle = m_cameraHandle;
 
+    u64 testMeshHandle;
     for (int cubeIdx = 0; cubeIdx < 128; ++cubeIdx)
     {
         u64 meshHandle = platform.stateDb.createObject(Renderer::Mesh::TYPE);
@@ -49,7 +51,13 @@ bool RocketScience::initialize(Platform &platform)
         platform.stateDb.state(Renderer::Mesh::Info::STATE, meshHandle, &mesh);
         mesh->position = glm::fvec4(glm::clamp(float(cubeIdx), 0.0f, 1.0f) * glm::linearRand(
             glm::fvec3(-20.0f, -20.0f, 0.0f), glm::fvec3(+20.0f, +20.0f, +40.0f)), 1.0);
+        testMeshHandle = meshHandle;
     }
+
+    u64 rigidBodyHandle = platform.stateDb.createObject(Physics::RigidBody::TYPE);
+    Physics::RigidBody::Info *rigidBodyInfo;
+    platform.stateDb.state(Physics::RigidBody::Info::STATE, rigidBodyHandle, &rigidBodyInfo);
+    rigidBodyInfo->meshObjectHandle = testMeshHandle;
 
     return true;
 }
