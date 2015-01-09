@@ -385,8 +385,8 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     glm::fmat4 view;
     if (activeCameraHandle)
     {
-        Camera::Info *cameraInfo =
-            (Camera::Info *)platform.stateDb.state(Camera::Info::STATE, activeCameraHandle);
+        Camera::Info *cameraInfo;
+        platform.stateDb.state(Camera::Info::STATE, activeCameraHandle, &cameraInfo);
         view = glm::lookAt(cameraInfo->position.xyz(),
             cameraInfo->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
     }
@@ -403,8 +403,9 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     glm::fmat4 model, modelView;
 
     // Pseudo-instanced rendering of meshes as cubes
-    Mesh::Info *end, *first = platform.stateDb.fullState(Mesh::Info::STATE, &end);
-    for (Mesh::Info *mesh = first; mesh < end; ++mesh)
+    Mesh::Info *meshBegin, *meshEnd;
+    platform.stateDb.fullState(Mesh::Info::STATE, &meshBegin, &meshEnd);
+    for (Mesh::Info *mesh = meshBegin; mesh != meshEnd; ++mesh)
     {
         model = glm::translate(glm::fmat4(), mesh->position.xyz());
         model = model * glm::mat4_cast(mesh->orientation);

@@ -35,8 +35,8 @@ void RocketScience::registerTypesAndStates(StateDb &stateDb)
 bool RocketScience::initialize(Platform &platform)
 {
     m_cameraHandle = platform.stateDb.createObject(Renderer::Camera::TYPE);
-    Renderer::Camera::Info *camera = (Renderer::Camera::Info *)
-        platform.stateDb.state(Renderer::Camera::Info::STATE, m_cameraHandle);
+    Renderer::Camera::Info *camera;
+    platform.stateDb.state(Renderer::Camera::Info::STATE, m_cameraHandle, &camera);
     camera->position = glm::fvec4(20.0f, 20.0f, 20.0f, 1.0f);
     camera->target   = glm::fvec4( 0.0f,  0.0f,  0.0f, 1.0f);
 
@@ -45,8 +45,8 @@ bool RocketScience::initialize(Platform &platform)
     for (int cubeIdx = 0; cubeIdx < 128; ++cubeIdx)
     {
         u64 meshHandle = platform.stateDb.createObject(Renderer::Mesh::TYPE);
-        Renderer::Mesh::Info *mesh = (Renderer::Mesh::Info *)
-            platform.stateDb.state(Renderer::Mesh::Info::STATE, meshHandle);
+        Renderer::Mesh::Info *mesh;
+        platform.stateDb.state(Renderer::Mesh::Info::STATE, meshHandle, &mesh);
         mesh->position = glm::fvec4(glm::clamp(float(cubeIdx), 0.0f, 1.0f) * glm::linearRand(
             glm::fvec3(-20.0f, -20.0f, 0.0f), glm::fvec3(+20.0f, +20.0f, +40.0f)), 1.0);
     }
@@ -78,8 +78,8 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
     if (state[SDL_SCANCODE_W]) translationInM += deltaTimeInS * 10.0;
     if (state[SDL_SCANCODE_S]) translationInM -= deltaTimeInS * 10.0;
 
-    Renderer::Camera::Info *camera = (Renderer::Camera::Info *)
-        platform.stateDb.state(Renderer::Camera::Info::STATE, m_cameraHandle);
+    Renderer::Camera::Info *camera;
+    platform.stateDb.state(Renderer::Camera::Info::STATE, m_cameraHandle, &camera);
 
     glm::fvec3 cameraDir = (camera->target - camera->position).xyz();
 
