@@ -37,6 +37,7 @@ u64 StateDb::typeIdByName(const std::string &name)
 // -------------------------------------------------------------------------------------------------
 u64 StateDb::registerType(const std::string &name, u64 maxObjectCount)
 {
+    COMMON_ASSERT(maxObjectCount > 0);
     COMMON_ASSERT(name.length() > 0);
     u64 existingTypeId = typeIdByName(name);
     if (existingTypeId)
@@ -91,6 +92,10 @@ u64 StateDb::stateIdByName(const std::string &name)
 // -------------------------------------------------------------------------------------------------
 u64 StateDb::registerState(u64 typeId, const std::string &name, u64 elemSize)
 {
+    // Element size has to be non-zero and a multiple of 4 B (32 bit)
+    COMMON_ASSERT(elemSize > 0);
+    COMMON_ASSERT(elemSize % 4 == 0);
+
     COMMON_ASSERT(isTypeIdValid(typeId));
     Type &type = m_types[typeId];
     COMMON_ASSERT(type.objectCount == 0);
@@ -199,16 +204,24 @@ void StateDb::destroyObject(u64 objectHandle)
 }
 
 // -------------------------------------------------------------------------------------------------
-void *StateDb::state(u64 stateId, u64 objectHandle)
+u64 StateDb::objectHandleFromElem(u64 stateId, void *elem)
 {
     COMMON_ASSERT(isStateIdValid(stateId));
     State &state = m_states[stateId];
-
-    COMMON_ASSERT(objectHandle >> 48 == state.typeId);
-    COMMON_ASSERT(isObjectHandleValid(objectHandle));
-
     Type &type = m_types[state.typeId];
-    return &m_stateValues[stateId][type.objectIdToIdx[objectHandle & 0xffffffff] * state.elemSize];
+
+    u64 offsetInB = (unsigned char *)elem - &m_stateValues[stateId][0];
+    if (offsetInB % state.elemSize != 0)
+    {
+        return 0;
+    }
+    if (offsetInB / state.elemSize > type.maxObjectCount)
+    {
+        return 0;
+    }
+
+    u64 objectId = type.idxToObjectId[offsetInB / state.elemSize];
+    return composeObjectHandle(state.typeId, type.lifecycleByObjectId[objectId], objectId);
 }
 
 // -------------------------------------------------------------------------------------------------

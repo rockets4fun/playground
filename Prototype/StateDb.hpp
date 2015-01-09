@@ -31,18 +31,38 @@ struct StateDb
     u64 createObject(u64 typeId);
     void destroyObject(u64 objectHandle);
 
-    void *state(u64 stateId, u64 objectHandle);
+    u64 objectHandleFromElem(u64 stateId, void *elem);
 
     template< class ElementType >
-    ElementType *fullState(u64 stateId, ElementType **end)
+    void state(u64 stateId, u64 objectHandle, ElementType **elem)
     {
         COMMON_ASSERT(isStateIdValid(stateId));
         State &state = m_states[stateId];
-        Type &type = m_types[state.typeId];
+
+        COMMON_ASSERT(objectHandle >> 48 == state.typeId);
+        COMMON_ASSERT(isObjectHandleValid(objectHandle));
+
         COMMON_ASSERT(state.elemSize == sizeof(ElementType));
-        unsigned char *first = &m_stateValues[stateId][state.elemSize];
-        *end = (ElementType *)(first + state.elemSize * type.objectCount);
-        return (ElementType *)first;
+        Type &type = m_types[state.typeId];
+
+        *elem = (ElementType *)&m_stateValues[stateId][
+            type.objectIdToIdx[objectHandle & 0xffffffff] * state.elemSize];
+    }
+
+    template< class ElementType >
+    void fullState(u64 stateId, ElementType **begin, ElementType **end = nullptr)
+    {
+        COMMON_ASSERT(isStateIdValid(stateId));
+        State &state = m_states[stateId];
+
+        COMMON_ASSERT(state.elemSize == sizeof(ElementType));
+        Type &type = m_types[state.typeId];
+
+        *begin = (ElementType *)&m_stateValues[stateId][state.elemSize];
+        if (end)
+        {
+            *end = (ElementType *)(*begin + state.elemSize * type.objectCount);
+        }
     }
 
 private:
