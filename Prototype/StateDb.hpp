@@ -58,10 +58,11 @@ struct StateDb
         COMMON_ASSERT(state.elemSize == sizeof(ElementType));
         Type &type = m_types[state.typeId];
 
-        *begin = (ElementType *)&m_stateValues[stateId][state.elemSize];
+        unsigned char *memoryBegin = &m_stateValues[stateId][state.elemSize];
+        *begin = (ElementType *)memoryBegin;
         if (end)
         {
-            *end = (ElementType *)(*begin + state.elemSize * type.objectCount);
+            *end = (ElementType *)(memoryBegin + state.elemSize * type.objectCount);
         }
     }
 

@@ -215,7 +215,7 @@ u64 StateDb::objectHandleFromElem(u64 stateId, void *elem)
     {
         return 0;
     }
-    if (offsetInB / state.elemSize > type.maxObjectCount)
+    if (offsetInB / state.elemSize > type.objectCount)
     {
         return 0;
     }
