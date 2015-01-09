@@ -108,6 +108,11 @@ private:
     GlFuncs *funcs = nullptr;
 };
 
+u64 Renderer::Mesh::TYPE = 0;
+u64 Renderer::Mesh::Info::STATE = 0;
+u64 Renderer::Camera::TYPE = 0;
+u64 Renderer::Camera::Info::STATE = 0;
+
 // -------------------------------------------------------------------------------------------------
 Renderer::GlHelpers::GlHelpers(GlFuncs *funcs) : funcs(funcs)
 {
@@ -192,11 +197,6 @@ void APIENTRY debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum
 {
     SDL_Log("GL: %s", message);
 }
-
-u64 Renderer::Mesh::TYPE = 0;
-u64 Renderer::Mesh::Info::STATE = 0;
-u64 Renderer::Camera::TYPE = 0;
-u64 Renderer::Camera::Info::STATE = 0;
 
 // -------------------------------------------------------------------------------------------------
 Renderer::Renderer()
