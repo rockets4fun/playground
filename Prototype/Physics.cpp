@@ -26,7 +26,8 @@ struct Physics::PrivateRigidBody
     PrivateRigidBody(PrivateState &state);
     virtual ~PrivateRigidBody();
 
-    void initialize(u64 rigidBodyObjectHandle, Physics::RigidBody::Info *rigidBodyInfo);
+    void initialize(u64 objectHandle, Physics::RigidBody::Info *info,
+        Renderer::Mesh::Info *meshInfo);
 };
 
 struct Physics::PrivateState
@@ -47,6 +48,16 @@ struct Physics::PrivateState
     std::list< PrivateRigidBody > rigidBodies;
 };
 
+struct Physics::RigidBody::PrivateInfo
+{
+    static u64 STATE;
+    PrivateRigidBody *rigidBody = nullptr;
+};
+
+u64 Physics::RigidBody::TYPE = 0;
+u64 Physics::RigidBody::Info::STATE = 0;
+u64 Physics::RigidBody::PrivateInfo::STATE = 0;
+
 // -------------------------------------------------------------------------------------------------
 Physics::PrivateRigidBody::PrivateRigidBody(PrivateState &state) :
     state(state)
@@ -56,19 +67,30 @@ Physics::PrivateRigidBody::PrivateRigidBody(PrivateState &state) :
 // -------------------------------------------------------------------------------------------------
 Physics::PrivateRigidBody::~PrivateRigidBody()
 {
-    state.dynamicsWorld->removeRigidBody(rigidBody.get());
+    if (rigidBody)
+    {
+        state.dynamicsWorld->removeRigidBody(rigidBody.get());
+    }
 }
 
 // -------------------------------------------------------------------------------------------------
-void Physics::PrivateRigidBody::initialize(
-    u64 rigidBodyObjectHandle, Physics::RigidBody::Info *rigidBodyInfo)
+void Physics::PrivateRigidBody::initialize(u64 objectHandle,
+    Physics::RigidBody::Info *info, Renderer::Mesh::Info *meshInfo)
 {
+    this->objectHandle = objectHandle;
+
     btScalar mass = 20;
     btVector3 inertia(0, 0, 0);
     state.cubeShape->calculateLocalInertia(mass, inertia);
 
-    motionState = std::make_shared< btDefaultMotionState >(
-        btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, 20)));
+    btQuaternion rotation(0.0, 0.0, 0.0, 1.0);
+        /*
+        meshInfo->orientation.x, meshInfo->orientation.y,
+        meshInfo->orientation.z, meshInfo->orientation.w);
+        */
+    btVector3 translation(
+        meshInfo->position.x, meshInfo->position.y, meshInfo->position.y);
+    motionState = std::make_shared< btDefaultMotionState >(btTransform(rotation, translation));
 
     btRigidBody::btRigidBodyConstructionInfo rbConstructionInfo(
         mass, motionState.get(), state.cubeShape.get(), inertia);
@@ -79,16 +101,6 @@ void Physics::PrivateRigidBody::initialize(
 
     state.dynamicsWorld->addRigidBody(rigidBody.get());
 }
-
-struct Physics::RigidBody::InternalInfo
-{
-    static u64 STATE;
-    PrivateRigidBody *rigidBody = nullptr;
-};
-
-u64 Physics::RigidBody::TYPE = 0;
-u64 Physics::RigidBody::Info::STATE = 0;
-u64 Physics::RigidBody::InternalInfo::STATE = 0;
 
 // -------------------------------------------------------------------------------------------------
 Physics::Physics()
@@ -106,6 +118,8 @@ void Physics::registerTypesAndStates(StateDb &stateDb)
     RigidBody::TYPE = stateDb.registerType("RigidBody", 1024);
     RigidBody::Info::STATE = stateDb.registerState(
         RigidBody::TYPE, "Info", sizeof(RigidBody::Info));
+    RigidBody::PrivateInfo::STATE = stateDb.registerState(
+        RigidBody::TYPE, "PrivateInfo", sizeof(RigidBody::PrivateInfo));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -156,27 +170,44 @@ void Physics::shutdown(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void Physics::update(Platform &platform, double deltaTimeInS)
 {
+    // Check for newly created rigid bodies
+    RigidBody::Info *info, *infoBegin, *infoEnd;
+    platform.stateDb.fullState(RigidBody::Info::STATE, &infoBegin, &infoEnd);
+    RigidBody::PrivateInfo *privateInfo, *privateInfoBegin;
+    platform.stateDb.fullState(RigidBody::PrivateInfo::STATE, &privateInfoBegin);
+
+    for (info = infoBegin, privateInfo = privateInfoBegin;
+         info != infoEnd; ++info, ++privateInfo)
+    {
+        Renderer::Mesh::Info *meshInfo;
+        platform.stateDb.state(Renderer::Mesh::Info::STATE, info->meshObjectHandle, &meshInfo);
+        if (!privateInfo->rigidBody)
+        {
+            u64 objectHandle = platform.stateDb.objectHandleFromElem(
+                Physics::RigidBody::Info::STATE, info);
+            state->rigidBodies.push_back(PrivateRigidBody(*state.get()));
+            PrivateRigidBody *rigidBody = &state->rigidBodies.back();
+            rigidBody->initialize(objectHandle, info, meshInfo);
+            privateInfo->rigidBody = rigidBody;
+        }
+    }
+
     int internalSteps = state->dynamicsWorld->stepSimulation(
         btScalar(deltaTimeInS), 10, btScalar(1.0 / 100.0));
 
-    // Check for newly created rigid bodies
-    RigidBody::Info *rbInfo, *rbInfoBegin, *rbInfoEnd;
-    platform.stateDb.fullState(RigidBody::Info::STATE, &rbInfoBegin, &rbInfoEnd);
-    RigidBody::InternalInfo *rbInternalInfo, *rbInternalInfoBegin;
-    platform.stateDb.fullState(RigidBody::InternalInfo::STATE, &rbInternalInfoBegin);
-    for (rbInfo = rbInfoBegin, rbInternalInfo = rbInternalInfoBegin;
-         rbInfo != rbInfoEnd;
-         ++rbInfo, ++rbInternalInfo)
+    for (info = infoBegin, privateInfo = privateInfoBegin;
+         info != infoEnd; ++info, ++privateInfo)
     {
-        if (!rbInternalInfo->rigidBody)
-        {
-            u64 objectHandle = platform.stateDb.objectHandleFromElem(
-                Physics::RigidBody::Info::STATE, rbInfo);
-            state->rigidBodies.push_back(PrivateRigidBody(*state.get()));
-            PrivateRigidBody *rigidBody = &state->rigidBodies.back();
-            rigidBody->initialize(objectHandle, rbInfo);
-            rbInternalInfo->rigidBody = rigidBody;
-        }
+        Renderer::Mesh::Info *meshInfo;
+        platform.stateDb.state(Renderer::Mesh::Info::STATE, info->meshObjectHandle, &meshInfo);
+        btTransform worldTrans;
+        privateInfo->rigidBody->motionState->getWorldTransform(worldTrans);
+        btVector3 origin = worldTrans.getOrigin();
+        meshInfo->position =
+            glm::fvec4(origin.x(), origin.y(), origin.z(), 1.0);
+        btQuaternion rotation = worldTrans.getRotation();
+        meshInfo->orientation =
+            glm::fquat(rotation.w(), rotation.x(), rotation.y(), rotation.z());
     }
 
     // Check for destroyed rigid bodies
@@ -196,20 +227,4 @@ void Physics::update(Platform &platform, double deltaTimeInS)
         state->rigidBodies.erase(deletions.back());
         deletions.pop_back();
     }
-
-    /*
-    if (end > first)
-    {
-        btTransform worldTrans;
-        state->fallRigidBody->getMotionState()->getWorldTransform(worldTrans);
-
-        btVector3 origin = worldTrans.getOrigin();
-        first->position =
-            glm::fvec4(origin.x(), origin.y(), origin.z(), 1.0);
-
-        btQuaternion basisQuat = worldTrans.getRotation();
-        first->orientation =
-            glm::fquat(basisQuat.w(), basisQuat.x(), basisQuat.y(), basisQuat.z());
-    }
-    */
 }

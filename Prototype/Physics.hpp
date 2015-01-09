@@ -27,11 +27,11 @@ struct Physics : ModuleIf
         struct Info
         {
             static u64 STATE;
-            u64 rendererMeshObjectHandle = 0;
+            u64 meshObjectHandle = 0;
             // TODO(MARTINMO): Add additional physics state here
             // TODO(MARTINMO): Orientation and position are already stored in mesh
         };
-        struct InternalInfo;
+        struct PrivateInfo;
     };
 
 public: // Implementation of module interface
