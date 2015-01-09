@@ -27,7 +27,7 @@ struct Physics : ModuleIf
         struct Info
         {
             static u64 STATE;
-            u64 rendererMeshId = 0;
+            u64 rendererMeshObjectHandle = 0;
             // TODO(MARTINMO): Add additional physics state here
             // TODO(MARTINMO): Orientation and position are already stored in mesh
         };
@@ -41,9 +41,10 @@ public: // Implementation of module interface
     virtual void update(Platform &platform, double deltaTimeInS);
 
 private:
-    struct State;
+    struct PrivateRigidBody;
+    struct PrivateState;
 
-    std::shared_ptr< State > state;
+    std::shared_ptr< PrivateState > state;
 
 private:
     COMMON_DISABLE_COPY(Physics);
