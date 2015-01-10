@@ -48,7 +48,7 @@ bool RocketScience::initialize(Platform &platform)
         u64 meshHandle = platform.stateDb.createObject(Renderer::Mesh::TYPE);
         Renderer::Mesh::Info *mesh;
         platform.stateDb.state(Renderer::Mesh::Info::STATE, meshHandle, &mesh);
-        mesh->translation = glm::fvec4(glm::clamp(float(cubeIdx), 0.0f, 1.0f) * glm::linearRand(
+        mesh->translation = glm::fvec4(glm::linearRand(
             glm::fvec3(-20.0f, -20.0f, 0.0f), glm::fvec3(+20.0f, +20.0f, +40.0f)), 1.0);
         m_meshHandles.push_back(meshHandle);
     }
