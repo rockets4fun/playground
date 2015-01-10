@@ -25,8 +25,8 @@ struct Renderer : public ModuleIf
         struct Info
         {
             static u64 STATE;
-            glm::fvec4 position;
-            glm::fquat orientation;
+            glm::fvec4 translation;
+            glm::fquat rotation;
             u64 meshId = 0;
         };
     };

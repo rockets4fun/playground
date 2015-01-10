@@ -407,8 +407,8 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     platform.stateDb.fullState(Mesh::Info::STATE, &meshBegin, &meshEnd);
     for (Mesh::Info *mesh = meshBegin; mesh != meshEnd; ++mesh)
     {
-        model = glm::translate(glm::fmat4(), mesh->position.xyz());
-        model = model * glm::mat4_cast(mesh->orientation);
+        model = glm::translate(glm::fmat4(), mesh->translation.xyz());
+        model = model * glm::mat4_cast(mesh->rotation);
         modelView = view * model;
         funcs->glUniformMatrix4fv(
             state->defProgUniformModelViewMatrix, 1, GL_FALSE, glm::value_ptr(modelView));
