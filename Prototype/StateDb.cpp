@@ -190,7 +190,7 @@ void StateDb::destroyObject(u64 objectHandle)
             memcpy(
                 &m_stateValues[stateId][state.elemSize * idxToDestroy],
                 &m_stateValues[stateId][state.elemSize * type.objectCount], state.elemSize);
-            // Zero memory of swapped in element
+            // Zero previous memory of swapped in element
             memset(
                 &m_stateValues[stateId][state.elemSize * type.objectCount], 0, state.elemSize);
         }
