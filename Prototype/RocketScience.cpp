@@ -43,21 +43,17 @@ bool RocketScience::initialize(Platform &platform)
 
     platform.renderer.activeCameraHandle = m_cameraHandle;
 
-    u64 testMeshHandle;
     for (int cubeIdx = 0; cubeIdx < 128; ++cubeIdx)
     {
         u64 meshHandle = platform.stateDb.createObject(Renderer::Mesh::TYPE);
         Renderer::Mesh::Info *mesh;
         platform.stateDb.state(Renderer::Mesh::Info::STATE, meshHandle, &mesh);
-        mesh->position = glm::fvec4(glm::clamp(float(cubeIdx), 0.0f, 1.0f) * glm::linearRand(
+        mesh->translation = glm::fvec4(glm::clamp(float(cubeIdx), 0.0f, 1.0f) * glm::linearRand(
             glm::fvec3(-20.0f, -20.0f, 0.0f), glm::fvec3(+20.0f, +20.0f, +40.0f)), 1.0);
-        testMeshHandle = meshHandle;
+        m_meshHandles.push_back(meshHandle);
     }
 
-    u64 rigidBodyHandle = platform.stateDb.createObject(Physics::RigidBody::TYPE);
-    Physics::RigidBody::Info *rigidBodyInfo;
-    platform.stateDb.state(Physics::RigidBody::Info::STATE, rigidBodyHandle, &rigidBodyInfo);
-    rigidBodyInfo->meshObjectHandle = testMeshHandle;
+    m_rigidBodyByMeshHandle[0] = 1;
 
     return true;
 }
@@ -65,8 +61,10 @@ bool RocketScience::initialize(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void RocketScience::shutdown(Platform &platform)
 {
-    // FIXME(MARTINMO): Delete/destroy all created meshes from 'vector< u64 >'
-
+    for (auto meshHandle : m_meshHandles)
+    {
+        platform.stateDb.destroyObject(meshHandle);
+    }
     platform.stateDb.destroyObject(m_cameraHandle);
 }
 
@@ -83,8 +81,8 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
     if (state[SDL_SCANCODE_DOWN]) verticalRotationInDeg += deltaTimeInS * 90.0;
     if (state[SDL_SCANCODE_UP])   verticalRotationInDeg -= deltaTimeInS * 90.0;
     double translationInM = 0.0f;
-    if (state[SDL_SCANCODE_W]) translationInM += deltaTimeInS * 10.0;
-    if (state[SDL_SCANCODE_S]) translationInM -= deltaTimeInS * 10.0;
+    if (state[SDL_SCANCODE_W]) translationInM += deltaTimeInS * 20.0;
+    if (state[SDL_SCANCODE_S]) translationInM -= deltaTimeInS * 20.0;
 
     Renderer::Camera::Info *camera;
     platform.stateDb.state(Renderer::Camera::Info::STATE, m_cameraHandle, &camera);
@@ -117,5 +115,21 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
     {
         camera->position += glm::fvec4(
             glm::normalize(cameraDir) * float(translationInM), 0.0);
+    }
+
+    if (state[SDL_SCANCODE_P] && m_rigidBodyByMeshHandle.size() <= m_meshHandles.size())
+    {
+        u64 meshHandle = 0;
+        while (m_rigidBodyByMeshHandle[meshHandle])
+        {
+            meshHandle = m_meshHandles[rand() % m_meshHandles.size()];
+        }
+
+        u64 rigidBodyHandle = platform.stateDb.createObject(Physics::RigidBody::TYPE);
+        Physics::RigidBody::Info *rigidBodyInfo;
+        platform.stateDb.state(Physics::RigidBody::Info::STATE, rigidBodyHandle, &rigidBodyInfo);
+        rigidBodyInfo->meshObjectHandle = meshHandle;
+
+        m_rigidBodyByMeshHandle[meshHandle] = rigidBodyHandle;
     }
 }

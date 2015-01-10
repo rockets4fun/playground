@@ -8,6 +8,9 @@
 
 #include "Common.hpp"
 
+#include <vector>
+#include <map>
+
 #include "ModuleIf.hpp"
 
 // -------------------------------------------------------------------------------------------------
@@ -25,6 +28,8 @@ public: // Implementation of module interface
 
 private:
     u64 m_cameraHandle = 0;
+    std::vector< u64 > m_meshHandles;
+    std::map< u64, u64 > m_rigidBodyByMeshHandle;
 
 private:
     COMMON_DISABLE_COPY(RocketScience);
