@@ -83,13 +83,16 @@ void Physics::PrivateRigidBody::initialize(u64 objectHandle,
     btVector3 inertia(0, 0, 0);
     state.cubeShape->calculateLocalInertia(mass, inertia);
 
-    btQuaternion rotation(0.0, 0.0, 0.0, 1.0);
-        /*
-        meshInfo->orientation.x, meshInfo->orientation.y,
-        meshInfo->orientation.z, meshInfo->orientation.w);
-        */
+    // Make sure rotation is a sane value
+    if (glm::abs(1.0f - meshInfo->rotation.length()) > 0.1)
+    {
+        meshInfo->rotation = glm::fquat(1.0, 0.0, 0.0, 0.0);
+    }
+    btQuaternion rotation(
+        meshInfo->rotation.x, meshInfo->rotation.y,
+        meshInfo->rotation.z, meshInfo->rotation.w);
     btVector3 translation(
-        meshInfo->position.x, meshInfo->position.y, meshInfo->position.y);
+        meshInfo->translation.x, meshInfo->translation.y, meshInfo->translation.z);
     motionState = std::make_shared< btDefaultMotionState >(btTransform(rotation, translation));
 
     btRigidBody::btRigidBodyConstructionInfo rbConstructionInfo(
@@ -170,12 +173,12 @@ void Physics::shutdown(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void Physics::update(Platform &platform, double deltaTimeInS)
 {
-    // Check for newly created rigid bodies
     RigidBody::Info *info, *infoBegin, *infoEnd;
     platform.stateDb.fullState(RigidBody::Info::STATE, &infoBegin, &infoEnd);
     RigidBody::PrivateInfo *privateInfo, *privateInfoBegin;
     platform.stateDb.fullState(RigidBody::PrivateInfo::STATE, &privateInfoBegin);
 
+    // Check for newly created rigid bodies
     for (info = infoBegin, privateInfo = privateInfoBegin;
          info != infoEnd; ++info, ++privateInfo)
     {
@@ -192,21 +195,27 @@ void Physics::update(Platform &platform, double deltaTimeInS)
         }
     }
 
+    // Update rigid body physics simulation
     int internalSteps = state->dynamicsWorld->stepSimulation(
         btScalar(deltaTimeInS), 10, btScalar(1.0 / 100.0));
-
     for (info = infoBegin, privateInfo = privateInfoBegin;
          info != infoEnd; ++info, ++privateInfo)
     {
+        // TODO(MARTINMO): Delete rigid bodies with bad mesh references?
+        // TODO(MARTINMO): (e.g. mesh has been destroyed and rigid body still alive)
+        if (!platform.stateDb.isObjectHandleValid(info->meshObjectHandle))
+        {
+            continue;
+        }
         Renderer::Mesh::Info *meshInfo;
         platform.stateDb.state(Renderer::Mesh::Info::STATE, info->meshObjectHandle, &meshInfo);
         btTransform worldTrans;
         privateInfo->rigidBody->motionState->getWorldTransform(worldTrans);
         btVector3 origin = worldTrans.getOrigin();
-        meshInfo->position =
+        meshInfo->translation =
             glm::fvec4(origin.x(), origin.y(), origin.z(), 1.0);
         btQuaternion rotation = worldTrans.getRotation();
-        meshInfo->orientation =
+        meshInfo->rotation =
             glm::fquat(rotation.w(), rotation.x(), rotation.y(), rotation.z());
     }
 
