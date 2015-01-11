@@ -60,6 +60,19 @@ win32 {
     LIBS += SDL2.lib SDL2main.lib
 }
 
+# Assimp
+win32 {
+    INCLUDEPATH += $$THIRDPARTY/assimp/include
+    win32:contains(QMAKE_HOST.arch, x86_64) {
+        CONFIG(debug, debug|release) {
+            LIBS += $$THIRDPARTY/assimp/lib/Debug/assimpd.lib
+        }
+        CONFIG(release, debug|release) {
+            LIBS += $$THIRDPARTY/assimp/lib/Release/assimp.lib
+        }
+    }
+}
+
 HEADERS += \
     Template.hpp \
     TemplateIf.hpp \
@@ -70,6 +83,7 @@ SOURCES += \
     Main.cpp
 
 HEADERS += \
+    Assets.hpp \
     Physics.hpp \
     Platform.hpp \
     Renderer.hpp \
@@ -77,6 +91,7 @@ HEADERS += \
     StateDb.hpp
 
 SOURCES += \
+    Assets.cpp \
     Physics.cpp \
     Platform.cpp \
     Renderer.cpp \
