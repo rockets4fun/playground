@@ -28,8 +28,8 @@ struct Physics : ModuleIf
         {
             static u64 STATE;
             u64 meshObjectHandle = 0;
-            // TODO(MARTINMO): Add additional physics state here
-            // TODO(MARTINMO): Translation and roation are already stored in mesh
+            // TODO(martinmo): Add additional physics state here
+            // TODO(martinmo): Translation and roation are already stored in mesh
         };
         struct PrivateInfo;
     };

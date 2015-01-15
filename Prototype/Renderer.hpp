@@ -42,6 +42,19 @@ struct Renderer : public ModuleIf
         };
     };
 
+    // TODO(martinmo): Define transform hierarchy that other entities link to
+    struct Transform
+    {
+        static u64 TYPE;
+        struct Info
+        {
+            static u64 STATE;
+            u64 parent;
+            glm::fmat4 world;
+            glm::fmat4 local;
+        };
+    };
+
     u64 activeCameraHandle = 0;
 
     Renderer();

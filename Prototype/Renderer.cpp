@@ -7,10 +7,10 @@
 
 #include "Renderer.hpp"
 
-// TODO(MARTINMO): Remove dependency to SDL through OpenGL function retrieval interface
-// TODO(MARTINMO): This can then be implemented in the platform layer through e.g. SDL/Qt
-// TODO(MARTINMO): - 'glProcAddr(name)'
-// TODO(MARTINMO): - 'glIsExtensionSupported(name)'
+// TODO(martinmo): Remove dependency to SDL through OpenGL function retrieval interface
+// TODO(martinmo): This can then be implemented in the platform layer through e.g. SDL/Qt
+// TODO(martinmo): - 'glProcAddr(name)'
+// TODO(martinmo): - 'glIsExtensionSupported(name)'
 #include <SDL.h>
 
 #include <glm/gtc/matrix_transform.hpp>
@@ -178,7 +178,7 @@ bool Renderer::GlHelpers::createAndLinkSimpleProgram(
 // -------------------------------------------------------------------------------------------------
 void Renderer::GlHelpers::printInfoLog(GLuint object, GetProc getProc, InfoLogProc infoLogProc)
 {
-    // TODO(MARTINMO): Refactor into 'getInfoLog' and separate print
+    // TODO(martinmo): Refactor into 'getInfoLog' and separate print
     GLint infoLogLength = 0;
     getProc(object, GL_INFO_LOG_LENGTH, &infoLogLength);
     if (infoLogLength > 1)
@@ -272,17 +272,17 @@ bool Renderer::initialize(Platform &platform)
 
     helpers->createAndLinkSimpleProgram(state->defProg, state->defVs, state->defFs);
 
-    // TODO(MARTINMO): Use Uniform Buffer Objects to pass uniforms to shaders
+    // TODO(martinmo): Use Uniform Buffer Objects to pass uniforms to shaders
 
     state->defProgUniformModelViewMatrix =
         funcs->glGetUniformLocation(state->defProg, "ModelViewMatrix");
     state->defProgUniformProjectionMatrix =
         funcs->glGetUniformLocation(state->defProg, "ProjectionMatrix");
 
-    // TODO(MARTINMO): Use 'glBindAttribLocation()' before linking the program to force
-    // TODO(MARTINMO): assignment of attributes to specific fixed locations
-    // TODO(MARTINMO): (e.g. position always 0, color always 1 etc.)
-    // TODO(MARTINMO): --> This allows us to use the same VAO for different shader programs
+    // TODO(martinmo): Use 'glBindAttribLocation()' before linking the program to force
+    // TODO(martinmo): assignment of attributes to specific fixed locations
+    // TODO(martinmo): (e.g. position always 0, color always 1 etc.)
+    // TODO(martinmo): --> This allows us to use the same VAO for different shader programs
 
     state->defProgAttribPosition =
         funcs->glGetAttribLocation(state->defProg, "Position");
@@ -386,7 +386,7 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     if (activeCameraHandle)
     {
         Camera::Info *cameraInfo;
-        platform.stateDb.state(Camera::Info::STATE, activeCameraHandle, &cameraInfo);
+        platform.stateDb.refState(Camera::Info::STATE, activeCameraHandle, &cameraInfo);
         view = glm::lookAt(cameraInfo->position.xyz(),
             cameraInfo->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
     }
@@ -404,7 +404,7 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
 
     // Pseudo-instanced rendering of meshes as cubes
     Mesh::Info *meshBegin, *meshEnd;
-    platform.stateDb.fullState(Mesh::Info::STATE, &meshBegin, &meshEnd);
+    platform.stateDb.refStateAll(Mesh::Info::STATE, &meshBegin, &meshEnd);
     for (Mesh::Info *mesh = meshBegin; mesh != meshEnd; ++mesh)
     {
         model = glm::translate(glm::fmat4(), mesh->translation.xyz());
@@ -412,6 +412,7 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
         modelView = view * model;
         funcs->glUniformMatrix4fv(
             state->defProgUniformModelViewMatrix, 1, GL_FALSE, glm::value_ptr(modelView));
+        // Draw 36 vertices (6 faces x 2 triangles x 3 vertices)
         funcs->glDrawArrays(GL_TRIANGLES, 0, 36);
     }
 }

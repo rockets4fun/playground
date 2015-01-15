@@ -156,7 +156,7 @@ u64 StateDb::createObject(u64 typeId)
     Type &type = m_types[typeId];
     if (type.objectCount >= type.maxObjectCount)
     {
-        // TODO(MARTINMO): Out of type memory error
+        // TODO(martinmo): Out of type memory error through platform abstraction
         return u64();
     }
     u64 objectId = type.idxToObjectId[++type.objectCount];

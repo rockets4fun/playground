@@ -36,8 +36,9 @@ void RocketScience::registerTypesAndStates(StateDb &stateDb)
 bool RocketScience::initialize(Platform &platform)
 {
     m_cameraHandle = platform.stateDb.createObject(Renderer::Camera::TYPE);
+
     Renderer::Camera::Info *camera;
-    platform.stateDb.state(Renderer::Camera::Info::STATE, m_cameraHandle, &camera);
+    platform.stateDb.refState(Renderer::Camera::Info::STATE, m_cameraHandle, &camera);
     camera->position = glm::fvec4(20.0f, 20.0f, 20.0f, 1.0f);
     camera->target   = glm::fvec4( 0.0f,  0.0f,  0.0f, 1.0f);
 
@@ -46,10 +47,12 @@ bool RocketScience::initialize(Platform &platform)
     for (int cubeIdx = 0; cubeIdx < 128; ++cubeIdx)
     {
         u64 meshHandle = platform.stateDb.createObject(Renderer::Mesh::TYPE);
+
         Renderer::Mesh::Info *mesh;
-        platform.stateDb.state(Renderer::Mesh::Info::STATE, meshHandle, &mesh);
+        platform.stateDb.refState(Renderer::Mesh::Info::STATE, meshHandle, &mesh);
         mesh->translation = glm::fvec4(glm::linearRand(
             glm::fvec3(-20.0f, -20.0f, 0.0f), glm::fvec3(+20.0f, +20.0f, +40.0f)), 1.0);
+
         m_meshHandles.push_back(meshHandle);
     }
 
@@ -71,7 +74,7 @@ void RocketScience::shutdown(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void RocketScience::update(Platform &platform, double deltaTimeInS)
 {
-    // FIXME(MARTINMO): Add keyboard input to platform abstraction (remove dependency to SDL)
+    // FIXME(martinmo): Add keyboard input to platform abstraction (remove dependency to SDL)
     const Uint8 *state = SDL_GetKeyboardState(NULL);
 
     double horizontalRotationInDeg = 0.0f;
@@ -85,12 +88,12 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
     if (state[SDL_SCANCODE_S]) translationInM -= deltaTimeInS * 20.0;
 
     Renderer::Camera::Info *camera;
-    platform.stateDb.state(Renderer::Camera::Info::STATE, m_cameraHandle, &camera);
+    platform.stateDb.refState(Renderer::Camera::Info::STATE, m_cameraHandle, &camera);
 
     glm::fvec3 cameraDir = (camera->target - camera->position).xyz();
 
     // Vertical rotation axis in world space
-    // FIXME(MARTINMO): Correctly handle near +/- 90 deg
+    // FIXME(martinmo): Correctly handle near +/- 90 deg cases
     glm::fvec3 verticalRotationAxis = cameraDir;
     std::swap(verticalRotationAxis.x, verticalRotationAxis.y);
     verticalRotationAxis.y = -verticalRotationAxis.y;
@@ -127,7 +130,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 
         u64 rigidBodyHandle = platform.stateDb.createObject(Physics::RigidBody::TYPE);
         Physics::RigidBody::Info *rigidBodyInfo;
-        platform.stateDb.state(Physics::RigidBody::Info::STATE, rigidBodyHandle, &rigidBodyInfo);
+        platform.stateDb.refState(Physics::RigidBody::Info::STATE, rigidBodyHandle, &rigidBodyInfo);
         rigidBodyInfo->meshObjectHandle = meshHandle;
 
         m_rigidBodyByMeshHandle[meshHandle] = rigidBodyHandle;

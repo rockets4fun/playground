@@ -174,16 +174,16 @@ void Physics::shutdown(Platform &platform)
 void Physics::update(Platform &platform, double deltaTimeInS)
 {
     RigidBody::Info *info, *infoBegin, *infoEnd;
-    platform.stateDb.fullState(RigidBody::Info::STATE, &infoBegin, &infoEnd);
+    platform.stateDb.refStateAll(RigidBody::Info::STATE, &infoBegin, &infoEnd);
     RigidBody::PrivateInfo *privateInfo, *privateInfoBegin;
-    platform.stateDb.fullState(RigidBody::PrivateInfo::STATE, &privateInfoBegin);
+    platform.stateDb.refStateAll(RigidBody::PrivateInfo::STATE, &privateInfoBegin);
 
     // Check for newly created rigid bodies
     for (info = infoBegin, privateInfo = privateInfoBegin;
          info != infoEnd; ++info, ++privateInfo)
     {
         Renderer::Mesh::Info *meshInfo;
-        platform.stateDb.state(Renderer::Mesh::Info::STATE, info->meshObjectHandle, &meshInfo);
+        platform.stateDb.refState(Renderer::Mesh::Info::STATE, info->meshObjectHandle, &meshInfo);
         if (!privateInfo->rigidBody)
         {
             u64 objectHandle = platform.stateDb.objectHandleFromElem(
@@ -201,14 +201,14 @@ void Physics::update(Platform &platform, double deltaTimeInS)
     for (info = infoBegin, privateInfo = privateInfoBegin;
          info != infoEnd; ++info, ++privateInfo)
     {
-        // TODO(MARTINMO): Delete rigid bodies with bad mesh references?
-        // TODO(MARTINMO): (e.g. mesh has been destroyed and rigid body still alive)
+        // TODO(martinmo): Delete rigid bodies with bad mesh references?
+        // TODO(martinmo): (e.g. mesh has been destroyed and rigid body still alive)
         if (!platform.stateDb.isObjectHandleValid(info->meshObjectHandle))
         {
             continue;
         }
         Renderer::Mesh::Info *meshInfo;
-        platform.stateDb.state(Renderer::Mesh::Info::STATE, info->meshObjectHandle, &meshInfo);
+        platform.stateDb.refState(Renderer::Mesh::Info::STATE, info->meshObjectHandle, &meshInfo);
         btTransform worldTrans;
         privateInfo->rigidBody->motionState->getWorldTransform(worldTrans);
         btVector3 origin = worldTrans.getOrigin();

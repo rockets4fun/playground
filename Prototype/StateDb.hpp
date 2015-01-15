@@ -34,7 +34,7 @@ struct StateDb
     u64 objectHandleFromElem(u64 stateId, void *elem);
 
     template< class ElementType >
-    void state(u64 stateId, u64 objectHandle, ElementType **elem)
+    void refState(u64 stateId, u64 objectHandle, ElementType **elem)
     {
         COMMON_ASSERT(isStateIdValid(stateId));
         State &state = m_states[stateId];
@@ -50,7 +50,7 @@ struct StateDb
     }
 
     template< class ElementType >
-    void fullState(u64 stateId, ElementType **begin, ElementType **end = nullptr)
+    void refStateAll(u64 stateId, ElementType **begin, ElementType **end = nullptr)
     {
         COMMON_ASSERT(isStateIdValid(stateId));
         State &state = m_states[stateId];
@@ -85,7 +85,7 @@ private:
         std::string name;
         u64 id;
         u64 elemSize;
-        // TODO(MARTINMO): Add version info here for protocol/struct changes
+        // TODO(martinmo): Add version info here for protocol/struct changes
     };
 
     std::map< std::string, u64 > m_typeIdsByName;

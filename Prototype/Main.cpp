@@ -35,7 +35,7 @@ int main(int argc, char *argv[])
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 #endif
 
-    // TODO(MARTINMO): Implement properly resizable window (propagate to renderer)
+    // TODO(martinmo): Implement properly resizable window (propagate to renderer)
     SDL_Window *window = SDL_CreateWindow("RocketScience Prototype",
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
         640, 480, SDL_WINDOW_OPENGL);
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
             if (!module->initialize(platform))
             {
                 SDL_Log("ERROR: Failed to initialize module");
-                // FIXME(MARTINMO): Call shutdown of modules already initilized
+                // FIXME(martinmo): Shutdown modules already initilized
                 return EXIT_FAILURE;
             }
         }
