@@ -8,6 +8,7 @@
 
 #include "Common.hpp"
 
+#include <memory>
 #include <map>
 #include <vector>
 
@@ -49,10 +50,14 @@ struct Assets
     const Model *refModel(u32 hash);
 
 private:
+    struct PrivateState;
+
+    std::shared_ptr< PrivateState > m_privateState;
+
     std::map< u32, Info > m_assetInfos;
     std::map< u32, Model > m_models;
 
-    static bool loadModel(Info &info, Model &model);
+    static bool loadModel(PrivateState &privateState, Info &info, Model &model);
 
     u32 krHash(const char *data, size_t size);
 

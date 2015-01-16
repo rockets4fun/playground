@@ -18,6 +18,7 @@
 
 #include "Platform.hpp"
 #include "StateDb.hpp"
+#include "Assets.hpp"
 
 // Include file containing all OpenGL declarations and definitions
 // --> This will never be included outside of this class
@@ -72,6 +73,14 @@ struct Renderer::GlFuncs
 };
 
 // Declared here because we do not want to expose OpenGL implementation details in header
+struct Renderer::GlMesh
+{
+    GLuint positionsVbo = 0;
+    GLuint normalsVbo = 0;
+    GLsizei vertexCount = 0;
+};
+
+// Declared here because we do not want to expose OpenGL implementation details in header
 struct Renderer::GlState
 {
     GLuint defVs = 0;
@@ -82,12 +91,14 @@ struct Renderer::GlState
     GLint defProgUniformProjectionMatrix;
 
     GLint defProgAttribPosition;
-    GLint defProgAttribColor;
+    GLint defProgAttribNormal;
 
     GLuint defVao = 0;
 
-    GLuint cubePosVbo;
-    GLuint cubeColVbo;
+    GLuint cubePositionsVbo;
+    GLuint cubeNormalsVbo;
+
+    std::map< u32, GlMesh > meshes;
 };
 
 // Declared here because we do not want to expose OpenGL implementation details in header
@@ -245,13 +256,13 @@ bool Renderer::initialize(Platform &platform)
         "uniform mat4 ProjectionMatrix;\n"
         "\n"
         "in vec4 Position;\n"
-        "in vec4 Color;\n"
+        "in vec4 Normal;\n"
         "\n"
         "out vec4 vertexColor;\n"
         "\n"
         "void main()\n"
         "{\n"
-        "   vertexColor = Color;\n"
+        "   vertexColor = abs(Normal);\n"
         "   gl_Position = ProjectionMatrix * ModelViewMatrix * vec4(Position.xyz, 1.0);\n"
         "}\n";
     helpers->createAndCompileShader(state->defVs, GL_VERTEX_SHADER, defVsSrc);
@@ -265,7 +276,7 @@ bool Renderer::initialize(Platform &platform)
         "\n"
         "void main()\n"
         "{\n"
-        "    float scale = gl_FrontFacing ? 1.0 : 0.5;\n"
+        "    float scale = 1;//gl_FrontFacing ? 1.0 : 0.5;\n"
         "    fragmentColor = vec4(vertexColor.rgb * scale, 1.0);\n"
         "}\n";
     helpers->createAndCompileShader(state->defFs, GL_FRAGMENT_SHADER, defFsSrc);
@@ -286,8 +297,8 @@ bool Renderer::initialize(Platform &platform)
 
     state->defProgAttribPosition =
         funcs->glGetAttribLocation(state->defProg, "Position");
-    state->defProgAttribColor =
-        funcs->glGetAttribLocation(state->defProg, "Color");
+    state->defProgAttribNormal =
+        funcs->glGetAttribLocation(state->defProg, "Normal");
 
     funcs->glUseProgram(state->defProg);
 
@@ -317,23 +328,23 @@ bool Renderer::initialize(Platform &platform)
         -0.5f, -0.5f, +0.5f, +0.5f, +0.5f, +0.5f, -0.5f, +0.5f, +0.5f,
         -0.5f, -0.5f, +0.5f, +0.5f, -0.5f, +0.5f, +0.5f, +0.5f, +0.5f,
     };
-    float cubeColors[] =
+    float cubeNormals[] =
     {
         // West -X (red)
-        +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f,
-        +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f,
+        -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
+        -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
         // East +X (red)
         +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f,
         +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f,
         // South -Y (green)
-         0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,
-         0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,
+         0.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,
+         0.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,
         // North +Y (green)
          0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,
          0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,
         // Bottom -Z (blue)
-         0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,
-         0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,
+         0.0f,  0.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f, -1.0f,
+         0.0f,  0.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f, -1.0f,
         // Top +Z (blue)
          0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,
          0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,
@@ -341,13 +352,13 @@ bool Renderer::initialize(Platform &platform)
 
     // Create cube VBOs and define data
 
-    funcs->glGenBuffers(1, &state->cubePosVbo);
-    funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubePosVbo);
+    funcs->glGenBuffers(1, &state->cubePositionsVbo);
+    funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubePositionsVbo);
     funcs->glBufferData(GL_ARRAY_BUFFER, sizeof(cubePositions), cubePositions, GL_STATIC_DRAW);
 
-    funcs->glGenBuffers(1, &state->cubeColVbo);
-    funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubeColVbo);
-    funcs->glBufferData(GL_ARRAY_BUFFER, sizeof(cubeColors), cubeColors, GL_STATIC_DRAW);
+    funcs->glGenBuffers(1, &state->cubeNormalsVbo);
+    funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubeNormalsVbo);
+    funcs->glBufferData(GL_ARRAY_BUFFER, sizeof(cubeNormals), cubeNormals, GL_STATIC_DRAW);
 
     funcs->glClearColor(0.15f, 0.15f, 0.15f, 1.0);
     funcs->glEnable(GL_DEPTH_TEST);
@@ -358,14 +369,22 @@ bool Renderer::initialize(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void Renderer::shutdown(Platform &platform)
 {
-    if (state->cubeColVbo) funcs->glDeleteBuffers(1, &state->cubeColVbo);
-    if (state->cubePosVbo) funcs->glDeleteBuffers(1, &state->cubePosVbo);
+    if (state->cubeNormalsVbo) funcs->glDeleteBuffers(1, &state->cubeNormalsVbo);
+    if (state->cubePositionsVbo) funcs->glDeleteBuffers(1, &state->cubePositionsVbo);
 
     if (state->defVao) funcs->glDeleteVertexArrays(1, &state->defVao);
 
     if (state->defProg) funcs->glDeleteProgram(state->defProg);
     if (state->defFs) funcs->glDeleteShader(state->defFs);
     if (state->defVs) funcs->glDeleteShader(state->defVs);
+
+    for (auto &meshIter : state->meshes)
+    {
+        // After restructuring 'meshes' into several vectors we could
+        // actually use 'glDeleteBuffers' SIMD style...
+        if (meshIter.second.positionsVbo) funcs->glDeleteBuffers(1, &meshIter.second.positionsVbo);
+        if (meshIter.second.normalsVbo)   funcs->glDeleteBuffers(1, &meshIter.second.normalsVbo);
+    }
 
     helpers = std::make_shared< GlHelpers >(funcs.get());
     state = std::make_shared< GlState >();
@@ -391,29 +410,48 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
             cameraInfo->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
     }
 
-    // NOTE(MARTINMO): Vertex attribute assignments are stored inside the bound VAO
-    // NOTE(MARTINMO): --> Think about creating one VAO per renderable mesh
-    funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubePosVbo);
-    funcs->glVertexAttribPointer(state->defProgAttribPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    funcs->glEnableVertexAttribArray(state->defProgAttribPosition);
-    funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubeColVbo);
-    funcs->glVertexAttribPointer(state->defProgAttribColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
-    funcs->glEnableVertexAttribArray(state->defProgAttribColor);
-
     glm::fmat4 model, modelView;
 
-    // Pseudo-instanced rendering of meshes as cubes
+    // Pseudo-instanced rendering of meshes
     Mesh::Info *meshBegin, *meshEnd;
     platform.stateDb.refStateAll(Mesh::Info::STATE, &meshBegin, &meshEnd);
     for (Mesh::Info *mesh = meshBegin; mesh != meshEnd; ++mesh)
     {
+        GlMesh &glMesh = state->meshes[mesh->modelAsset];
+        if (!glMesh.positionsVbo)
+        {
+            const Assets::Model *model = platform.assets.refModel(mesh->modelAsset);
+            COMMON_ASSERT(model);
+            if (!model->positions.empty())
+            {
+                funcs->glGenBuffers(1, &glMesh.positionsVbo);
+                funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh.positionsVbo);
+                funcs->glBufferData(GL_ARRAY_BUFFER, model->positions.size() * sizeof(float),
+                    &model->positions[0], GL_STATIC_DRAW);
+                funcs->glGenBuffers(1, &glMesh.normalsVbo);
+                funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh.normalsVbo);
+                funcs->glBufferData(GL_ARRAY_BUFFER, model->normals.size() * sizeof(float),
+                    &model->normals[0], GL_STATIC_DRAW);
+                glMesh.vertexCount = GLsizei(model->positions.size() / 3);
+            }
+        }
+
+        // NOTE(MARTINMO): Vertex attribute assignments are stored inside the bound VAO
+        // NOTE(MARTINMO): --> Think about creating one VAO per renderable mesh
+        funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh.positionsVbo);
+        funcs->glVertexAttribPointer(state->defProgAttribPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
+        funcs->glEnableVertexAttribArray(state->defProgAttribPosition);
+        funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh.normalsVbo);
+        funcs->glVertexAttribPointer(state->defProgAttribNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
+        funcs->glEnableVertexAttribArray(state->defProgAttribNormal);
+
         model = glm::translate(glm::fmat4(), mesh->translation.xyz());
         model = model * glm::mat4_cast(mesh->rotation);
         modelView = view * model;
         funcs->glUniformMatrix4fv(
             state->defProgUniformModelViewMatrix, 1, GL_FALSE, glm::value_ptr(modelView));
-        // Draw 36 vertices (6 faces x 2 triangles x 3 vertices)
-        funcs->glDrawArrays(GL_TRIANGLES, 0, 36);
+
+        funcs->glDrawArrays(GL_TRIANGLES, 0, glMesh.vertexCount);
     }
 }
 

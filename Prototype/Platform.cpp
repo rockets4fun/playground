@@ -9,8 +9,8 @@
 #include "Renderer.hpp"
 
 // -------------------------------------------------------------------------------------------------
-Platform::Platform(StateDb &stateDb, Renderer &renderer) :
-    stateDb(stateDb), renderer(renderer)
+Platform::Platform(StateDb &stateDb, Assets &assets, Renderer &renderer) :
+    stateDb(stateDb), assets(assets), renderer(renderer)
 {
 }
 

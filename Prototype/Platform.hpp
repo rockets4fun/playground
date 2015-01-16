@@ -10,16 +10,18 @@
 
 struct StateDb;
 struct Renderer;
+struct Assets;
 
 // -------------------------------------------------------------------------------------------------
 /// @brief Platform abstraction
 struct Platform
 {
-    Platform(StateDb &stateDb, Renderer &renderer);
+    Platform(StateDb &stateDb, Assets &assets, Renderer &renderer);
     virtual ~Platform();
 
 public:
     StateDb &stateDb;
+    Assets &assets;
     Renderer &renderer;
 
 private:

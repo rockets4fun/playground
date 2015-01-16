@@ -12,6 +12,8 @@
 
 #include "Platform.hpp"
 #include "StateDb.hpp"
+#include "Assets.hpp"
+
 #include "Renderer.hpp"
 #include "Physics.hpp"
 
@@ -52,6 +54,19 @@ bool RocketScience::initialize(Platform &platform)
         platform.stateDb.refState(Renderer::Mesh::Info::STATE, meshHandle, &mesh);
         mesh->translation = glm::fvec4(glm::linearRand(
             glm::fvec3(-20.0f, -20.0f, 0.0f), glm::fvec3(+20.0f, +20.0f, +40.0f)), 1.0);
+
+        if (rand() % 9 > 5)
+        {
+            mesh->modelAsset = platform.assets.asset("Assets/Cube.obj");
+        }
+        else if (rand() % 9 > 2)
+        {
+            mesh->modelAsset = platform.assets.asset("Assets/Sphere.obj");
+        }
+        else
+        {
+            mesh->modelAsset = platform.assets.asset("Assets/Torus.obj");
+        }
 
         m_meshHandles.push_back(meshHandle);
     }

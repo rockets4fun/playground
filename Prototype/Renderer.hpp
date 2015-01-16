@@ -27,7 +27,7 @@ struct Renderer : public ModuleIf
             static u64 STATE;
             glm::fvec4 translation;
             glm::fquat rotation;
-            u64 meshId = 0;
+            u32 modelAsset = 0;
         };
     };
 
@@ -68,6 +68,7 @@ public: // Implementation of module interface
 
 private:
     struct GlFuncs;
+    struct GlMesh;
     struct GlState;
     struct GlHelpers;
 

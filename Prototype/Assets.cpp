@@ -7,15 +7,23 @@
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
+#include <assimp/postprocess.h>
+
+struct Assets::PrivateState
+{
+    Assimp::Importer importer;
+};
 
 // -------------------------------------------------------------------------------------------------
 Assets::Assets()
 {
+    m_privateState = std::make_shared< PrivateState >();
 }
 
 // -------------------------------------------------------------------------------------------------
 Assets::~Assets()
 {
+    m_privateState = nullptr;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -66,7 +74,7 @@ const Assets::Model *Assets::refModel(u32 hash)
     if (info.type == Info::Type::UNDEFINED)
     {
         // This function triggers a load only the first time it touches an asset
-        if (loadModel(info, model))
+        if (loadModel(*m_privateState.get(), info, model))
         {
             ++info.version;
         }
@@ -80,6 +88,49 @@ const Assets::Model *Assets::refModel(u32 hash)
 }
 
 // -------------------------------------------------------------------------------------------------
+bool Assets::loadModel(PrivateState &privateState, Info &info, Model &model)
+{
+    model.positions.clear();
+    model.normals.clear();
+
+    const aiScene *scene = privateState.importer.ReadFile(info.name, aiProcess_Triangulate);
+    if (!scene)
+    {
+        // FIXME(martinmo): Proper error message through platform abstraction
+        return false;
+    }
+
+    // Iterate over all faces of all meshes and append data
+    for (size_t meshIdx = 0; meshIdx < scene->mNumMeshes; ++meshIdx)
+    {
+        const aiMesh *mesh = scene->mMeshes[meshIdx];
+        // TODO(martinmo): Support more than just triangles...
+        if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
+        {
+            continue;
+        }
+        for (size_t faceIdx = 0; faceIdx < mesh->mNumFaces; ++faceIdx)
+        {
+            const aiFace *face = &mesh->mFaces[faceIdx];
+            for (size_t idx = 0; idx < face->mNumIndices; ++idx)
+            {
+                model.positions.push_back(mesh->mVertices[face->mIndices[idx]].x);
+                model.positions.push_back(mesh->mVertices[face->mIndices[idx]].y);
+                model.positions.push_back(mesh->mVertices[face->mIndices[idx]].z);
+                model.normals.push_back(mesh->mNormals[face->mIndices[idx]].x);
+                model.normals.push_back(mesh->mNormals[face->mIndices[idx]].y);
+                model.normals.push_back(mesh->mNormals[face->mIndices[idx]].z);
+            }
+        }
+    }
+
+    COMMON_ASSERT(model.normals.size() == model.positions.size());
+    COMMON_ASSERT(model.positions.size() % 3 == 0);
+
+    return true;
+}
+
+// -------------------------------------------------------------------------------------------------
 u32 Assets::krHash(const char *data, size_t size)
 {
     // Kernigan & Ritchie "The C Programming Language" hash
@@ -88,19 +139,5 @@ u32 Assets::krHash(const char *data, size_t size)
     {
         hash = (hash * 131 + *data++) & 0xffffffff;
     }
-    return hash;
-}
-
-// -------------------------------------------------------------------------------------------------
-bool Assets::loadModel(Info &info, Model &model)
-{
-    Assimp::Importer importer;
-    const aiScene *scene = importer.ReadFile(info.name, 0);
-    if (!scene)
-    {
-        // FIXME(martinmo): Proper error message through platform abstraction
-        return false;
-    }
-
-    return true;
+    return hash == 0 ? 1 : hash;
 }

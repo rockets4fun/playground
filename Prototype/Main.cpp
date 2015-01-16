@@ -11,6 +11,7 @@
 #include <SDL.h>
 
 #include "StateDb.hpp"
+#include "Assets.hpp"
 #include "Platform.hpp"
 
 #include "Renderer.hpp"
@@ -58,7 +59,9 @@ int main(int argc, char *argv[])
         RocketScience rocketScience;
 
         StateDb stateDb;
-        Platform platform(stateDb, renderer);
+        Assets assets;
+
+        Platform platform(stateDb, assets, renderer);
 
         std::vector< ModuleIf * > modules = { &renderer, &physics, &rocketScience };
         std::vector< ModuleIf * > reverseModules = modules;
