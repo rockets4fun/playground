@@ -12,6 +12,8 @@
 #include <map>
 #include <vector>
 
+#include <glm/glm.hpp>
+
 // -------------------------------------------------------------------------------------------------
 /// @brief Application assets handling
 struct Assets
@@ -29,11 +31,20 @@ struct Assets
         u32 version = 0;
     };
 
+    struct SubMeshInfo
+    {
+        std::string name;
+        u64 triangleOffset = 0;
+        u64 triangleCount = 0;
+    };
+
     struct Model
     {
         // Positions and normals for triangle vertices
-        std::vector< float > positions;
-        std::vector< float > normals;
+        std::vector< glm::fvec3 > positions;
+        std::vector< glm::fvec3 > normals;
+
+        std::vector< SubMeshInfo > subMeshes;
 
         // TODO(martinmo): Think about restructuring into meshes storing
         // TODO(martinmo): - Separate name and hash

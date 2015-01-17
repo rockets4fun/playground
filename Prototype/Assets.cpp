@@ -17,6 +17,8 @@ struct Assets::PrivateState
 // -------------------------------------------------------------------------------------------------
 Assets::Assets()
 {
+    COMMON_ASSERT(sizeof(glm::fvec3) == 3 * sizeof(float));
+
     m_privateState = std::make_shared< PrivateState >();
 }
 
@@ -101,6 +103,7 @@ bool Assets::loadModel(PrivateState &privateState, Info &info, Model &model)
     }
 
     // Iterate over all faces of all meshes and append data
+    u64 prevTriangleCount = 0;
     for (size_t meshIdx = 0; meshIdx < scene->mNumMeshes; ++meshIdx)
     {
         const aiMesh *mesh = scene->mMeshes[meshIdx];
@@ -114,14 +117,24 @@ bool Assets::loadModel(PrivateState &privateState, Info &info, Model &model)
             const aiFace *face = &mesh->mFaces[faceIdx];
             for (size_t idx = 0; idx < face->mNumIndices; ++idx)
             {
-                model.positions.push_back(mesh->mVertices[face->mIndices[idx]].x);
-                model.positions.push_back(mesh->mVertices[face->mIndices[idx]].y);
-                model.positions.push_back(mesh->mVertices[face->mIndices[idx]].z);
-                model.normals.push_back(mesh->mNormals[face->mIndices[idx]].x);
-                model.normals.push_back(mesh->mNormals[face->mIndices[idx]].y);
-                model.normals.push_back(mesh->mNormals[face->mIndices[idx]].z);
+                model.positions.push_back(glm::fvec3(
+                    mesh->mVertices[face->mIndices[idx]].x,
+                    mesh->mVertices[face->mIndices[idx]].y,
+                    mesh->mVertices[face->mIndices[idx]].z));
+                model.normals.push_back(glm::fvec3(
+                    mesh->mNormals[face->mIndices[idx]].x,
+                    mesh->mNormals[face->mIndices[idx]].y,
+                    mesh->mNormals[face->mIndices[idx]].z));
             }
         }
+
+        u64 triangleCount = model.positions.size() / 3;
+        SubMeshInfo subMesh;
+        subMesh.name = mesh->mName.C_Str();
+        subMesh.triangleOffset = prevTriangleCount;
+        subMesh.triangleCount = triangleCount - prevTriangleCount;
+        prevTriangleCount = triangleCount;
+        model.subMeshes.push_back(subMesh);
     }
 
     COMMON_ASSERT(model.normals.size() == model.positions.size());
