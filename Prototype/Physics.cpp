@@ -11,8 +11,10 @@
 
 #include <btBulletDynamicsCommon.h>
 
-#include "Platform.hpp"
 #include "StateDb.hpp"
+#include "Assets.hpp"
+
+#include "Platform.hpp"
 #include "Renderer.hpp"
 
 struct Physics::PrivateRigidBody
@@ -27,7 +29,7 @@ struct Physics::PrivateRigidBody
     virtual ~PrivateRigidBody();
 
     void initialize(u64 objectHandle, Physics::RigidBody::Info *info,
-        Renderer::Mesh::Info *meshInfo);
+        Renderer::Mesh::Info *meshInfo, const Assets::Model *model);
 };
 
 struct Physics::PrivateState
@@ -44,6 +46,8 @@ struct Physics::PrivateState
     std::shared_ptr< btRigidBody > groundRigidBody;
 
     std::shared_ptr< btCollisionShape > cubeShape;
+
+    std::map< u64, std::shared_ptr< btCollisionShape > > collisionShapes;
 
     std::list< PrivateRigidBody > rigidBodies;
 };
@@ -74,14 +78,60 @@ Physics::PrivateRigidBody::~PrivateRigidBody()
 }
 
 // -------------------------------------------------------------------------------------------------
-void Physics::PrivateRigidBody::initialize(u64 objectHandle,
-    Physics::RigidBody::Info *info, Renderer::Mesh::Info *meshInfo)
+void Physics::PrivateRigidBody::initialize(
+    u64 objectHandle, Physics::RigidBody::Info *info,
+    Renderer::Mesh::Info *meshInfo, const Assets::Model *model)
 {
     this->objectHandle = objectHandle;
 
+    btCollisionShape *collisionShape = nullptr;
+    u64 collisionShapeKey = u64(info->collisionShapeType) << 32 | u64(meshInfo->modelAsset);
+
+    // TODO(martinmo): Find way to get rid of map lookup
+    auto collisionShapeIter = state.collisionShapes.find(collisionShapeKey);
+    if (collisionShapeIter == state.collisionShapes.end())
+    {
+        COMMON_ASSERT(model != nullptr);
+        glm::fvec3 min(
+            std::numeric_limits< float >::max(),
+            std::numeric_limits< float >::max(),
+            std::numeric_limits< float >::max());
+        glm::fvec3 max(
+            std::numeric_limits< float >::lowest(),
+            std::numeric_limits< float >::lowest(),
+            std::numeric_limits< float >::lowest());
+        for (const auto &position : model->positions)
+        {
+            min = glm::min(min, position);
+            max = glm::max(max, position);
+        }
+        glm::fvec3 halfExtent = 0.5f * (max - min);
+        if (info->collisionShapeType == Physics::RigidBody::Info::BOUNDING_BOX)
+        {
+            collisionShape = new btBoxShape(btVector3(halfExtent.x, halfExtent.y, halfExtent.z));
+        }
+        else if (info->collisionShapeType == Physics::RigidBody::Info::BOUNDING_SPHERE)
+        {
+            collisionShape = new btSphereShape(glm::length(halfExtent));
+        }
+        if (collisionShape)
+        {
+            state.collisionShapes[collisionShapeKey] = std::shared_ptr< btCollisionShape >(collisionShape);
+        }
+        else
+        {
+            // TODO(martinmo): Collision shape fallback warning?
+            collisionShape = state.cubeShape.get();
+        }
+    }
+    else
+    {
+        collisionShape = collisionShapeIter->second.get();
+    }
+
     btScalar mass = 20;
     btVector3 inertia(0, 0, 0);
-    state.cubeShape->calculateLocalInertia(mass, inertia);
+    collisionShape->calculateLocalInertia(mass, inertia);
 
     // Make sure rotation is a sane value
     if (glm::abs(1.0f - meshInfo->rotation.length()) > 0.1)
@@ -96,12 +146,11 @@ void Physics::PrivateRigidBody::initialize(u64 objectHandle,
     motionState = std::make_shared< btDefaultMotionState >(btTransform(rotation, translation));
 
     btRigidBody::btRigidBodyConstructionInfo rbConstructionInfo(
-        mass, motionState.get(), state.cubeShape.get(), inertia);
+        mass, motionState.get(), collisionShape, inertia);
     rbConstructionInfo.m_restitution = btScalar(0.5);
-    rbConstructionInfo.m_friction    = btScalar(0.8);
-
+    rbConstructionInfo.m_friction = btScalar(0.8);
+    rbConstructionInfo.m_rollingFriction = btScalar(0.8);
     rigidBody = std::make_shared< btRigidBody >(rbConstructionInfo);
-
     state.dynamicsWorld->addRigidBody(rigidBody.get());
 }
 
@@ -150,7 +199,8 @@ bool Physics::initialize(Platform &platform)
         btRigidBody::btRigidBodyConstructionInfo groundRigidBodyCI(0,
             state->groundMotionState.get(), state->groundShape.get(), btVector3(0, 0, 0));
         groundRigidBodyCI.m_restitution = btScalar(0.5);
-        groundRigidBodyCI.m_friction    = btScalar(0.8);
+        groundRigidBodyCI.m_friction = btScalar(0.8);
+        groundRigidBodyCI.m_rollingFriction = btScalar(0.8);
         state->groundRigidBody = std::make_shared< btRigidBody >(groundRigidBodyCI);
         state->dynamicsWorld->addRigidBody(state->groundRigidBody.get());
     }
@@ -183,14 +233,17 @@ void Physics::update(Platform &platform, double deltaTimeInS)
          info != infoEnd; ++info, ++privateInfo)
     {
         Renderer::Mesh::Info *meshInfo;
-        platform.stateDb.refState(Renderer::Mesh::Info::STATE, info->meshObjectHandle, &meshInfo);
+        platform.stateDb.refState(Renderer::Mesh::Info::STATE, info->meshHandle, &meshInfo);
         if (!privateInfo->rigidBody)
         {
             u64 objectHandle = platform.stateDb.objectHandleFromElem(
                 Physics::RigidBody::Info::STATE, info);
             state->rigidBodies.push_back(PrivateRigidBody(*state.get()));
             PrivateRigidBody *rigidBody = &state->rigidBodies.back();
-            rigidBody->initialize(objectHandle, info, meshInfo);
+
+            const Assets::Model *model = platform.assets.refModel(meshInfo->modelAsset);
+            rigidBody->initialize(objectHandle, info, meshInfo, model);
+
             privateInfo->rigidBody = rigidBody;
         }
     }
@@ -203,12 +256,12 @@ void Physics::update(Platform &platform, double deltaTimeInS)
     {
         // TODO(martinmo): Delete rigid bodies with bad mesh references?
         // TODO(martinmo): (e.g. mesh has been destroyed and rigid body still alive)
-        if (!platform.stateDb.isObjectHandleValid(info->meshObjectHandle))
+        if (!platform.stateDb.isObjectHandleValid(info->meshHandle))
         {
             continue;
         }
         Renderer::Mesh::Info *meshInfo;
-        platform.stateDb.refState(Renderer::Mesh::Info::STATE, info->meshObjectHandle, &meshInfo);
+        platform.stateDb.refState(Renderer::Mesh::Info::STATE, info->meshHandle, &meshInfo);
         btTransform worldTrans;
         privateInfo->rigidBody->motionState->getWorldTransform(worldTrans);
         btVector3 origin = worldTrans.getOrigin();

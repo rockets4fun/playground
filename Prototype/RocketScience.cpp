@@ -10,14 +10,14 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/random.hpp>
 
+#include <SDL.h>
+
 #include "Platform.hpp"
 #include "StateDb.hpp"
 #include "Assets.hpp"
 
 #include "Renderer.hpp"
 #include "Physics.hpp"
-
-#include <SDL.h>
 
 // -------------------------------------------------------------------------------------------------
 RocketScience::RocketScience()
@@ -143,10 +143,19 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
             meshHandle = m_meshHandles[rand() % m_meshHandles.size()];
         }
 
+        Renderer::Mesh::Info *mesh;
+        platform.stateDb.refState(Renderer::Mesh::Info::STATE, meshHandle, &mesh);
+
         u64 rigidBodyHandle = platform.stateDb.createObject(Physics::RigidBody::TYPE);
         Physics::RigidBody::Info *rigidBodyInfo;
         platform.stateDb.refState(Physics::RigidBody::Info::STATE, rigidBodyHandle, &rigidBodyInfo);
-        rigidBodyInfo->meshObjectHandle = meshHandle;
+
+        rigidBodyInfo->meshHandle = meshHandle;
+        if (mesh->modelAsset == platform.assets.asset("Assets/Sphere.obj"))
+        {
+            rigidBodyInfo->collisionShapeType =
+                Physics::RigidBody::Info::CollisionShapeType::BOUNDING_SPHERE;
+        }
 
         m_rigidBodyByMeshHandle[meshHandle] = rigidBodyHandle;
     }
