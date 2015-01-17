@@ -417,6 +417,7 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     platform.stateDb.refStateAll(Mesh::Info::STATE, &meshBegin, &meshEnd);
     for (Mesh::Info *mesh = meshBegin; mesh != meshEnd; ++mesh)
     {
+        // TODO(MARTINMO): Replace map by array and store index in mesh private state
         GlMesh &glMesh = state->meshes[mesh->modelAsset];
         if (!glMesh.positionsVbo)
         {
@@ -426,18 +427,20 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
             {
                 funcs->glGenBuffers(1, &glMesh.positionsVbo);
                 funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh.positionsVbo);
-                funcs->glBufferData(GL_ARRAY_BUFFER, model->positions.size() * sizeof(float),
-                    &model->positions[0], GL_STATIC_DRAW);
+                funcs->glBufferData(GL_ARRAY_BUFFER,
+                    model->positions.size() * sizeof(glm::fvec3),
+                    &model->positions[0].x, GL_STATIC_DRAW);
                 funcs->glGenBuffers(1, &glMesh.normalsVbo);
                 funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh.normalsVbo);
-                funcs->glBufferData(GL_ARRAY_BUFFER, model->normals.size() * sizeof(float),
-                    &model->normals[0], GL_STATIC_DRAW);
-                glMesh.vertexCount = GLsizei(model->positions.size() / 3);
+                funcs->glBufferData(GL_ARRAY_BUFFER,
+                    model->normals.size() * sizeof(glm::fvec3),
+                    &model->normals[0].x, GL_STATIC_DRAW);
+                glMesh.vertexCount = GLsizei(model->positions.size());
             }
         }
 
-        // NOTE(MARTINMO): Vertex attribute assignments are stored inside the bound VAO
-        // NOTE(MARTINMO): --> Think about creating one VAO per renderable mesh
+        // Vertex attribute assignments are stored inside the bound VAO
+        // --> Think about creating one VAO per renderable mesh
         funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh.positionsVbo);
         funcs->glVertexAttribPointer(state->defProgAttribPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
         funcs->glEnableVertexAttribArray(state->defProgAttribPosition);
