@@ -20,6 +20,7 @@
 struct Physics::PrivateRigidBody
 {
     PrivateState &state;
+
     u64 objectHandle = 0;
 
     std::shared_ptr< btDefaultMotionState > motionState;
@@ -85,8 +86,8 @@ void Physics::PrivateRigidBody::initialize(
     this->objectHandle = objectHandle;
 
     btCollisionShape *collisionShape = nullptr;
-    u64 collisionShapeKey = u64(info->collisionShapeType) << 32 | u64(meshInfo->modelAsset);
 
+    u64 collisionShapeKey = u64(info->collisionShapeType) << 32 | u64(meshInfo->modelAsset);
     // TODO(martinmo): Find way to get rid of map lookup
     auto collisionShapeIter = state.collisionShapes.find(collisionShapeKey);
     if (collisionShapeIter == state.collisionShapes.end())
@@ -112,11 +113,13 @@ void Physics::PrivateRigidBody::initialize(
         }
         else if (info->collisionShapeType == Physics::RigidBody::Info::BOUNDING_SPHERE)
         {
-            collisionShape = new btSphereShape(glm::length(halfExtent));
+            collisionShape = new btSphereShape(glm::max(
+                glm::max(halfExtent.x, halfExtent.y), halfExtent.z));
         }
         if (collisionShape)
         {
-            state.collisionShapes[collisionShapeKey] = std::shared_ptr< btCollisionShape >(collisionShape);
+            state.collisionShapes[collisionShapeKey] =
+                std::shared_ptr< btCollisionShape >(collisionShape);
         }
         else
         {
@@ -129,11 +132,7 @@ void Physics::PrivateRigidBody::initialize(
         collisionShape = collisionShapeIter->second.get();
     }
 
-    btScalar mass = 20;
-    btVector3 inertia(0, 0, 0);
-    collisionShape->calculateLocalInertia(mass, inertia);
-
-    // Make sure rotation is a sane value
+    // Make sure initial rotation is a sane value
     if (glm::abs(1.0f - meshInfo->rotation.length()) > 0.1)
     {
         meshInfo->rotation = glm::fquat(1.0, 0.0, 0.0, 0.0);
@@ -145,12 +144,16 @@ void Physics::PrivateRigidBody::initialize(
         meshInfo->translation.x, meshInfo->translation.y, meshInfo->translation.z);
     motionState = std::make_shared< btDefaultMotionState >(btTransform(rotation, translation));
 
-    btRigidBody::btRigidBodyConstructionInfo rbConstructionInfo(
+    btScalar mass = 5;
+    btVector3 inertia(0, 0, 0);
+    collisionShape->calculateLocalInertia(mass, inertia);
+    btRigidBody::btRigidBodyConstructionInfo constructionInfo(
         mass, motionState.get(), collisionShape, inertia);
-    rbConstructionInfo.m_restitution = btScalar(0.5);
-    rbConstructionInfo.m_friction = btScalar(0.8);
-    rbConstructionInfo.m_rollingFriction = btScalar(0.8);
-    rigidBody = std::make_shared< btRigidBody >(rbConstructionInfo);
+    constructionInfo.m_restitution = btScalar(0.25);
+    constructionInfo.m_friction = btScalar(0.2);
+    constructionInfo.m_rollingFriction = btScalar(0.2);
+    rigidBody = std::make_shared< btRigidBody >(constructionInfo);
+    //rigidBody->setActivationState(DISABLE_DEACTIVATION);
     state.dynamicsWorld->addRigidBody(rigidBody.get());
 }
 
@@ -193,14 +196,14 @@ bool Physics::initialize(Platform &platform)
     state->dynamicsWorld->setGravity(btVector3(0, 0, -10));
 
     {
-        state->groundShape = std::make_shared< btStaticPlaneShape >(btVector3(0, 0, 1), 1.0f);
+        state->groundShape = std::make_shared< btStaticPlaneShape >(btVector3(0, 0, 1), 0.0f);
         state->groundMotionState = std::make_shared< btDefaultMotionState> (
-            btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, -1)));
+            btTransform(btQuaternion(0, 0, 0, 1), btVector3(0, 0, 0)));
         btRigidBody::btRigidBodyConstructionInfo groundRigidBodyCI(0,
-            state->groundMotionState.get(), state->groundShape.get(), btVector3(0, 0, 0));
-        groundRigidBodyCI.m_restitution = btScalar(0.5);
-        groundRigidBodyCI.m_friction = btScalar(0.8);
-        groundRigidBodyCI.m_rollingFriction = btScalar(0.8);
+            state->groundMotionState.get(), state->groundShape.get());
+        groundRigidBodyCI.m_restitution = btScalar(1.0);
+        groundRigidBodyCI.m_friction = btScalar(1.0);
+        groundRigidBodyCI.m_rollingFriction = btScalar(1.0);
         state->groundRigidBody = std::make_shared< btRigidBody >(groundRigidBodyCI);
         state->dynamicsWorld->addRigidBody(state->groundRigidBody.get());
     }
@@ -250,7 +253,13 @@ void Physics::update(Platform &platform, double deltaTimeInS)
 
     // Update rigid body physics simulation
     int internalSteps = state->dynamicsWorld->stepSimulation(
-        btScalar(deltaTimeInS), 10, btScalar(1.0 / 100.0));
+        btScalar(deltaTimeInS), 5, btScalar(1.0 / 60));
+
+    if (internalSteps >= 5)
+    {
+        int test = 0;
+    }
+
     for (info = infoBegin, privateInfo = privateInfoBegin;
          info != infoEnd; ++info, ++privateInfo)
     {
@@ -260,13 +269,17 @@ void Physics::update(Platform &platform, double deltaTimeInS)
         {
             continue;
         }
+
         Renderer::Mesh::Info *meshInfo;
         platform.stateDb.refState(Renderer::Mesh::Info::STATE, info->meshHandle, &meshInfo);
+
         btTransform worldTrans;
         privateInfo->rigidBody->motionState->getWorldTransform(worldTrans);
+
         btVector3 origin = worldTrans.getOrigin();
         meshInfo->translation =
             glm::fvec4(origin.x(), origin.y(), origin.z(), 1.0);
+
         btQuaternion rotation = worldTrans.getRotation();
         meshInfo->rotation =
             glm::fquat(rotation.w(), rotation.x(), rotation.y(), rotation.z());

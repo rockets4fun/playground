@@ -55,6 +55,9 @@ bool RocketScience::initialize(Platform &platform)
         mesh->translation = glm::fvec4(glm::linearRand(
             glm::fvec3(-20.0f, -20.0f, 0.0f), glm::fvec3(+20.0f, +20.0f, +40.0f)), 1.0);
 
+#if 0
+        mesh->modelAsset = platform.assets.asset("Assets/Pusher.obj");
+#else
         if (rand() % 9 > 5)
         {
             mesh->modelAsset = platform.assets.asset("Assets/Cube.obj");
@@ -67,6 +70,7 @@ bool RocketScience::initialize(Platform &platform)
         {
             mesh->modelAsset = platform.assets.asset("Assets/Torus.obj");
         }
+#endif
 
         m_meshHandles.push_back(meshHandle);
     }
