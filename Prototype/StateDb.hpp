@@ -39,11 +39,11 @@ struct StateDb
         COMMON_ASSERT(isObjectHandleValid(objectHandle));
 
         COMMON_ASSERT(isStateIdValid(stateId));
-        State &state = m_states[stateId];
+        const State &state = m_states[stateId];
         COMMON_ASSERT(objectHandle >> 48 == state.typeId);
 
         COMMON_ASSERT(state.elemSize == sizeof(ElementType));
-        Type &type = m_types[state.typeId];
+        const Type &type = m_types[state.typeId];
 
         *elem = (ElementType *)&m_stateValues[stateId][
             type.objectIdToIdx[objectHandle & 0xffffffff] * state.elemSize];
@@ -53,10 +53,10 @@ struct StateDb
     void refStateAll(u64 stateId, ElementType **begin, ElementType **end = nullptr)
     {
         COMMON_ASSERT(isStateIdValid(stateId));
-        State &state = m_states[stateId];
+        const State &state = m_states[stateId];
 
         COMMON_ASSERT(state.elemSize == sizeof(ElementType));
-        Type &type = m_types[state.typeId];
+        const Type &type = m_types[state.typeId];
 
         unsigned char *memoryBegin = &m_stateValues[stateId][state.elemSize];
         *begin = (ElementType *)memoryBegin;
@@ -67,9 +67,11 @@ struct StateDb
     }
 
     template< class ElementType >
-    u64 createObjectAndRefState(u64 typeId, u64 stateId, ElementType **elem)
+    u64 createObjectAndRefState(u64 stateId, ElementType **elem)
     {
-        u64 objectHandle = createObject(typeId);
+        COMMON_ASSERT(isStateIdValid(stateId));
+        const State &state = m_states[stateId];
+        u64 objectHandle = createObject(state.typeId);
         refState(stateId, objectHandle, elem);
         return objectHandle;
     }

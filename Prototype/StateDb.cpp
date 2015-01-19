@@ -81,7 +81,7 @@ bool StateDb::isStateIdValid(u64 stateId)
 // -------------------------------------------------------------------------------------------------
 u64 StateDb::stateIdByName(const std::string &name)
 {
-    std::map< std::string, u64 >::const_iterator foundState = m_stateIdsByName.find(name);
+    auto foundState = m_stateIdsByName.find(name);
     if (foundState == m_stateIdsByName.end())
     {
         return 0;
@@ -137,7 +137,7 @@ bool StateDb::isObjectHandleValid(u64 objectHandle)
     {
         return false;
     }
-    Type &type = m_types[typeId];
+    const Type &type = m_types[typeId];
     if (objectId < 1 || objectId > type.maxObjectCount)
     {
         return false;
@@ -207,8 +207,8 @@ void StateDb::destroyObject(u64 objectHandle)
 u64 StateDb::objectHandleFromElem(u64 stateId, void *elem)
 {
     COMMON_ASSERT(isStateIdValid(stateId));
-    State &state = m_states[stateId];
-    Type &type = m_types[state.typeId];
+    const State &state = m_states[stateId];
+    const Type &type = m_types[state.typeId];
 
     u64 offsetInB = (unsigned char *)elem - &m_stateValues[stateId][0];
     if (offsetInB % state.elemSize != 0)
