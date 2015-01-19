@@ -56,6 +56,12 @@ private:
 
     std::shared_ptr< PrivateState > state;
 
+    /*
+#ifndef NDEBUG
+    double m_nextPrintProfilingEventInS = 5.0;
+#endif
+    */
+
 private:
     COMMON_DISABLE_COPY(Physics);
 };

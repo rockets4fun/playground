@@ -19,6 +19,9 @@
 
 struct Physics::PrivateRigidBody
 {
+    // FIXME(martinmo): Member-variables of structs/classes with methods
+    // FIXME(martinmo): other than c'tor/d'tor should start with 'm_' prefix
+
     PrivateState &state;
 
     u64 objectHandle = 0;
@@ -51,6 +54,9 @@ struct Physics::PrivateState
     std::map< u64, std::shared_ptr< btCollisionShape > > collisionShapes;
 
     std::list< PrivateRigidBody > rigidBodies;
+
+    static void preTickCallback(btDynamicsWorld *world, btScalar timeStep);
+    void preTick(btScalar timeStep);
 };
 
 struct Physics::RigidBody::PrivateInfo
@@ -86,7 +92,6 @@ void Physics::PrivateRigidBody::initialize(
     this->objectHandle = objectHandle;
 
     btCollisionShape *collisionShape = nullptr;
-
     u64 collisionShapeKey = u64(info->collisionShapeType) << 32 | u64(meshInfo->modelAsset);
     // TODO(martinmo): Find way to get rid of map lookup
     auto collisionShapeIter = state.collisionShapes.find(collisionShapeKey);
@@ -132,6 +137,8 @@ void Physics::PrivateRigidBody::initialize(
         collisionShape = collisionShapeIter->second.get();
     }
 
+    // TODO(martinmo): Update collision shape if asset version changes
+
     // Make sure initial rotation is a sane value
     if (glm::abs(1.0f - meshInfo->rotation.length()) > 0.1)
     {
@@ -158,6 +165,23 @@ void Physics::PrivateRigidBody::initialize(
 }
 
 // -------------------------------------------------------------------------------------------------
+void Physics::PrivateState::preTickCallback(btDynamicsWorld *world, btScalar timeStep)
+{
+    PrivateState *state = (PrivateState *)world->getWorldUserInfo();
+    state->preTick(timeStep);
+}
+
+// -------------------------------------------------------------------------------------------------
+void Physics::PrivateState::preTick(btScalar timeStep)
+{
+    for (auto &privRigidBody : rigidBodies)
+    {
+        privRigidBody.rigidBody->clearForces();
+        privRigidBody.rigidBody->applyGravity();
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
 Physics::Physics()
 {
 }
@@ -170,7 +194,7 @@ Physics::~Physics()
 // -------------------------------------------------------------------------------------------------
 void Physics::registerTypesAndStates(StateDb &stateDb)
 {
-    RigidBody::TYPE = stateDb.registerType("RigidBody", 1024);
+    RigidBody::TYPE = stateDb.registerType("RigidBody", 256);
     RigidBody::Info::STATE = stateDb.registerState(
         RigidBody::TYPE, "Info", sizeof(RigidBody::Info));
     RigidBody::PrivateInfo::STATE = stateDb.registerState(
@@ -212,14 +236,18 @@ bool Physics::initialize(Platform &platform)
         state->cubeShape = std::make_shared< btBoxShape >(btVector3(0.5, 0.5, 0.5));
     }
 
+    //state->dynamicsWorld->setSynchronizeAllMotionStates(...)
+    state->dynamicsWorld->setInternalTickCallback(
+        PrivateState::preTickCallback, state.get(), true);
+
     return true;
 }
 
 // -------------------------------------------------------------------------------------------------
 void Physics::shutdown(Platform &platform)
 {
+    state->dynamicsWorld->setInternalTickCallback(nullptr);
     state->dynamicsWorld->removeRigidBody(state->groundRigidBody.get());
-
     state = nullptr;
 }
 
@@ -235,7 +263,7 @@ void Physics::update(Platform &platform, double deltaTimeInS)
     for (info = infoBegin, privateInfo = privateInfoBegin;
          info != infoEnd; ++info, ++privateInfo)
     {
-        Renderer::Mesh::Info *meshInfo;
+        Renderer::Mesh::Info *meshInfo = nullptr;
         platform.stateDb.refState(Renderer::Mesh::Info::STATE, info->meshHandle, &meshInfo);
         if (!privateInfo->rigidBody)
         {
@@ -252,13 +280,22 @@ void Physics::update(Platform &platform, double deltaTimeInS)
     }
 
     // Update rigid body physics simulation
-    int internalSteps = state->dynamicsWorld->stepSimulation(
-        btScalar(deltaTimeInS), 5, btScalar(1.0 / 60));
+    state->dynamicsWorld->stepSimulation(btScalar(deltaTimeInS), 5, btScalar(1.0 / 60));
 
-    if (internalSteps >= 5)
+    // TODO(martinmo): Use 'CProfileIterator' to present profiling data in meaningful way
+    /*
+#ifndef NDEBUG
+    if (m_nextPrintProfilingEventInS > 0.0)
     {
-        int test = 0;
+        m_nextPrintProfilingEventInS -= deltaTimeInS;
+        if (m_nextPrintProfilingEventInS <= 0.0)
+        {
+            CProfileManager::dumpAll();
+            m_nextPrintProfilingEventInS = 1.0;
+        }
     }
+#endif
+    */
 
     for (info = infoBegin, privateInfo = privateInfoBegin;
          info != infoEnd; ++info, ++privateInfo)
@@ -270,7 +307,7 @@ void Physics::update(Platform &platform, double deltaTimeInS)
             continue;
         }
 
-        Renderer::Mesh::Info *meshInfo;
+        Renderer::Mesh::Info *meshInfo = nullptr;
         platform.stateDb.refState(Renderer::Mesh::Info::STATE, info->meshHandle, &meshInfo);
 
         btTransform worldTrans;
