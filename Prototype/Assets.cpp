@@ -5,6 +5,8 @@
 
 #include "Assets.hpp"
 
+#include <list>
+
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -96,45 +98,70 @@ bool Assets::loadModel(PrivateState &privateState, Info &info, Model &model)
     model.normals.clear();
 
     const aiScene *scene = privateState.importer.ReadFile(info.name, aiProcess_Triangulate);
+
     if (!scene)
     {
         // FIXME(martinmo): Proper error message through platform abstraction
         return false;
     }
 
-    // Iterate over all faces of all meshes and append data
-    u64 prevTriangleCount = 0;
-    for (size_t meshIdx = 0; meshIdx < scene->mNumMeshes; ++meshIdx)
+    std::list< aiNode * > leafs;
+    std::list< aiNode * > branches = { scene->mRootNode };
+    while (!branches.empty())
     {
-        const aiMesh *mesh = scene->mMeshes[meshIdx];
-        // TODO(martinmo): Support more than just triangles...
-        if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
+        aiNode *branch = branches.front();
+        branches.pop_front();
+
+        for (size_t childIdx = 0; childIdx < branch->mNumChildren; ++childIdx)
         {
-            continue;
-        }
-        for (size_t faceIdx = 0; faceIdx < mesh->mNumFaces; ++faceIdx)
-        {
-            const aiFace *face = &mesh->mFaces[faceIdx];
-            for (size_t idx = 0; idx < face->mNumIndices; ++idx)
+            aiNode *child = branch->mChildren[childIdx];
+            if (child->mChildren)
             {
-                model.positions.push_back(glm::fvec3(
-                    mesh->mVertices[face->mIndices[idx]].x,
-                    mesh->mVertices[face->mIndices[idx]].y,
-                    mesh->mVertices[face->mIndices[idx]].z));
-                model.normals.push_back(glm::fvec3(
-                    mesh->mNormals[face->mIndices[idx]].x,
-                    mesh->mNormals[face->mIndices[idx]].y,
-                    mesh->mNormals[face->mIndices[idx]].z));
+                branches.push_back(child);
+            }
+            else
+            {
+                leafs.push_back(child);
             }
         }
+    }
 
-        u64 triangleCount = model.positions.size() / 3;
-        SubMeshInfo subMesh;
-        subMesh.name = mesh->mName.C_Str();
-        subMesh.triangleOffset = prevTriangleCount;
-        subMesh.triangleCount = triangleCount - prevTriangleCount;
-        prevTriangleCount = triangleCount;
-        model.subMeshes.push_back(subMesh);
+    // Iterate over all faces of all meshes and append data
+    u64 prevTriangleCount = 0;
+    for (auto leaf : leafs)
+    {
+        for (size_t meshIdx = 0; meshIdx < leaf->mNumMeshes; ++meshIdx)
+        {
+            const aiMesh *mesh = scene->mMeshes[leaf->mMeshes[meshIdx]];
+            // TODO(martinmo): Support more than just triangles...
+            if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
+            {
+                continue;
+            }
+            for (size_t faceIdx = 0; faceIdx < mesh->mNumFaces; ++faceIdx)
+            {
+                const aiFace *face = &mesh->mFaces[faceIdx];
+                for (size_t idx = 0; idx < face->mNumIndices; ++idx)
+                {
+                    model.positions.push_back(glm::fvec3(
+                        mesh->mVertices[face->mIndices[idx]].x,
+                        mesh->mVertices[face->mIndices[idx]].y,
+                        mesh->mVertices[face->mIndices[idx]].z));
+                    model.normals.push_back(glm::fvec3(
+                        mesh->mNormals[face->mIndices[idx]].x,
+                        mesh->mNormals[face->mIndices[idx]].y,
+                        mesh->mNormals[face->mIndices[idx]].z));
+                }
+            }
+
+            u64 triangleCount = model.positions.size() / 3;
+            SubMeshInfo subMesh;
+            subMesh.name = leaf->mName.C_Str();
+            subMesh.triangleOffset = prevTriangleCount;
+            subMesh.triangleCount = triangleCount - prevTriangleCount;
+            prevTriangleCount = triangleCount;
+            model.subMeshes.push_back(subMesh);
+        }
     }
 
     COMMON_ASSERT(model.normals.size() == model.positions.size());
