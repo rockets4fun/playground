@@ -39,24 +39,31 @@ bool RocketScience::initialize(Platform &platform)
 {
     Renderer::Camera::Info *camera = nullptr;
     m_cameraHandle = platform.stateDb.createObjectAndRefState(
-        Renderer::Camera::TYPE, Renderer::Camera::Info::STATE, &camera);
+        Renderer::Camera::Info::STATE, &camera);
     camera->position = glm::fvec4(20.0f, 20.0f, 20.0f, 1.0f);
     camera->target   = glm::fvec4( 0.0f,  0.0f,  0.0f, 1.0f);
 
     platform.renderer.activeCameraHandle = m_cameraHandle;
 
-    for (int cubeIdx = 0; cubeIdx < 128; ++cubeIdx)
+    Renderer::Mesh::Info *grid = nullptr;
+    platform.stateDb.createObjectAndRefState(Renderer::Mesh::Info::STATE, &grid);
+    grid->modelAsset = platform.assets.asset("Assets/Grid.obj");
+
+    for (int cubeIdx = 0; cubeIdx < 64; ++cubeIdx)
     {
         Renderer::Mesh::Info *mesh = nullptr;
         u64 meshHandle = platform.stateDb.createObjectAndRefState(
-            Renderer::Mesh::TYPE, Renderer::Mesh::Info::STATE, &mesh);
+            Renderer::Mesh::Info::STATE, &mesh);
         mesh->translation = glm::fvec4(glm::linearRand(
-            glm::fvec3(-20.0f, -20.0f, 0.0f), glm::fvec3(+20.0f, +20.0f, +40.0f)), 1.0);
+            glm::fvec3(-10.0f, -10.0f, 0.0f), glm::fvec3(+10.0f, +10.0f, +40.0f)), 1.0);
 
-#if 0
-        mesh->modelAsset = platform.assets.asset("Assets/Pusher.obj");
-#else
-        if (rand() % 9 > 5)
+        if (cubeIdx == 0)
+        {
+            mesh->translation = glm::fvec4(0.0f, 0.0f, 10.0f, 1.0);
+            mesh->rotation = glm::angleAxis(glm::radians(90.0f), glm::fvec3(1.0f, 0.0f, 0.0f));
+            mesh->modelAsset = platform.assets.asset("Assets/Pusher.obj");
+        }
+        else if (rand() % 9 > 5)
         {
             mesh->modelAsset = platform.assets.asset("Assets/Cube.obj");
         }
@@ -68,12 +75,9 @@ bool RocketScience::initialize(Platform &platform)
         {
             mesh->modelAsset = platform.assets.asset("Assets/Torus.obj");
         }
-#endif
 
         m_meshHandles.push_back(meshHandle);
     }
-
-    m_rigidBodyByMeshHandle[0] = 1;
 
     return true;
 }
@@ -81,6 +85,10 @@ bool RocketScience::initialize(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void RocketScience::shutdown(Platform &platform)
 {
+    for (auto rigidBodyIter : m_rigidBodyByMeshHandle)
+    {
+        platform.stateDb.destroyObject(rigidBodyIter.second);
+    }
     for (auto meshHandle : m_meshHandles)
     {
         platform.stateDb.destroyObject(meshHandle);
@@ -137,21 +145,22 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
             glm::normalize(cameraDir) * float(translationInM), 0.0);
     }
 
-    if (state[SDL_SCANCODE_P] && m_rigidBodyByMeshHandle.size() <= m_meshHandles.size())
+    if (state[SDL_SCANCODE_P] && m_rigidBodyByMeshHandle.size() < m_meshHandles.size())
     {
         u64 meshHandle = 0;
-        while (m_rigidBodyByMeshHandle[meshHandle])
+        do
         {
             meshHandle = m_meshHandles[rand() % m_meshHandles.size()];
         }
-
-        Renderer::Mesh::Info *meshInfo = nullptr;
-        platform.stateDb.refState(Renderer::Mesh::Info::STATE, meshHandle, &meshInfo);
+        while (m_rigidBodyByMeshHandle[meshHandle]);
 
         Physics::RigidBody::Info *rigidBodyInfo = nullptr;
         u64 rigidBodyHandle = platform.stateDb.createObjectAndRefState(
-            Physics::RigidBody::TYPE, Physics::RigidBody::Info::STATE, &rigidBodyInfo);
+            Physics::RigidBody::Info::STATE, &rigidBodyInfo);
         rigidBodyInfo->meshHandle = meshHandle;
+
+        Renderer::Mesh::Info *meshInfo = nullptr;
+        platform.stateDb.refState(Renderer::Mesh::Info::STATE, meshHandle, &meshInfo);
         if (meshInfo->modelAsset == platform.assets.asset("Assets/Sphere.obj"))
         {
             rigidBodyInfo->collisionShapeType =
