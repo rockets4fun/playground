@@ -140,7 +140,8 @@ void Physics::PrivateRigidBody::initialize(
     // TODO(martinmo): Update collision shape if asset version changes
 
     // Make sure initial rotation is a sane value
-    if (glm::abs(1.0f - meshInfo->rotation.length()) > 0.1)
+    if (glm::abs(meshInfo->rotation.x) + glm::abs(meshInfo->rotation.x)
+        + glm::abs(meshInfo->rotation.x) + glm::abs(meshInfo->rotation.x) < 0.01f)
     {
         meshInfo->rotation = glm::fquat(1.0, 0.0, 0.0, 0.0);
     }
