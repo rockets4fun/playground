@@ -37,10 +37,9 @@ void RocketScience::registerTypesAndStates(StateDb &stateDb)
 // -------------------------------------------------------------------------------------------------
 bool RocketScience::initialize(Platform &platform)
 {
-    m_cameraHandle = platform.stateDb.createObject(Renderer::Camera::TYPE);
-
-    Renderer::Camera::Info *camera;
-    platform.stateDb.refState(Renderer::Camera::Info::STATE, m_cameraHandle, &camera);
+    Renderer::Camera::Info *camera = nullptr;
+    m_cameraHandle = platform.stateDb.createObjectAndRefState(
+        Renderer::Camera::TYPE, Renderer::Camera::Info::STATE, &camera);
     camera->position = glm::fvec4(20.0f, 20.0f, 20.0f, 1.0f);
     camera->target   = glm::fvec4( 0.0f,  0.0f,  0.0f, 1.0f);
 
@@ -48,10 +47,9 @@ bool RocketScience::initialize(Platform &platform)
 
     for (int cubeIdx = 0; cubeIdx < 128; ++cubeIdx)
     {
-        u64 meshHandle = platform.stateDb.createObject(Renderer::Mesh::TYPE);
-
-        Renderer::Mesh::Info *mesh;
-        platform.stateDb.refState(Renderer::Mesh::Info::STATE, meshHandle, &mesh);
+        Renderer::Mesh::Info *mesh = nullptr;
+        u64 meshHandle = platform.stateDb.createObjectAndRefState(
+            Renderer::Mesh::TYPE, Renderer::Mesh::Info::STATE, &mesh);
         mesh->translation = glm::fvec4(glm::linearRand(
             glm::fvec3(-20.0f, -20.0f, 0.0f), glm::fvec3(+20.0f, +20.0f, +40.0f)), 1.0);
 
@@ -106,10 +104,10 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
     if (state[SDL_SCANCODE_W]) translationInM += deltaTimeInS * 20.0;
     if (state[SDL_SCANCODE_S]) translationInM -= deltaTimeInS * 20.0;
 
-    Renderer::Camera::Info *camera;
-    platform.stateDb.refState(Renderer::Camera::Info::STATE, m_cameraHandle, &camera);
+    Renderer::Camera::Info *cameraInfo = nullptr;
+    platform.stateDb.refState(Renderer::Camera::Info::STATE, m_cameraHandle, &cameraInfo);
 
-    glm::fvec3 cameraDir = (camera->target - camera->position).xyz();
+    glm::fvec3 cameraDir = (cameraInfo->target - cameraInfo->position).xyz();
 
     // Vertical rotation axis in world space
     // FIXME(martinmo): Correctly handle near +/- 90 deg cases
@@ -120,7 +118,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
     verticalRotationAxis = glm::normalize(verticalRotationAxis);
 
     glm::fmat4 xform;
-    xform = glm::translate(xform, camera->target.xyz());
+    xform = glm::translate(xform, cameraInfo->target.xyz());
     if (glm::abs(horizontalRotationInDeg) > 0.001)
     {
         xform = glm::rotate(xform, glm::radians(
@@ -131,11 +129,11 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         xform = glm::rotate(xform, glm::radians(
             float(verticalRotationInDeg)), verticalRotationAxis);
     }
-    xform = glm::translate(xform, -camera->target.xyz());
-    camera->position = xform * camera->position;
+    xform = glm::translate(xform, -cameraInfo->target.xyz());
+    cameraInfo->position = xform * cameraInfo->position;
     if (glm::abs(translationInM) > 0.001)
     {
-        camera->position += glm::fvec4(
+        cameraInfo->position += glm::fvec4(
             glm::normalize(cameraDir) * float(translationInM), 0.0);
     }
 
@@ -147,15 +145,14 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
             meshHandle = m_meshHandles[rand() % m_meshHandles.size()];
         }
 
-        Renderer::Mesh::Info *mesh;
-        platform.stateDb.refState(Renderer::Mesh::Info::STATE, meshHandle, &mesh);
+        Renderer::Mesh::Info *meshInfo = nullptr;
+        platform.stateDb.refState(Renderer::Mesh::Info::STATE, meshHandle, &meshInfo);
 
-        u64 rigidBodyHandle = platform.stateDb.createObject(Physics::RigidBody::TYPE);
-        Physics::RigidBody::Info *rigidBodyInfo;
-        platform.stateDb.refState(Physics::RigidBody::Info::STATE, rigidBodyHandle, &rigidBodyInfo);
-
+        Physics::RigidBody::Info *rigidBodyInfo = nullptr;
+        u64 rigidBodyHandle = platform.stateDb.createObjectAndRefState(
+            Physics::RigidBody::TYPE, Physics::RigidBody::Info::STATE, &rigidBodyInfo);
         rigidBodyInfo->meshHandle = meshHandle;
-        if (mesh->modelAsset == platform.assets.asset("Assets/Sphere.obj"))
+        if (meshInfo->modelAsset == platform.assets.asset("Assets/Sphere.obj"))
         {
             rigidBodyInfo->collisionShapeType =
                 Physics::RigidBody::Info::CollisionShapeType::BOUNDING_SPHERE;

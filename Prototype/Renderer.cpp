@@ -222,7 +222,7 @@ Renderer::~Renderer()
 // -------------------------------------------------------------------------------------------------
 void Renderer::registerTypesAndStates(StateDb &stateDb)
 {
-    Mesh::TYPE = stateDb.registerType("Mesh", 512);
+    Mesh::TYPE = stateDb.registerType("Mesh", 4096);
     Mesh::Info::STATE = stateDb.registerState(
         Mesh::TYPE, "Info", sizeof(Mesh::Info));
 
@@ -404,7 +404,7 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     glm::fmat4 view;
     if (activeCameraHandle)
     {
-        Camera::Info *cameraInfo;
+        Camera::Info *cameraInfo = nullptr;
         platform.stateDb.refState(Camera::Info::STATE, activeCameraHandle, &cameraInfo);
         view = glm::lookAt(cameraInfo->position.xyz(),
             cameraInfo->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
