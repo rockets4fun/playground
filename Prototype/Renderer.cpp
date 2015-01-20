@@ -413,7 +413,7 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     glm::fmat4 model, modelView;
 
     // Pseudo-instanced rendering of meshes
-    Mesh::Info *meshBegin, *meshEnd;
+    Mesh::Info *meshBegin = nullptr, *meshEnd = nullptr;
     platform.stateDb.refStateAll(Mesh::Info::STATE, &meshBegin, &meshEnd);
     for (Mesh::Info *mesh = meshBegin; mesh != meshEnd; ++mesh)
     {
