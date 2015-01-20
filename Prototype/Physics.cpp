@@ -29,6 +29,8 @@ struct Physics::PrivateRigidBody
     std::shared_ptr< btDefaultMotionState > motionState;
     std::shared_ptr< btRigidBody > rigidBody;
 
+    std::vector< std::pair< glm::fvec3, glm::fvec3 > > forces;
+
     PrivateRigidBody(PrivateState &state);
     virtual ~PrivateRigidBody();
 
@@ -68,6 +70,9 @@ struct Physics::RigidBody::PrivateInfo
 u64 Physics::RigidBody::TYPE = 0;
 u64 Physics::RigidBody::Info::STATE = 0;
 u64 Physics::RigidBody::PrivateInfo::STATE = 0;
+
+u64 Physics::Force::TYPE = 0;
+u64 Physics::Force::Info::STATE = 0;
 
 // -------------------------------------------------------------------------------------------------
 Physics::PrivateRigidBody::PrivateRigidBody(PrivateState &state) :
@@ -161,7 +166,10 @@ void Physics::PrivateRigidBody::initialize(
     constructionInfo.m_friction = btScalar(0.2);
     constructionInfo.m_rollingFriction = btScalar(0.2);
     rigidBody = std::make_shared< btRigidBody >(constructionInfo);
-    //rigidBody->setActivationState(DISABLE_DEACTIVATION);
+
+    // TODO(martinmo): Add flag to disable this for certain RBs only...
+    rigidBody->setActivationState(DISABLE_DEACTIVATION);
+
     state.dynamicsWorld->addRigidBody(rigidBody.get());
 }
 
@@ -179,6 +187,12 @@ void Physics::PrivateState::preTick(btScalar timeStep)
     {
         privRigidBody.rigidBody->clearForces();
         privRigidBody.rigidBody->applyGravity();
+        for (const auto &force : privRigidBody.forces)
+        {
+            btVector3 bulletForce(force.first.x, force.first.y, force.first.z);
+            btVector3 bulletForcePosition(force.second.x, force.second.y, force.second.z);
+            privRigidBody.rigidBody->applyForce(bulletForce, bulletForcePosition);
+        }
     }
 }
 
@@ -200,6 +214,10 @@ void Physics::registerTypesAndStates(StateDb &stateDb)
         RigidBody::TYPE, "Info", sizeof(RigidBody::Info));
     RigidBody::PrivateInfo::STATE = stateDb.registerState(
         RigidBody::TYPE, "PrivateInfo", sizeof(RigidBody::PrivateInfo));
+
+    Force::TYPE = stateDb.registerType("Force", 256);
+    Force::Info::STATE = stateDb.registerState(
+        Force::TYPE, "Info", sizeof(Force::Info));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -255,9 +273,9 @@ void Physics::shutdown(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void Physics::update(Platform &platform, double deltaTimeInS)
 {
-    RigidBody::Info *info, *infoBegin, *infoEnd;
+    RigidBody::Info *info = nullptr, *infoBegin = nullptr, *infoEnd = nullptr;
     platform.stateDb.refStateAll(RigidBody::Info::STATE, &infoBegin, &infoEnd);
-    RigidBody::PrivateInfo *privateInfo, *privateInfoBegin;
+    RigidBody::PrivateInfo *privateInfo = nullptr, *privateInfoBegin = nullptr;
     platform.stateDb.refStateAll(RigidBody::PrivateInfo::STATE, &privateInfoBegin);
 
     // Check for newly created rigid bodies
@@ -277,6 +295,20 @@ void Physics::update(Platform &platform, double deltaTimeInS)
             rigidBody->initialize(objectHandle, info, meshInfo, model);
 
             privateInfo->rigidBody = rigidBody;
+        }
+        privateInfo->rigidBody->forces.clear();
+    }
+
+    Force::Info *forceInfo = nullptr, *forceInfoBegin = nullptr, *forceInfoEnd = nullptr;
+    platform.stateDb.refStateAll(Force::Info::STATE, &forceInfoBegin, &forceInfoEnd);
+    for (forceInfo = forceInfoBegin; forceInfo != forceInfoEnd; ++forceInfo)
+    {
+        platform.stateDb.refState(RigidBody::PrivateInfo::STATE,
+            forceInfo->rigidBodyHandle, &privateInfo);
+        if (forceInfo->enabled)
+        {
+            privateInfo->rigidBody->forces.push_back(
+                std::make_pair(forceInfo->force, forceInfo->position));
         }
     }
 

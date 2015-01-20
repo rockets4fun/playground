@@ -21,23 +21,33 @@ struct Physics : ModuleIf
     Physics();
     virtual ~Physics();
 
+    struct Force
+    {
+        static u64 TYPE;
+        struct Info
+        {
+            static u64 STATE;
+            u64 rigidBodyHandle;
+            u32 enabled;
+            glm::fvec3 force;
+            glm::fvec3 position;
+        };
+    };
+
     struct RigidBody
     {
         static u64 TYPE;
         struct Info
         {
+            static u64 STATE;
             enum CollisionShapeType
             {
                 BOUNDING_BOX,
                 BOUNDING_SPHERE,
                 CONVEX_HULL_COMPOUND
             };
-
-            static u64 STATE;
             u64 meshHandle = 0;
-
             u32 collisionShapeType = 0;
-
             // TODO(martinmo): Add additional physics state here
             // TODO(martinmo): Translation and roation are already stored in mesh
         };
