@@ -45,11 +45,12 @@ bool RocketScience::initialize(Platform &platform)
 
     platform.renderer.activeCameraHandle = m_cameraHandle;
 
-    Renderer::Mesh::Info *grid = nullptr;
-    platform.stateDb.createObjectAndRefState(Renderer::Mesh::Info::STATE, &grid);
-    grid->modelAsset = platform.assets.asset("Assets/Grid.obj");
+    Renderer::Mesh::Info *gridMeshInfo = nullptr;
+    m_gridMeshHandle = platform.stateDb.createObjectAndRefState(
+        Renderer::Mesh::Info::STATE, &gridMeshInfo);
+    gridMeshInfo->modelAsset = platform.assets.asset("Assets/Grid.obj");
 
-    for (int cubeIdx = 0; cubeIdx < 64; ++cubeIdx)
+    for (int meshIdx = 0; meshIdx < 4; ++meshIdx)
     {
         Renderer::Mesh::Info *mesh = nullptr;
         u64 meshHandle = platform.stateDb.createObjectAndRefState(
@@ -57,7 +58,7 @@ bool RocketScience::initialize(Platform &platform)
         mesh->translation = glm::fvec4(glm::linearRand(
             glm::fvec3(-10.0f, -10.0f, 0.0f), glm::fvec3(+10.0f, +10.0f, +40.0f)), 1.0);
 
-        if (cubeIdx == 0)
+        if (meshIdx == 0)
         {
             mesh->translation = glm::fvec4(0.0f, 0.0f, 10.0f, 1.0);
             mesh->rotation = glm::angleAxis(glm::radians(90.0f), glm::fvec3(1.0f, 0.0f, 0.0f));
@@ -85,6 +86,7 @@ bool RocketScience::initialize(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void RocketScience::shutdown(Platform &platform)
 {
+    platform.stateDb.destroyObject(m_gridMeshHandle);
     for (auto rigidBodyIter : m_rigidBodyByMeshHandle)
     {
         platform.stateDb.destroyObject(rigidBodyIter.second);
@@ -161,12 +163,42 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 
         Renderer::Mesh::Info *meshInfo = nullptr;
         platform.stateDb.refState(Renderer::Mesh::Info::STATE, meshHandle, &meshInfo);
-        if (meshInfo->modelAsset == platform.assets.asset("Assets/Sphere.obj"))
+
+        if (meshInfo->modelAsset == platform.assets.asset("Assets/Pusher.obj"))
+        {
+            Physics::Force::Info *forceInfo = nullptr;
+            m_pusherForce = platform.stateDb.createObjectAndRefState(
+                Physics::Force::Info::STATE, &forceInfo);
+            forceInfo->rigidBodyHandle = rigidBodyHandle;
+            forceInfo->enabled = 1;
+            forceInfo->force = glm::fvec3(0.0f, 0.0f, 45.0f);
+        }
+        else if (meshInfo->modelAsset == platform.assets.asset("Assets/Sphere.obj"))
         {
             rigidBodyInfo->collisionShapeType =
                 Physics::RigidBody::Info::CollisionShapeType::BOUNDING_SPHERE;
         }
 
         m_rigidBodyByMeshHandle[meshHandle] = rigidBodyHandle;
+    }
+
+    if (m_pusherForce)
+    {
+        Renderer::Mesh::Info *meshInfo = nullptr;
+        platform.stateDb.refState(Renderer::Mesh::Info::STATE, m_meshHandles.front(), &meshInfo);
+
+        glm::fmat4 modelToWorld = glm::mat4_cast(meshInfo->rotation);
+
+        Physics::Force::Info *forceInfo = nullptr;
+        platform.stateDb.refState(Physics::Force::Info::STATE, m_pusherForce, &forceInfo);
+
+        // Top wing
+        forceInfo->position = (modelToWorld * glm::fvec4(0.0f, -2.64, 2.75f, 1.0f)).xyz();
+        /*
+        // Head
+        forceInfo->position = (modelToWorld * glm::fvec4(0.0f,  3.61, 0.00f, 1.0f)).xyz();
+        // Tail
+        forceInfo->position = (modelToWorld * glm::fvec4(0.0f, -2.14, 0.00f, 1.0f)).xyz();
+        */
     }
 }
