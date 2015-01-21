@@ -29,6 +29,7 @@ public: // Implementation of module interface
 private:
     u64 m_cameraHandle = 0;
     u64 m_gridMeshHandle = 0;
+    u64 m_arrowMeshHandle = 0;
     u64 m_pusherForce = 0;
 
     std::vector< u64 > m_meshHandles;
