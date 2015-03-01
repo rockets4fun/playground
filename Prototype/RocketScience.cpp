@@ -220,23 +220,23 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         */
 
         // Main engine params
-        float mainEngineForce = 0.0;
-        float mainEnginePitch = 0.0;
-        float mainEngineYaw   = 0.0;
+        float mainEngineForce = 0.0f;
+        float mainEnginePitch = 0.0f;
+        float mainEngineYaw   = 0.0f;
 
         // Main engine force to keep height of 10 m
         if (meshInfo->translation.z < 10.0)
         {
-            mainEngineForce = 55.0f;
+            mainEngineForce = 70.0f;
         }
         else
         {
-            mainEngineForce = 45.0f;
+            mainEngineForce = 20.5f;
         }
 
         // Counteract rocket pitch and yaw
-        mainEnginePitch = -(90.0f - pitch);
-        mainEngineYaw   =  ( 0.0f - yaw);
+        mainEnginePitch = 1.0f * -(90.0f - pitch);
+        mainEngineYaw   = 1.0f *  ( 0.0f - yaw);
 
         // Add some jitter to main engine thrust vector
         mainEnginePitch += glm::linearRand(-2.0f, +2.0f);
