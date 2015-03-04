@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
             SDL_GL_SwapWindow(window);
         }
 
-        for (auto &module : modules)
+        for (auto &module : reverseModules)
         {
             module->shutdown(platform);
         }
