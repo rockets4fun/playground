@@ -58,7 +58,9 @@ bool RocketScience::initialize(Platform &platform)
         meshInfo->modelAsset = platform.assets.asset("Assets/Arrow.obj");
     }
 
-    for (int meshIdx = 0; meshIdx < 8; ++meshIdx)
+    const bool enableRocket = true;
+
+    for (int meshIdx = 0; meshIdx < 64; ++meshIdx)
     {
         Renderer::Mesh::Info *mesh = nullptr;
         u64 meshHandle = platform.stateDb.createObjectAndRefState(
@@ -66,7 +68,7 @@ bool RocketScience::initialize(Platform &platform)
         mesh->translation = glm::fvec4(glm::linearRand(
             glm::fvec3(-10.0f, -10.0f, 0.0f), glm::fvec3(+10.0f, +10.0f, +40.0f)), 1.0);
 
-        if (meshIdx == 0)
+        if (enableRocket && meshIdx == 0)
         {
             mesh->translation = glm::fvec4(0.0f, 0.0f, 10.0f, 1.0);
             mesh->rotation = glm::angleAxis(glm::radians(90.0f), glm::fvec3(1.0f, 0.0f, 0.0f));
@@ -158,12 +160,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 
     if (state[SDL_SCANCODE_P] && m_rigidBodyByMeshHandle.size() < m_meshHandles.size())
     {
-        u64 meshHandle = 0;
-        do
-        {
-            meshHandle = m_meshHandles[rand() % m_meshHandles.size()];
-        }
-        while (m_rigidBodyByMeshHandle[meshHandle]);
+        u64 meshHandle = m_meshHandles[m_rigidBodyByMeshHandle.size()];
 
         Physics::RigidBody::Info *rigidBodyInfo = nullptr;
         u64 rigidBodyHandle = platform.stateDb.createObjectAndRefState(
@@ -243,16 +240,27 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         mainEngineYaw   += glm::linearRand(-2.0f, +2.0f);
 
         glm::fquat mainEnginePitchRot = glm::angleAxis(glm::radians(mainEnginePitch), glm::fvec3(1.0, 0.0, 0.0));
-        // FIXME(martinmo): Yaw axis should be Z axis *not* Y axis (gimbal lock because of 90 deg around X?)
+        // FIXME(martinmo): Yaw axis should be Z axis *not* Y axis
+        // FIXME(martinmo): (euler angles/gimbal lock because of 90 deg around X?)
         glm::fquat mainEngineYawRot   = glm::angleAxis(glm::radians(mainEngineYaw),   glm::fvec3(0.0, 1.0, 0.0));
         glm::fquat mainEngineRot = meshInfo->rotation * mainEnginePitchRot * mainEngineYawRot;
 
         forceInfo->force = glm::mat3_cast(mainEngineRot) * glm::fvec3(0.0f, mainEngineForce, 0.0f);
 
         // Use arrow mesh to display thrust vector
+        // FIXME(martinmo): The arrow does not really point in thrust direction
         Renderer::Mesh::Info *arrowMeshInfo = nullptr;
         platform.stateDb.refState(Renderer::Mesh::Info::STATE, m_arrowMeshHandle, &arrowMeshInfo);
         arrowMeshInfo->translation = glm::vec4(forceInfo->position, 0.0f) + meshInfo->translation;
         arrowMeshInfo->rotation = glm::fquat(mainEngineRot.w, -mainEngineRot.x, -mainEngineRot.y, -mainEngineRot.z);
+
+        /*
+        // Emergency motors off...
+        if (glm::abs(mainEngineYaw) > 45.0f || glm::abs(mainEnginePitch > 45.0f))
+        {
+            platform.stateDb.destroyObject(m_pusherForce);
+            m_pusherForce = 0;
+        }
+        */
     }
 }
