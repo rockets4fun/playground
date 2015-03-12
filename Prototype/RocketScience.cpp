@@ -239,11 +239,15 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         mainEnginePitch += glm::linearRand(-2.0f, +2.0f);
         mainEngineYaw   += glm::linearRand(-2.0f, +2.0f);
 
-        glm::fquat mainEnginePitchRot = glm::angleAxis(glm::radians(mainEnginePitch), glm::fvec3(1.0, 0.0, 0.0));
         // FIXME(martinmo): Yaw axis should be Z axis *not* Y axis
         // FIXME(martinmo): (euler angles/gimbal lock because of 90 deg around X?)
-        glm::fquat mainEngineYawRot   = glm::angleAxis(glm::radians(mainEngineYaw),   glm::fvec3(0.0, 1.0, 0.0));
-        glm::fquat mainEngineRot = meshInfo->rotation * mainEnginePitchRot * mainEngineYawRot;
+
+        glm::fquat mainEnginePitchRot =
+            glm::angleAxis(glm::radians(mainEnginePitch), glm::fvec3(1.0, 0.0, 0.0));
+        glm::fquat mainEngineYawRot =
+            glm::angleAxis(glm::radians(mainEngineYaw),   glm::fvec3(0.0, 1.0, 0.0));
+        glm::fquat mainEngineRot =
+            meshInfo->rotation * mainEnginePitchRot * mainEngineYawRot;
 
         forceInfo->force = glm::mat3_cast(mainEngineRot) * glm::fvec3(0.0f, mainEngineForce, 0.0f);
 
@@ -251,16 +255,16 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         // FIXME(martinmo): The arrow does not really point in thrust direction
         Renderer::Mesh::Info *arrowMeshInfo = nullptr;
         platform.stateDb.refState(Renderer::Mesh::Info::STATE, m_arrowMeshHandle, &arrowMeshInfo);
-        arrowMeshInfo->translation = glm::vec4(forceInfo->position, 0.0f) + meshInfo->translation;
-        arrowMeshInfo->rotation = glm::fquat(mainEngineRot.w, -mainEngineRot.x, -mainEngineRot.y, -mainEngineRot.z);
+        arrowMeshInfo->translation =
+            glm::vec4(forceInfo->position, 0.0f) + meshInfo->translation;
+        arrowMeshInfo->rotation =
+            glm::fquat(mainEngineRot.w, -mainEngineRot.x, -mainEngineRot.y, -mainEngineRot.z);
 
-        /*
         // Emergency motors off...
         if (glm::abs(mainEngineYaw) > 45.0f || glm::abs(mainEnginePitch > 45.0f))
         {
             platform.stateDb.destroyObject(m_pusherForce);
             m_pusherForce = 0;
         }
-        */
     }
 }
