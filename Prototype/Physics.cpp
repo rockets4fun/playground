@@ -19,7 +19,7 @@
 
 struct Physics::PrivateRigidBody
 {
-    // FIXME(martinmo): Member-variables of structs/classes with methods
+    // FIXME(martinmo): Member-variables of structs/classes with non-static methods
     // FIXME(martinmo): other than c'tor/d'tor should start with 'm_' prefix
 
     PrivateState &state;

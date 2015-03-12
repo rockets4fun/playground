@@ -511,7 +511,10 @@ bool Renderer::initializeGl()
 
     RENDERER_GL_FUNC(glDrawArrays);
 
-    RENDERER_GL_FUNC(glDebugMessageCallbackARB);
+    if (SDL_GL_ExtensionSupported("GL_ARB_debug_output"))
+    {
+        RENDERER_GL_FUNC(glDebugMessageCallbackARB);
+    }
 
     return true;
 }

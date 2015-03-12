@@ -6,18 +6,28 @@ QT -= core gui
 CONFIG += console debug_and_release
 CONFIG -= flat
 
-win32 {
-    # treat all source files as C++
-    QMAKE_CXXFLAGS += /TP
-    # define warning level
-    QMAKE_CXXFLAGS_WARN_ON = /W4 /wd4100 /wd4512 /wd4127 /wd4201 /wd4505
+# Max OS X deployment target
+macx {
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.9
+    QMAKE_MAC_SDK = macosx10.9
+    QMAKE_LFLAGS += -F/Library/Frameworks
 }
 
+# Compiler settings
+win32 {
+    # Treat all source files as C++
+    QMAKE_CXXFLAGS += /TP
+    # Define warning level
+    QMAKE_CXXFLAGS_WARN_ON = /W4 /wd4100 /wd4512 /wd4127 /wd4201 /wd4505
+}
 unix {
-    # treat .c files as CPP targets
+    # Treat .c files as CPP targets
     QMAKE_EXT_CPP = .cpp .c
-    # enable C++11 support
+    # Enable C++11 support
     QMAKE_CXXFLAGS += -std=c++11
+}
+macx {
+    QMAKE_CXXFLAGS_WARN_ON = -Wall -Wno-unused-parameter -Wno-null-dereference
 }
 
 THIRDPARTY = ../Thirdparty
@@ -33,9 +43,15 @@ win32 {
     }
     LIBS += SDL2.lib SDL2main.lib
 }
+macx {
+    # Install framwork from "http://libsdl.org/release/SDL2-2.0.3.dmg"
+    INCLUDEPATH += /Library/Frameworks/SDL2.framework/Headers
+    LIBS += -framework SDL2
+}
 
 # glm
-win32 {
+win32 | macx {
+    # Clone branch "9.6.0" from "https://github.com/g-truc/glm.git"
     INCLUDEPATH += $$THIRDPARTY/glm
 }
 
@@ -57,7 +73,16 @@ win32 {
     }
     else {
     }
-    LIBS += SDL2.lib SDL2main.lib
+}
+macx {
+    # Clone branch "master" from "https://github.com/bulletphysics/bullet3.git"
+    # Use CMake to generate "Unix Makefiles" with "Use default native compilers"
+    # "Configure", "Generate" and "make" from command line
+    INCLUDEPATH += $$THIRDPARTY/bullet3/src
+    LIBS += -L$$THIRDPARTY/bullet3/src/BulletCollision
+    LIBS += -L$$THIRDPARTY/bullet3/src/BulletDynamics
+    LIBS += -L$$THIRDPARTY/bullet3/src/LinearMath
+    LIBS += -lBulletCollision -lBulletDynamics -lLinearMath
 }
 
 # Assimp
@@ -71,6 +96,14 @@ win32 {
             LIBS += $$THIRDPARTY/assimp/lib/Release/assimp.lib
         }
     }
+}
+macx {
+    # Clone branch "master" from "https://github.com/assimp/assimp.git"
+    # Use CMake to generate "Unix Makefiles" with "Use default native compilers"
+    # "Configure", uncheck "BUILD_SHARED_LIBS", "Generate" and "make" from command line
+    INCLUDEPATH += $$THIRDPARTY/assimp/include
+    LIBS += -L$$THIRDPARTY/assimp/lib
+    LIBS += -lassimp -lz
 }
 
 HEADERS += \

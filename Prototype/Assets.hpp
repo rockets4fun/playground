@@ -11,6 +11,7 @@
 #include <memory>
 #include <map>
 #include <vector>
+#include <string>
 
 #include <glm/glm.hpp>
 
