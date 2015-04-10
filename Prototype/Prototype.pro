@@ -119,6 +119,7 @@ HEADERS += \
     Assets.hpp \
     Physics.hpp \
     Platform.hpp \
+    Math.hpp \
     Renderer.hpp \
     RocketScience.hpp \
     StateDb.hpp
@@ -127,6 +128,7 @@ SOURCES += \
     Assets.cpp \
     Physics.cpp \
     Platform.cpp \
+    Math.cpp \
     Renderer.cpp \
     RocketScience.cpp \
     StateDb.cpp
