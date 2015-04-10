@@ -49,7 +49,7 @@ struct Renderer : public ModuleIf
         struct Info
         {
             static u64 STATE;
-            u64 parent;
+            u64 parent = 0;
             glm::fmat4 world;
             glm::fmat4 local;
         };

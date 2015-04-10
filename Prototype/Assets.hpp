@@ -26,7 +26,7 @@ struct Assets
             UNDEFINED,
             MODEL
         };
-        u32 hash;
+        u32 hash = 0;
         std::string name;
         Type type = UNDEFINED;
         u32 version = 0;

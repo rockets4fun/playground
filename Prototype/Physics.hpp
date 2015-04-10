@@ -27,8 +27,8 @@ struct Physics : ModuleIf
         struct Info
         {
             static u64 STATE;
-            u64 rigidBodyHandle;
-            u32 enabled;
+            u64 rigidBodyHandle = 0;
+            u32 enabled = 0;
             glm::fvec3 force;
             glm::fvec3 position;
         };
