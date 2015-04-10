@@ -12,6 +12,8 @@
 
 #include <SDL.h>
 
+#include "Math.hpp"
+
 #include "Platform.hpp"
 #include "StateDb.hpp"
 #include "Assets.hpp"
@@ -195,73 +197,61 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         Physics::Force::Info *forceInfo = nullptr;
         platform.stateDb.refState(Physics::Force::Info::STATE, m_pusherForce, &forceInfo);
 
-        glm::fvec3 euler = glm::degrees(glm::eulerAngles(meshInfo->rotation));
-        float &pitch = euler.x;
-        float &yaw   = euler.y;
-
-        SDL_Log("Pitch(X): %8.1f Yaw(Z): %8.1f", pitch, yaw);
+        glm::fmat3 meshRot = glm::mat3_cast(meshInfo->rotation);
 
         /*
         // Top wing position
-        forceInfo->position = modelRot * glm::fvec3(0.0f, -2.64, 2.75f);
+        forceInfo->position = meshRot * glm::fvec3(0.00f, -2.64, 2.75f);
         // Head position
-        forceInfo->position = modelRot * glm::fvec3(0.0f,  3.61, 0.00f);
+        forceInfo->position = meshRot * glm::fvec3(0.00f,  3.61, 0.00f);
         */
 
         // Tail/main engine position
-        forceInfo->position = glm::mat3_cast(meshInfo->rotation) * glm::fvec3(0.0f, -2.14, 0.00f);
+        forceInfo->position = meshRot * glm::fvec3(0.00f, -2.14, 0.00f);
 
         /*
         // This force applied to top wing makes rocket spin clockwise
         forceInfo->force = modelRot * glm::fvec3(10.0f, 0.0f, 0.0f);
         */
 
-        // Main engine params
-        float mainEngineForce = 0.0f;
-        float mainEnginePitch = 0.0f;
-        float mainEngineYaw   = 0.0f;
-
         // Main engine force to keep height of 10 m
+        float mainEngineForce = 0.0f;
         if (meshInfo->translation.z < 10.0)
         {
-            mainEngineForce = 70.0f;
+            // Mass of rocket is 5 kg (hard-coded for all RBs ATM)
+            // --> Force needs to be at least 9.81 x 5 --> 50
+            mainEngineForce = 55.0f;
         }
         else
         {
-            mainEngineForce = 20.5f;
+            mainEngineForce = 45.0f;
         }
 
-        // Counteract rocket pitch and yaw
-        mainEnginePitch = 1.0f * -(90.0f - pitch);
-        mainEngineYaw   = 1.0f *  ( 0.0f - yaw);
+        // Model's local +Y should be aligned to global +Z
+        glm::fvec3 nominalDir = glm::fvec3(0.0, 0.0, 1.0);
+        glm::fvec3 actualDir  = meshRot * glm::fvec3(0.0f, 1.0f, 0.0f);
 
-        // Add some jitter to main engine thrust vector
-        mainEnginePitch += glm::linearRand(-2.0f, +2.0f);
-        mainEngineYaw   += glm::linearRand(-2.0f, +2.0f);
+        glm::fvec3 thrustVector = glm::normalize(nominalDir + 1.25f * (actualDir - nominalDir));
 
-        // FIXME(martinmo): Yaw axis should be Z axis *not* Y axis
-        // FIXME(martinmo): (euler angles/gimbal lock because of 90 deg around X?)
+        forceInfo->force = thrustVector * mainEngineForce;
 
-        glm::fquat mainEnginePitchRot =
-            glm::angleAxis(glm::radians(mainEnginePitch), glm::fvec3(1.0, 0.0, 0.0));
-        glm::fquat mainEngineYawRot =
-            glm::angleAxis(glm::radians(mainEngineYaw),   glm::fvec3(0.0, 1.0, 0.0));
-        glm::fquat mainEngineRot =
-            meshInfo->rotation * mainEnginePitchRot * mainEngineYawRot;
-
-        forceInfo->force = glm::mat3_cast(mainEngineRot) * glm::fvec3(0.0f, mainEngineForce, 0.0f);
+        // Add some main engine jitter
+        glm::fvec3 noise = glm::fvec3(2.0f, 2.0f, 2.0f);
+        forceInfo->force += glm::linearRand(-noise, noise);
 
         // Use arrow mesh to display thrust vector
-        // FIXME(martinmo): The arrow does not really point in thrust direction
         Renderer::Mesh::Info *arrowMeshInfo = nullptr;
         platform.stateDb.refState(Renderer::Mesh::Info::STATE, m_arrowMeshHandle, &arrowMeshInfo);
         arrowMeshInfo->translation =
-            glm::vec4(forceInfo->position, 0.0f) + meshInfo->translation;
-        arrowMeshInfo->rotation =
-            glm::fquat(mainEngineRot.w, -mainEngineRot.x, -mainEngineRot.y, -mainEngineRot.z);
+            meshInfo->translation + glm::vec4(forceInfo->position, 0.0f);
+        arrowMeshInfo->rotation = Math::rotateFromTo(
+            glm::fvec3(0.0f, 1.0f, 0.0f), -forceInfo->force);
 
         // Emergency motors off...
-        if (glm::abs(mainEngineYaw) > 45.0f || glm::abs(mainEnginePitch > 45.0f))
+        double errorAngleInDeg = glm::degrees(
+            glm::angle(Math::rotateFromTo(nominalDir, actualDir)));
+        //SDL_Log("errorAngleInDeg: %5.2f", errorAngleInDeg);
+        if (glm::abs(errorAngleInDeg) > 20.0f)
         {
             platform.stateDb.destroyObject(m_pusherForce);
             m_pusherForce = 0;
