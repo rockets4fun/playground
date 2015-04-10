@@ -163,7 +163,7 @@ void Physics::PrivateRigidBody::initialize(
     btRigidBody::btRigidBodyConstructionInfo constructionInfo(
         mass, motionState.get(), collisionShape, inertia);
     constructionInfo.m_restitution = btScalar(0.25);
-    constructionInfo.m_friction = btScalar(0.2);
+    constructionInfo.m_friction = btScalar(0.5);
     constructionInfo.m_rollingFriction = btScalar(0.2);
     rigidBody = std::make_shared< btRigidBody >(constructionInfo);
 

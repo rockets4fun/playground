@@ -396,8 +396,8 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
 {
     funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    float aspect = 640.0f / 480.0f;
-    glm::fmat4 projection = glm::perspective(glm::radians(60.0f * aspect), aspect, 0.1f, 200.0f);
+    float aspect = 16.0f / 9.0f;
+    glm::fmat4 projection = glm::perspective(glm::radians(30.0f * aspect), aspect, 0.1f, 200.0f);
     funcs->glUniformMatrix4fv(
         state->defProgUniformProjectionMatrix, 1, GL_FALSE, glm::value_ptr(projection));
 
