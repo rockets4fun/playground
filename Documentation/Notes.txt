@@ -3,10 +3,6 @@ h1. Coding Roadmap
 
 h2. Prototype Jan 2015
 
-* Hard-coded vertex and fragment shaders
-* Hard-coded cube rendering draw calls (position and color vertex attributes)
-* Cube instancing driven by state database
-
 * Simply structured, single threaded, SDL-based physics prototyping application
 * Avoid inheritance (try to use virtual, abstract interfaces only)
 ** Put base-class logic into logically enclosing scope
