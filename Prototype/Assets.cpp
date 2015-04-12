@@ -173,6 +173,8 @@ bool Assets::loadModel(PrivateState &privateState, Info &info, Model &model)
 // -------------------------------------------------------------------------------------------------
 u32 Assets::krHash(const char *data, size_t size)
 {
+    // Inspired by:
+    // http://www.irrelevantconclusion.com/2013/07/hashing-file-paths/
     // Kernigan & Ritchie "The C Programming Language" hash
     u32 hash = 0;
     while (size-- > 0)
