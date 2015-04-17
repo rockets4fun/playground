@@ -42,8 +42,8 @@ bool RocketScience::initialize(Platform &platform)
     Renderer::Camera::Info *camera = nullptr;
     m_cameraHandle = platform.stateDb.createObjectAndRefState(
         Renderer::Camera::Info::STATE, &camera);
-    camera->position = glm::fvec4(20.0f, 20.0f, 20.0f, 1.0f);
-    camera->target   = glm::fvec4( 0.0f,  0.0f,  0.0f, 1.0f);
+    camera->position = glm::fvec3(20.0f, 20.0f, 20.0f);
+    camera->target   = glm::fvec3( 0.0f,  0.0f,  0.0f);
 
     platform.renderer.activeCameraHandle = m_cameraHandle;
 
@@ -67,12 +67,12 @@ bool RocketScience::initialize(Platform &platform)
         Renderer::Mesh::Info *mesh = nullptr;
         u64 meshHandle = platform.stateDb.createObjectAndRefState(
             Renderer::Mesh::Info::STATE, &mesh);
-        mesh->translation = glm::fvec4(glm::linearRand(
-            glm::fvec3(-10.0f, -10.0f, 0.0f), glm::fvec3(+10.0f, +10.0f, +40.0f)), 1.0);
+        mesh->translation = glm::linearRand(
+            glm::fvec3(-10.0f, -10.0f, 0.0f), glm::fvec3(+10.0f, +10.0f, +40.0f));
 
         if (enableRocket && meshIdx == 0)
         {
-            mesh->translation = glm::fvec4(0.0f, 0.0f, 10.0f, 1.0);
+            mesh->translation = glm::fvec3(0.0f, 0.0f, 10.0f);
             mesh->rotation = glm::angleAxis(glm::radians(90.0f), glm::fvec3(1.0f, 0.0f, 0.0f));
             mesh->modelAsset = platform.assets.asset("Assets/Pusher.obj");
         }
@@ -153,11 +153,10 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
             float(verticalRotationInDeg)), verticalRotationAxis);
     }
     xform = glm::translate(xform, -cameraInfo->target.xyz());
-    cameraInfo->position = xform * cameraInfo->position;
+    cameraInfo->position = glm::fvec3(xform * glm::fvec4(cameraInfo->position, 1.0f));
     if (glm::abs(translationInM) > 0.001)
     {
-        cameraInfo->position += glm::fvec4(
-            glm::normalize(cameraDir) * float(translationInM), 0.0);
+        cameraInfo->position += glm::normalize(cameraDir) * float(translationInM);
     }
 
     if (state[SDL_SCANCODE_P] && m_rigidBodyByMeshHandle.size() < m_meshHandles.size())
@@ -231,19 +230,23 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         glm::fvec3 nominalDir = glm::fvec3(0.0, 0.0, 1.0);
         glm::fvec3 actualDir  = meshRot * glm::fvec3(0.0f, 1.0f, 0.0f);
 
-        glm::fvec3 thrustVector = glm::normalize(nominalDir + 1.25f * (actualDir - nominalDir));
+        // Tilt nominal direction to make rocket stay at origin
+        nominalDir += glm::normalize(-meshInfo->translation) / 20.0f;
+        nominalDir  = glm::normalize(nominalDir);
 
-        forceInfo->force = thrustVector * mainEngineForce;
+        glm::fvec3 thrustVector = glm::normalize(nominalDir + 1.2f * (actualDir - nominalDir));
 
         // Add some main engine jitter
-        glm::fvec3 noise = glm::fvec3(2.0f, 2.0f, 2.0f);
-        forceInfo->force += glm::linearRand(-noise, noise);
+        glm::fvec3 maxNoise = glm::fvec3(0.05f, 0.05f, 0.05f);
+        glm::fvec3 jitter = glm::linearRand(-maxNoise, maxNoise);
+        thrustVector += jitter;
+
+        forceInfo->force = thrustVector * mainEngineForce;
 
         // Use arrow mesh to display thrust vector
         Renderer::Mesh::Info *arrowMeshInfo = nullptr;
         platform.stateDb.refState(Renderer::Mesh::Info::STATE, m_arrowMeshHandle, &arrowMeshInfo);
-        arrowMeshInfo->translation =
-            meshInfo->translation + glm::vec4(forceInfo->position, 0.0f);
+        arrowMeshInfo->translation = meshInfo->translation + forceInfo->position;
         arrowMeshInfo->rotation = Math::rotateFromTo(
             glm::fvec3(0.0f, 1.0f, 0.0f), -forceInfo->force);
 

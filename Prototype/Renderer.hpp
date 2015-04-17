@@ -25,7 +25,7 @@ struct Renderer : public ModuleIf
         struct Info
         {
             static u64 STATE;
-            glm::fvec4 translation;
+            glm::fvec3 translation;
             glm::fquat rotation;
             u32 modelAsset = 0;
         };
@@ -37,8 +37,8 @@ struct Renderer : public ModuleIf
         struct Info
         {
             static u64 STATE;
-            glm::fvec4 position;
-            glm::fvec4 target;
+            glm::fvec3 position;
+            glm::fvec3 target;
         };
     };
 

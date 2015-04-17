@@ -347,8 +347,7 @@ void Physics::update(Platform &platform, double deltaTimeInS)
         privateInfo->rigidBody->motionState->getWorldTransform(worldTrans);
 
         btVector3 origin = worldTrans.getOrigin();
-        meshInfo->translation =
-            glm::fvec4(origin.x(), origin.y(), origin.z(), 1.0);
+        meshInfo->translation = glm::fvec3(origin.x(), origin.y(), origin.z());
 
         btQuaternion rotation = worldTrans.getRotation();
         meshInfo->rotation =
