@@ -173,11 +173,15 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 
         if (meshInfo->modelAsset == platform.assets.asset("Assets/Pusher.obj"))
         {
-            Physics::Force::Info *forceInfo = nullptr;
-            m_pusherForce = platform.stateDb.createObjectAndRefState(
-                Physics::Force::Info::STATE, &forceInfo);
-            forceInfo->rigidBodyHandle = rigidBodyHandle;
-            forceInfo->enabled = 1;
+            rigidBodyInfo->collisionShapeType =
+                Physics::RigidBody::Info::CollisionShapeType::CONVEX_HULL_COMPOUND;
+            {
+                Physics::Force::Info *forceInfo = nullptr;
+                m_pusherForce = platform.stateDb.createObjectAndRefState(
+                    Physics::Force::Info::STATE, &forceInfo);
+                forceInfo->rigidBodyHandle = rigidBodyHandle;
+                forceInfo->enabled = 1;
+            }
         }
         else if (meshInfo->modelAsset == platform.assets.asset("Assets/Sphere.obj"))
         {
@@ -226,20 +230,20 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
             mainEngineForce = 45.0f;
         }
 
-        // Model's local +Y should be aligned to global +Z
+        // Rocket's local +Y should be aligned to global +Z
         glm::fvec3 nominalDir = glm::fvec3(0.0, 0.0, 1.0);
         glm::fvec3 actualDir  = meshRot * glm::fvec3(0.0f, 1.0f, 0.0f);
 
-        // Tilt nominal direction to make rocket stay at origin
+        // Tilt nominal direction to steer rocket towards origin
         nominalDir += glm::normalize(-meshInfo->translation) / 20.0f;
         nominalDir  = glm::normalize(nominalDir);
 
+        // Thrust vector tries to align rocket with nominal direction
         glm::fvec3 thrustVector = glm::normalize(nominalDir + 1.2f * (actualDir - nominalDir));
 
         // Add some main engine jitter
         glm::fvec3 maxNoise = glm::fvec3(0.05f, 0.05f, 0.05f);
-        glm::fvec3 jitter = glm::linearRand(-maxNoise, maxNoise);
-        thrustVector += jitter;
+        thrustVector += glm::linearRand(-maxNoise, maxNoise);
 
         forceInfo->force = thrustVector * mainEngineForce;
 

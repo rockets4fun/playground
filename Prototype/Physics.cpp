@@ -53,7 +53,8 @@ struct Physics::PrivateState
 
     std::shared_ptr< btCollisionShape > cubeShape;
 
-    std::map< u64, std::shared_ptr< btCollisionShape > > collisionShapes;
+    std::map< u64, btCollisionShape * > collisionShapes;
+    std::list< std::shared_ptr< btCollisionShape > > collisionShapesStorage;
 
     std::list< PrivateRigidBody > rigidBodies;
 
@@ -98,11 +99,14 @@ void Physics::PrivateRigidBody::initialize(
 
     btCollisionShape *collisionShape = nullptr;
     u64 collisionShapeKey = u64(info->collisionShapeType) << 32 | u64(meshInfo->modelAsset);
+
     // TODO(martinmo): Find way to get rid of map lookup
     auto collisionShapeIter = state.collisionShapes.find(collisionShapeKey);
+
     if (collisionShapeIter == state.collisionShapes.end())
     {
         COMMON_ASSERT(model != nullptr);
+
         glm::fvec3 min(
             std::numeric_limits< float >::max(),
             std::numeric_limits< float >::max(),
@@ -117,6 +121,7 @@ void Physics::PrivateRigidBody::initialize(
             max = glm::max(max, position);
         }
         glm::fvec3 halfExtent = 0.5f * (max - min);
+
         if (info->collisionShapeType == Physics::RigidBody::Info::BOUNDING_BOX)
         {
             collisionShape = new btBoxShape(btVector3(halfExtent.x, halfExtent.y, halfExtent.z));
@@ -126,20 +131,48 @@ void Physics::PrivateRigidBody::initialize(
             collisionShape = new btSphereShape(glm::max(
                 glm::max(halfExtent.x, halfExtent.y), halfExtent.z));
         }
-        if (collisionShape)
+        else if (info->collisionShapeType == Physics::RigidBody::Info::CONVEX_HULL_COMPOUND)
         {
-            state.collisionShapes[collisionShapeKey] =
-                std::shared_ptr< btCollisionShape >(collisionShape);
+            btCompoundShape *compoundShape = new btCompoundShape;
+            for (auto &subMesh : model->subMeshes)
+            {
+                /*
+                btConvexHullShape *shape = new btConvexHullShape(
+                    &model->positions[subMesh.triangleOffset * 3].x, subMesh.triangleCount * 3);
+                shape->recalcLocalAabb();
+                */
+
+                btConvexHullShape *shape = new btConvexHullShape;
+                const glm::fvec3 *positionIter = &model->positions[subMesh.triangleOffset * 3];
+                const int pointCount = subMesh.triangleCount * 3;
+                for (int pointIdx = 0; pointIdx < pointCount; ++pointIdx)
+                {
+                    btVector3 point = btVector3(positionIter->x, positionIter->y, positionIter->z);
+                    shape->addPoint(point);
+                    ++positionIter;
+                }
+
+                // TODO(martinmo): Optimize convex hull shape using 'btShapeHull'
+                btTransform transform = btTransform(btQuaternion(0.0f, 0.0f, 0.0f, 1.0f));
+                compoundShape->addChildShape(transform, shape);
+            }
+            collisionShape = compoundShape;
         }
         else
         {
             // TODO(martinmo): Collision shape fallback warning?
             collisionShape = state.cubeShape.get();
         }
+        state.collisionShapes[collisionShapeKey] = collisionShape;
+        if (collisionShape != state.cubeShape.get())
+        {
+            state.collisionShapesStorage.push_back(
+                std::shared_ptr< btCollisionShape >(collisionShape));
+        }
     }
     else
     {
-        collisionShape = collisionShapeIter->second.get();
+        collisionShape = collisionShapeIter->second;
     }
 
     // TODO(martinmo): Update collision shape if asset version changes

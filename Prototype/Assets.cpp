@@ -133,6 +133,7 @@ bool Assets::loadModel(PrivateState &privateState, Info &info, Model &model)
         for (size_t meshIdx = 0; meshIdx < leaf->mNumMeshes; ++meshIdx)
         {
             const aiMesh *mesh = scene->mMeshes[leaf->mMeshes[meshIdx]];
+            COMMON_ASSERT(mesh->mNumFaces > 0);
             // TODO(martinmo): Support more than just triangles...
             if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
             {
@@ -153,14 +154,15 @@ bool Assets::loadModel(PrivateState &privateState, Info &info, Model &model)
                         mesh->mNormals[face->mIndices[idx]].z));
                 }
             }
-
             u64 triangleCount = model.positions.size() / 3;
-            SubMeshInfo subMesh;
-            subMesh.name = leaf->mName.C_Str();
-            subMesh.triangleOffset = prevTriangleCount;
-            subMesh.triangleCount = triangleCount - prevTriangleCount;
+            {
+                SubMeshInfo subMesh;
+                subMesh.name = leaf->mName.C_Str();
+                subMesh.triangleOffset = prevTriangleCount;
+                subMesh.triangleCount = triangleCount - prevTriangleCount;
+                model.subMeshes.push_back(subMesh);
+            }
             prevTriangleCount = triangleCount;
-            model.subMeshes.push_back(subMesh);
         }
     }
 
