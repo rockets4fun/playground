@@ -62,13 +62,13 @@ bool RocketScience::initialize(Platform &platform)
 
     const bool enableRocket = true;
 
-    for (int meshIdx = 0; meshIdx < 64; ++meshIdx)
+    for (int meshIdx = 0; meshIdx < 80; ++meshIdx)
     {
         Renderer::Mesh::Info *mesh = nullptr;
         u64 meshHandle = platform.stateDb.createObjectAndRefState(
             Renderer::Mesh::Info::STATE, &mesh);
         mesh->translation = glm::linearRand(
-            glm::fvec3(-10.0f, -10.0f, 0.0f), glm::fvec3(+10.0f, +10.0f, +40.0f));
+            glm::fvec3(-10.0f, -10.0f, +20.0f), glm::fvec3(+10.0f, +10.0f, +40.0f));
 
         if (enableRocket && meshIdx == 0)
         {

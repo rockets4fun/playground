@@ -460,14 +460,14 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
 
 // -------------------------------------------------------------------------------------------------
 #define RENDERER_GL_FUNC(Name) \
+    { \
+        funcs->Name = (decltype(funcs->Name))(SDL_GL_GetProcAddress(#Name)); \
+        if (funcs->Name == nullptr) \
         { \
-            funcs->Name = (decltype(funcs->Name))(SDL_GL_GetProcAddress(#Name)); \
-            if (funcs->Name == nullptr) \
-            { \
-                SDL_Log("ERROR: Failed to resolve '%s'", #Name); \
-                return false; \
-            } \
-        }
+            SDL_Log("ERROR: Failed to resolve '%s'", #Name); \
+            return false; \
+        } \
+    }
 bool Renderer::initializeGl()
 {
     RENDERER_GL_FUNC(glEnable);

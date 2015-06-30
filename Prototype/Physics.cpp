@@ -163,12 +163,12 @@ void Physics::PrivateRigidBody::initialize(
             // TODO(martinmo): Collision shape fallback warning?
             collisionShape = state.cubeShape.get();
         }
-        state.collisionShapes[collisionShapeKey] = collisionShape;
         if (collisionShape != state.cubeShape.get())
         {
             state.collisionShapesStorage.push_back(
                 std::shared_ptr< btCollisionShape >(collisionShape));
         }
+        state.collisionShapes[collisionShapeKey] = collisionShape;
     }
     else
     {
@@ -200,7 +200,7 @@ void Physics::PrivateRigidBody::initialize(
     constructionInfo.m_rollingFriction = btScalar(0.2);
     rigidBody = std::make_shared< btRigidBody >(constructionInfo);
 
-    // TODO(martinmo): Add flag to disable this for certain RBs only...
+    // TODO(martinmo): Add flag to disable this for specific RBs only
     rigidBody->setActivationState(DISABLE_DEACTIVATION);
 
     state.dynamicsWorld->addRigidBody(rigidBody.get());
