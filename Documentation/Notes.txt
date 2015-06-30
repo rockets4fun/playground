@@ -1,36 +1,15 @@
-h1. Coding Roadmap
+h1. Current Coding Roadmap
 ----------------------------------------------------------------------------------------------------
 
-h2. Prototype Jan 2015
-
-* Simply structured, single threaded, SDL-based physics prototyping application
-* Avoid inheritance (try to use virtual, abstract interfaces only)
-** Put base-class logic into logically enclosing scope
-* Structure around data held in 'StateDb' data container (StateTracker 2.0)
-* 'Module' interface definition for decoupling potential future plugins
-* 'Physics' module implementing simple rigid body physics using Bullet
-* 'Assets' module for managing assets (models, textures, shaders)
-* 'Renderer' module providing simple OpenGL rendering (no VBOs and textures)
-* 'RocketScience' module providing application logic
-* Compare assembly generated for call through function pointer vs. call through pointer to interface 
+* Compare assembly generated for call through function pointer vs. call through interface
 ** Interface pointer is pointer to abstract/pure virtual base class
 
-h1. General Notes
+
+h1. Guidelines
 ----------------------------------------------------------------------------------------------------
 
 * Runtime is design time
-* Scrub and replay state
-** Like GC recordings
-* Scrub and continue from state
-** Like Casey's looped game logic live programming
-
 * Write API usage code before (or at least pseudo-usage code while) designing API
-* Save (and load?) C code for defining state machines in a graphical way (use LLVM to parse?)
-** The purpose of an instrumentable representation is improving on correctness
-** First thing we need is a defintion of correctness or at least improving it
-*** Could be data read in a state that is not properly initialized in prev state
-*** May also be fixable by an approach similar to FutureTalk/ExtSwarmCtrl SMs
-** This approach should work for both C and C++ (thus depend C language features only)
 * Add stuff as it is needed (add-on instead of added in)
 ** Interfaces, sub-routines, ...
 * IM vs. RM APIs (culling in/before logic or engine/renderer)
@@ -39,6 +18,7 @@ h1. General Notes
 ** Mix where it makes sense/improves performance (e.g. particle system)
 * Parallelize by data instance not transformation
 * No premature parallelization
+** Keep everything sequential and profile before introducing parallelism
 * Order of operations
 ** Physics
 ** Application logic (incl. input processing)
@@ -46,9 +26,14 @@ h1. General Notes
 
 h2. Coding Guidelines
 
+* Make implicit callback-funciton invocations more explicit
+** E.g. by passing potential CBs as paraeters to invoking update function
+* Avoid inheritance (try to use virtual, abstract interfaces only)
+** Put base-class logic into logically enclosing scope
 * Code complexity management
 ** We are not yet giving up on RAII
 ** Structure using modular classes
+** Add-on modules instead of adding complexity to existing modules
 *** Mid-size logical units (2 k - 5 k LOC)
 ** Hide implementation details from module header
 *** Pimplistic design principles
@@ -57,19 +42,52 @@ h2. Coding Guidelines
 * No virtual methods that are called n-times per frame
 ** Always use direct function/method calls for such transformations
 * Use pointers only when pointer arithemtic is expected to be performed
+** Except for when null references need to be represented
 ** Or when pointer usage feels more elegant (exception to the rule...)
 * Always use struct instead of class
 ** That's a nice hint towards intended DoD-ness too...
 
-h2. State Database
 
+h1. Module Details
+----------------------------------------------------------------------------------------------------
+
+h2. Rocket Science Module
+
+* Consider rotational speed for dampening controller
+
+h2. State Machine Logic Module
+
+* Save (and load?) C code for defining state machines in a graphical way (use LLVM to parse?)
+** The purpose of an instrumentable representation is improving on correctness
+** First thing we need is a defintion of correctness or at least improving it
+*** Could be data read in a state that is not properly initialized in prev state
+*** May also be fixable by an approach similar to FutureTalk/ExtSwarmCtrl SMs
+** This approach should work for both C and C++ (thus depend C language features only)
+
+h2. State Database Module
+
+* Out-of-elements case should be handled gracefully in release
+** Return pointer to 0-element (not used ATM anyhow...)
+* Write state changes to state back-buffer?
+** Clone into front-buffer before next frame
+** All logic of a frame uses same base state for calculations
+** Double/multi-buffered state storage for interpolation?
+* Scrub and replay state
+** Like GC recordings
+** Secondary/internal state needs to get reset on rewind (not recorded!?)
+** Think about what happens to lifecycle counters on reset
+** Recordings have to track creation/deletion of elements
+** Keyframes have to contain lifeycle counters and oid <=> pidx tables
+* Scrub and continue from state
+** Like Casey's looped game logic live programming
+** Might need to restore full Bullet/physics state before continue
 * Object/instance handles
 ** Indirection on deletion (last element swapped in on deletion)
 ** Detect deleted objects by storing object version in handle
 * Classify all state as input/primary/secondary/internal
 ** Input: All user input state (keyboard, ...)
 ** Primary: Generated by application logic
-** Mark primary states with flag?
+*** Mark primary states with flag?
 ** No need to record secondary/internal states?
 * Locking strategy
 ** Locking per type seems to be way to go
@@ -79,10 +97,10 @@ h2. State Database
 ** More complicated schemes seem to induce too much friction
 * Proper support for atomic operations
 * State database contains only primary state
-** Secondary state is defined through program logic
+** Secondary/internal state is defined through program logic
 *** E.g. actual mesh data loaded from model file
 
-h2. Platform Abstraction
+h2. Platform Abstraction Module
 
 * Hot re-loading of plugins on all platforms
 ** Engine core features could be hot-reloadable as well
@@ -93,8 +111,12 @@ h2. Platform Abstraction
 ** Must be easy to turn sub-module of plugin into plugin (common interface)
 * DLL interface could be function returning pointer to interface class
 
-h2. Renderer
+h2. Renderer Module
 
+* Implement special effects as plugins
+** Renderer provides base infrastructure/graphics API abstraction only
+** Allow low-level plugins with full OpenGL access?
+*** Better to fully integrate into renderer?
 * Frame buffer abstraction
 ** Render to texture
 ** Culling always depends on camera bound to frame buffer
@@ -107,11 +129,12 @@ h2. Renderer
 ** Simply restore state, render frame and diff pixel output with ground truth
 * Prevent OpenGL driver serialization/pipeline stall
 ** Do not use any 'glGet*'-functions (incl. 'glGetError')
-** Use ARB_debug_output extension (should tell us when we are making a mistake)
+** Use "ARB_debug_output" extension (should tell us when we are making a mistake)
 * Do not use Vertex Array Object
 ** "Slower than glVertexAttribPointer on all implementations" according to Valve
 * Vertex specification best practices
 ** Interleaving vertex attributes in vertex buffer objects not necessarily a good idea
+
 
 h1. Design
 ----------------------------------------------------------------------------------------------------
@@ -137,14 +160,19 @@ h2. Abstraction Layers
 ** Physics
 ** Sound output
 ** Networking
+** Profiling
 
 * Application logic (dynamic code)
 ** Runtime hot reloadable
 ** Uses engine abstraction to define application
 ** State machine mechanisms
 
+
 h1. Research Backlog
 ----------------------------------------------------------------------------------------------------
 
 * Chandler Carruth "Efficiency with Algorithms, Performance with Data Structures" 
 ** https://www.youtube.com/watch?v=fHNmRkzxHWs
+* Glenn Fiedler's networked physics article series for networking/state-distribution
+* BitSquid engine articles for general engine design
+** http://bitsquid.blogspot.se/2014/09/building-data-oriented-entity-system.html
