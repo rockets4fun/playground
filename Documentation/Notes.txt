@@ -1,6 +1,20 @@
 h1. Current Coding Roadmap
 ----------------------------------------------------------------------------------------------------
 
+* Rocket drone ship landing
+** Basic rocket control
+*** Inner controller for stabilizing yaw=pitch=0
+*** Outer controller for changing position by adjusting yaw/pitch
+** Simple infinite water/buoyancy simulation
+** Land rocket on drone ship
+** Later: 2x nose thruster controlled flip maneuver
+*** Wing tip thruster based control of roll for aiming nose thrusters
+** Explore comic visual style
+
+* Rocket payload launch abort landing
+** Launch from drone ship
+** Quadcopter-style control of payload (e.g. 2x4 thrusters like Dragon V2)
+
 * Compare assembly generated for call through function pointer vs. call through interface
 ** Interface pointer is pointer to abstract/pure virtual base class
 
@@ -10,19 +24,25 @@ h1. Guidelines
 
 * Runtime is design time
 * Write API usage code before (or at least pseudo-usage code while) designing API
-* Add stuff as it is needed (add-on instead of added in)
-** Interfaces, sub-routines, ...
+* Never add functionality before it is needed
+** Add-on instead of added in
+** Modules, interfaces, sub-routines, ...
 * IM vs. RM APIs (culling in/before logic or engine/renderer)
 ** Pre- or just in time loading of resources
 * Make update and render data transformations mixable
 ** Mix where it makes sense/improves performance (e.g. particle system)
-* Parallelize by data instance not transformation
+* Parallelize by data instance (A, B, C) not data transformation (X, Y, Z)
+** Perform A:XYZ|B:XYZ|C:XYZ instead of ABC:X|ABC:Y|ABC:Z
 * No premature parallelization
 ** Keep everything sequential and profile before introducing parallelism
+** Kick off jobs in worker threads from one flow control thread
+*** Flow control thread has to keep track of data dependencies as well
+** Stay away from modules at arbitrarily offest refresh rates
 * Order of operations
 ** Physics
 ** Application logic (incl. input processing)
 ** Video/audio output
+* Application logic uses its state to drive renderer state from physics state
 
 h2. Coding Guidelines
 
@@ -46,12 +66,13 @@ h2. Coding Guidelines
 ** Or when pointer usage feels more elegant (exception to the rule...)
 * Always use struct instead of class
 ** That's a nice hint towards intended DoD-ness too...
+* Consider sutom code generation instead of using templates
 
 
 h1. Module Details
 ----------------------------------------------------------------------------------------------------
 
-h2. Rocket Science Module
+h2. Rocket Science Application Module
 
 * Consider rotational speed for dampening controller
 
@@ -66,6 +87,9 @@ h2. State Machine Logic Module
 
 h2. State Database Module
 
+* Do we need to support stateful events in addition to states in recordings?
+* Callback-based observer (w/o using inheritance!)
+* Support for hierarchical state queries
 * Out-of-elements case should be handled gracefully in release
 ** Return pointer to 0-element (not used ATM anyhow...)
 * Write state changes to state back-buffer?
@@ -135,6 +159,23 @@ h2. Renderer Module
 * Vertex specification best practices
 ** Interleaving vertex attributes in vertex buffer objects not necessarily a good idea
 
+h2. Assets Module
+
+* Static versus dynamic (aka streaming) assets
+* Allow for plugin-specific assets (simple copy full plugin directory)
+* Static assets all in memory - renderer reload triggers redefinition for GL only
+* Allow direct access to mesh data using 'meshId'
+
+h2. Profiling Module
+
+* Overwrite "operator new" to collect allocation stats
+* "m"-key prints state DB memory stats (e.g. per object mem. usage)
+* Display measured times as fraction of available frame time (e.g. 16 ms)
+* Scope-based contextualization could be used to detect race conditions
+
+h2. Physics Module
+
+* Hot-reload of mesh triggers collision shape update (version field in mesh)
 
 h1. Design
 ----------------------------------------------------------------------------------------------------
@@ -161,6 +202,7 @@ h2. Abstraction Layers
 ** Sound output
 ** Networking
 ** Profiling
+** State database
 
 * Application logic (dynamic code)
 ** Runtime hot reloadable
