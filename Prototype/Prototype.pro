@@ -132,3 +132,7 @@ SOURCES += \
     Renderer.cpp \
     RocketScience.cpp \
     StateDb.cpp
+
+OTHER_FILES += \
+    ../Documentation/Notes.txt \
+    ../Documentation/GameNotes.txt
