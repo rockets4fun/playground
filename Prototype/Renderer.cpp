@@ -226,7 +226,7 @@ void Renderer::registerTypesAndStates(StateDb &stateDb)
     Mesh::Info::STATE = stateDb.registerState(
         Mesh::TYPE, "Info", sizeof(Mesh::Info));
 
-    Camera::TYPE = stateDb.registerType("Camera", 64);
+    Camera::TYPE = stateDb.registerType("Camera", 8);
     Camera::Info::STATE = stateDb.registerState(
         Camera::TYPE, "Info", sizeof(Camera::Info));
 }

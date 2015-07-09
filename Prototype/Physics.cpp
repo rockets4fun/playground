@@ -242,7 +242,7 @@ Physics::~Physics()
 // -------------------------------------------------------------------------------------------------
 void Physics::registerTypesAndStates(StateDb &stateDb)
 {
-    RigidBody::TYPE = stateDb.registerType("RigidBody", 1025);
+    RigidBody::TYPE = stateDb.registerType("RigidBody", 4096);
     RigidBody::Info::STATE = stateDb.registerState(
         RigidBody::TYPE, "Info", sizeof(RigidBody::Info));
     RigidBody::PrivateInfo::STATE = stateDb.registerState(

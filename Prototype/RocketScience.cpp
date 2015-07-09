@@ -62,7 +62,7 @@ bool RocketScience::initialize(Platform &platform)
 
     const bool enableRocket = true;
 
-    for (int meshIdx = 0; meshIdx < 80; ++meshIdx)
+    for (int meshIdx = 0; meshIdx < 128; ++meshIdx)
     {
         Renderer::Mesh::Info *mesh = nullptr;
         u64 meshHandle = platform.stateDb.createObjectAndRefState(
