@@ -1,0 +1,81 @@
+h1. Game Notes
+----------------------------------------------------------------------------------------------------
+
+* Low-tec space battles
+** WW2/"Wing Commander Movie" style...
+** Dumb torpedos for attacking capital ships (aim before release)
+*** Think about torpedo tubes that can be rotated
+*** Salvos with slightly different direction like WW2 subs ("Fächer")
+** WW2 style AA-gun fire with timed exploding shells
+** Small weapons fire not hull-breaching
+*** Pulse lasers and small homing missiles...
+*** Can be used to damage capitol ship thrusters/sensors/power supply
+** Large static laser only on capital ships (aim before shoot)
+*** Long recharge times for balance
+** Capitol ships should break/fracture where hit by torpedo/finishing projectile
+*** Parts may still function if have CPU/fire-control, weapons and energy
+*** Ship's internal spaces should be modelled roughly (all slots reachable)
+** Torpedo impact/explosion influences ships impulse/speed/acceleration
+
+* Visual style/look and feel
+** Comic-style similar to clone wars but less realistic
+*** Less realistic means e.g. no dirt textures
+** Low-poly (fracturing/breaking!) with some mechanical details
+*** Opening/closing slot/silo doors
+*** Visible thrust vectoring
+*** Consistent scale for geometric details
+** Smoothing/latency on thrust for visualization
+** User interface
+*** Avoid classical 2D style
+*** Use 3D/hologram + interactive labels
+** Think about using geometry only and no textures
+*** Faction color and logo texture layers?
+** Horizontal blur for engine/thruster highlights
+
+* Units and customization
+** Hardpoint-based modular approach
+*** Slots (small: torpedo tube, med: mining/maintenance bots, large: fighters/static lasers)
+*** Internal/external hardpoints (small, med, large)
+*** Internal hardpoints: Power generators/storage, fire-control, auto-pilot, ...
+*** External hardpoints: Sensors, guns, torpedo tubes, shield generators, ...
+*** Thrust-less launch of fighters from large slots on rotating ship segment
+*** Think about unifying slots and hardpoints (combine into two sizes only?)
+** Unit sizes
+*** Small (mining/maintenance bots)
+*** Medium (fighters)
+*** Large (small carriers, small mining ships, small transport ships)
+*** Capitol (battle ships w/w/o carrier caps, mining ships)
+** Fire-control and auto-pilot CPUs with SW feature sets
+*** E.g. fire-control CPU that can control three guns on external HPs
+** Model on-board energy consumption/generation/storage?
+** Model fuel/propulsion for bots and all other ships
+** All units/components modeled and simulated properly
+** State-machine based definition of control logic
+
+* Sensors
+** Direction-dependant signature simulation
+*** For varios sensors (radar, infrared...)
+** "Schleichfahrt"-like ping sensors (WW2 subs again...)
+** Simulate noise and inaccuracies
+** Realistically modeled CV sensors?
+
+* Asteroids/planets
+** All procedurally generated
+** Minify planetary scale to keep gameplay alive
+
+* Mining mechanics
+** Surveying satellites gather map of mineral deposits
+*** Survey result maps can be sold (device that generates fake maps?)
+** Mining drones go back and forth between deposits and mining ship
+
+* Story
+** Factions: Earth force, colonies, pirates/raiders, aliens?
+
+* Miscellaneous ideas
+** Robotic war simplification
+*** No cockpits and characters
+*** Just cameras and HUDs
+** Multi-crew/large ships
+*** Moving around in the ship takes time
+** Descent 6DOF gameplay aspect
+*** Large asteroids with caves

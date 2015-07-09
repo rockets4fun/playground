@@ -5,6 +5,7 @@ h1. Current Coding Roadmap
 ** Basic rocket control
 *** Inner controller for stabilizing yaw=pitch=0
 *** Outer controller for changing position by adjusting yaw/pitch
+*** Consider rotational speed for dampening controller
 ** Simple infinite water/buoyancy simulation
 ** Land rocket on drone ship
 ** Later: 2x nose thruster controlled flip maneuver
@@ -71,10 +72,6 @@ h2. Coding Guidelines
 
 h1. Module Details
 ----------------------------------------------------------------------------------------------------
-
-h2. Rocket Science Application Module
-
-* Consider rotational speed for dampening controller
 
 h2. State Machine Logic Module
 
