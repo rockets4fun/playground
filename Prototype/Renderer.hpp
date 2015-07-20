@@ -71,6 +71,7 @@ public: // Implementation of module interface
 private:
     struct GlFuncs;
     struct GlState;
+    struct GlMesh;
     struct GlHelpers;
 
     std::shared_ptr< GlFuncs > funcs;

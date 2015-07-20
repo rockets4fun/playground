@@ -90,6 +90,24 @@ struct Renderer::GlState
 
     GLuint cubePositionsVbo;
     GLuint cubeNormalsVbo;
+
+    std::map< u32, GlMesh > meshes;
+};
+
+// Declared here because we do not want to expose OpenGL implementation details in header
+struct Renderer::GlMesh
+{
+    enum Flag
+    {
+        DIRTY = 0x1,
+        DYNAMIC = 0x2
+    };
+
+    Assets::Model *model = nullptr;
+    GLuint positionsVbo = 0;
+    GLuint normalsVbo = 0;
+    GLsizei vertexCount = 0;
+    u32 flags = 0;
 };
 
 // Declared here because we do not want to expose OpenGL implementation details in header
@@ -116,18 +134,8 @@ u64 Renderer::Mesh::Info::STATE = 0;
 // Declared here because we do not want to expose OpenGL implementation details in header
 struct Renderer::Mesh::PrivateInfo
 {
-    enum Flag
-    {
-        DIRTY = 0x1,
-        DYNAMIC = 0x2
-    };
-
     static u64 STATE;
-    Assets::Model *model = nullptr;
-    GLuint positionsVbo = 0;
-    GLuint normalsVbo = 0;
-    GLsizei vertexCount = 0;
-    u32 flags = 0;
+    GlMesh *glMesh = nullptr;
 };
 u64 Renderer::Mesh::PrivateInfo::STATE = 0;
 
@@ -402,11 +410,9 @@ void Renderer::shutdown(Platform &platform)
     if (state->defFs) funcs->glDeleteShader(state->defFs);
     if (state->defVs) funcs->glDeleteShader(state->defVs);
 
-    Mesh::PrivateInfo *meshPrivateBegin = nullptr, *meshPrivateEnd = nullptr;
-    platform.stateDb.refStateAll(Mesh::PrivateInfo::STATE, &meshPrivateBegin, &meshPrivateEnd);
-    for (auto meshPrivate = meshPrivateBegin; meshPrivate != meshPrivateEnd; ++meshPrivate)
+    for (auto &mapIter : state->meshes)
     {
-        funcs->glDeleteBuffers(2, &meshPrivate->positionsVbo);
+        funcs->glDeleteBuffers(2, &mapIter.second.positionsVbo);
     }
 
     helpers = std::make_shared< GlHelpers >(funcs.get());
@@ -435,73 +441,82 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
             cameraInfo->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
     }
 
-    // Set dirty flags for all dynamic meshes
+    Mesh::Info *meshBegin = nullptr, *meshEnd = nullptr;
+    platform.stateDb.refStateAll(Mesh::Info::STATE, &meshBegin, &meshEnd);
     Mesh::PrivateInfo *meshPrivateBegin = nullptr, *meshPrivateEnd = nullptr;
     platform.stateDb.refStateAll(Mesh::PrivateInfo::STATE, &meshPrivateBegin, &meshPrivateEnd);
-    for (auto meshPrivate = meshPrivateBegin; meshPrivate != meshPrivateEnd; ++meshPrivate)
+    Mesh::PrivateInfo *meshPrivate = nullptr;
+
+    // Set dirty flags for all dynamic meshes
+    meshPrivate = meshPrivateBegin;
+    for (auto mesh = meshBegin; mesh != meshEnd; ++mesh, ++meshPrivate)
     {
-        if (meshPrivate->flags & Mesh::PrivateInfo::Flag::DYNAMIC)
+        if (!meshPrivate->glMesh)
         {
-            meshPrivate->flags |= Mesh::PrivateInfo::Flag::DIRTY;
+            meshPrivate->glMesh = &state->meshes[mesh->modelAsset];
+        }
+        if (meshPrivate->glMesh->flags & GlMesh::Flag::DYNAMIC)
+        {
+            meshPrivate->glMesh->flags |= GlMesh::Flag::DIRTY;
         }
     }
 
     // Pseudo-instanced rendering of meshes
-    Mesh::Info *meshBegin = nullptr, *meshEnd = nullptr;
-    platform.stateDb.refStateAll(Mesh::Info::STATE, &meshBegin, &meshEnd);
-    Mesh::PrivateInfo *meshPrivate = meshPrivateBegin;
+    meshPrivate = meshPrivateBegin;
     for (auto mesh = meshBegin; mesh != meshEnd; ++mesh, ++meshPrivate)
     {
-        if (!meshPrivate->model)
+        // FIXME(martinmo): We need to re-introduce GL state map for storing per-model state
+        GlMesh *glMesh = meshPrivate->glMesh;
+        if (!glMesh->positionsVbo)
         {
             // TODO(martinmo): Add way of getting asset and flags in one call/lookup
-            meshPrivate->model = platform.assets.refModel(mesh->modelAsset);
+            glMesh->model = platform.assets.refModel(mesh->modelAsset);
             bool dynamic = platform.assets.assetFlags(mesh->modelAsset) & Assets::Flag::DYNAMIC;
-            COMMON_ASSERT(meshPrivate->model);
+            COMMON_ASSERT(glMesh->model);
 
             GLenum usage = GL_STATIC_DRAW;
             if (dynamic)
             {
-                meshPrivate->flags |= Mesh::PrivateInfo::Flag::DYNAMIC;
+                glMesh->flags |= GlMesh::Flag::DYNAMIC;
                 usage = GL_DYNAMIC_DRAW;
             }
 
-            meshPrivate->vertexCount = GLsizei(meshPrivate->model->positions.size());
-            funcs->glGenBuffers(1, &meshPrivate->positionsVbo);
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, meshPrivate->positionsVbo);
+            glMesh->vertexCount = GLsizei(glMesh->model->positions.size());
+            funcs->glGenBuffers(1, &glMesh->positionsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->positionsVbo);
             funcs->glBufferData(GL_ARRAY_BUFFER,
-                meshPrivate->vertexCount * sizeof(glm::fvec3),
-                &meshPrivate->model->positions[0].x, usage);
-            funcs->glGenBuffers(1, &meshPrivate->normalsVbo);
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, meshPrivate->normalsVbo);
+                glMesh->vertexCount * sizeof(glm::fvec3),
+                &glMesh->model->positions[0].x, usage);
+            funcs->glGenBuffers(1, &glMesh->normalsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->normalsVbo);
             funcs->glBufferData(GL_ARRAY_BUFFER,
-                meshPrivate->vertexCount * sizeof(glm::fvec3),
-                &meshPrivate->model->normals[0].x, usage);
+                glMesh->vertexCount * sizeof(glm::fvec3),
+                &glMesh->model->normals[0].x, usage);
 
-            meshPrivate->flags &= ~Mesh::PrivateInfo::Flag::DIRTY;
+            glMesh->flags &= ~GlMesh::Flag::DIRTY;
         }
-        else if (meshPrivate->flags & Mesh::PrivateInfo::Flag::DIRTY)
+        else if (glMesh->flags & GlMesh::Flag::DIRTY)
         {
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, meshPrivate->positionsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->positionsVbo);
             funcs->glBufferSubData(GL_ARRAY_BUFFER, 0,
-                meshPrivate->vertexCount * sizeof(glm::fvec3),
-                &meshPrivate->model->positions[0].x);
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, meshPrivate->normalsVbo);
+                glMesh->vertexCount * sizeof(glm::fvec3),
+                &glMesh->model->positions[0].x);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->normalsVbo);
             funcs->glBufferSubData(GL_ARRAY_BUFFER, 0,
-                meshPrivate->vertexCount * sizeof(glm::fvec3),
-                &meshPrivate->model->normals[0].x);
-            meshPrivate->flags &= ~Mesh::PrivateInfo::Flag::DIRTY;
+                glMesh->vertexCount * sizeof(glm::fvec3),
+                &glMesh->model->normals[0].x);
+            glMesh->flags &= ~GlMesh::Flag::DIRTY;
         }
 
         // Vertex attribute assignments are stored inside the bound VAO
         // ==> Think about creating one VAO per renderable mesh
         {
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, meshPrivate->positionsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->positionsVbo);
             funcs->glVertexAttribPointer(
                 state->defProgAttribPosition,3, GL_FLOAT, GL_FALSE, 0, 0);
             funcs->glEnableVertexAttribArray(state->defProgAttribPosition);
 
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, meshPrivate->normalsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->normalsVbo);
             funcs->glVertexAttribPointer(
                 state->defProgAttribNormal,3, GL_FLOAT, GL_FALSE, 0, 0);
             funcs->glEnableVertexAttribArray(state->defProgAttribNormal);
@@ -514,7 +529,7 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
         funcs->glUniformMatrix4fv(
             state->defProgUniformModelViewMatrix, 1, GL_FALSE, glm::value_ptr(modelView));
 
-        funcs->glDrawArrays(GL_TRIANGLES, 0, meshPrivate->vertexCount);
+        funcs->glDrawArrays(GL_TRIANGLES, 0, glMesh->vertexCount);
     }
 }
 
