@@ -21,14 +21,15 @@
 #include "Assets.hpp"
 
 // Include file containing all OpenGL declarations and definitions
-// --> This will never be included outside of this class
+// ==> This will never be included outside of this class
 #include "CoreGl/glcorearb.h"
 
 // Declared here because we do not want to expose OpenGL implementation details in header
 struct Renderer::GlFuncs
 {
     // Basic functions
-    PFNGLENABLEPROC glEnable = nullptr;
+    PFNGLENABLEPROC   glEnable = nullptr;
+    PFNGLCULLFACEPROC glCullFace = nullptr;
     // Buffer clearing functions
     PFNGLCLEARCOLORPROC glClearColor = nullptr;
     PFNGLCLEARPROC      glClear = nullptr;
@@ -73,14 +74,6 @@ struct Renderer::GlFuncs
 };
 
 // Declared here because we do not want to expose OpenGL implementation details in header
-struct Renderer::GlMesh
-{
-    GLuint positionsVbo = 0;
-    GLuint normalsVbo = 0;
-    GLsizei vertexCount = 0;
-};
-
-// Declared here because we do not want to expose OpenGL implementation details in header
 struct Renderer::GlState
 {
     GLuint defVs = 0;
@@ -97,8 +90,6 @@ struct Renderer::GlState
 
     GLuint cubePositionsVbo;
     GLuint cubeNormalsVbo;
-
-    std::map< u32, GlMesh > meshes;
 };
 
 // Declared here because we do not want to expose OpenGL implementation details in header
@@ -121,8 +112,30 @@ private:
 
 u64 Renderer::Mesh::TYPE = 0;
 u64 Renderer::Mesh::Info::STATE = 0;
+
+// Declared here because we do not want to expose OpenGL implementation details in header
+struct Renderer::Mesh::PrivateInfo
+{
+    enum Flag
+    {
+        DIRTY = 0x1,
+        DYNAMIC = 0x2
+    };
+
+    static u64 STATE;
+    Assets::Model *model = nullptr;
+    GLuint positionsVbo = 0;
+    GLuint normalsVbo = 0;
+    GLsizei vertexCount = 0;
+    u32 flags = 0;
+};
+u64 Renderer::Mesh::PrivateInfo::STATE = 0;
+
 u64 Renderer::Camera::TYPE = 0;
 u64 Renderer::Camera::Info::STATE = 0;
+
+u64 Renderer::Transform::TYPE = 0;
+u64 Renderer::Transform::Info::STATE = 0;
 
 // -------------------------------------------------------------------------------------------------
 Renderer::GlHelpers::GlHelpers(GlFuncs *funcs) : funcs(funcs)
@@ -225,10 +238,16 @@ void Renderer::registerTypesAndStates(StateDb &stateDb)
     Mesh::TYPE = stateDb.registerType("Mesh", 4096);
     Mesh::Info::STATE = stateDb.registerState(
         Mesh::TYPE, "Info", sizeof(Mesh::Info));
+    Mesh::PrivateInfo::STATE = stateDb.registerState(
+        Mesh::TYPE, "PrivateInfo", sizeof(Mesh::PrivateInfo));
 
     Camera::TYPE = stateDb.registerType("Camera", 8);
     Camera::Info::STATE = stateDb.registerState(
         Camera::TYPE, "Info", sizeof(Camera::Info));
+
+    Transform::TYPE = stateDb.registerType("Transform", 4096);
+    Transform::Info::STATE = stateDb.registerState(
+        Transform::TYPE, "Info", sizeof(Transform::Info));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -248,6 +267,11 @@ bool Renderer::initialize(Platform &platform)
         funcs->glDebugMessageCallbackARB(debugMessageCallback, this);
         funcs->glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB);
     }
+
+    /*
+    funcs->glCullFace(GL_BACK);
+    funcs->glEnable(GL_CULL_FACE);
+    */
 
     std::string defVsSrc =
         "#version 150\n"
@@ -293,7 +317,7 @@ bool Renderer::initialize(Platform &platform)
     // TODO(martinmo): Use 'glBindAttribLocation()' before linking the program to force
     // TODO(martinmo): assignment of attributes to specific fixed locations
     // TODO(martinmo): (e.g. position always 0, color always 1 etc.)
-    // TODO(martinmo): --> This allows us to use the same VAO for different shader programs
+    // TODO(martinmo): ==> This allows us to use the same VAO for different shader programs
 
     state->defProgAttribPosition =
         funcs->glGetAttribLocation(state->defProg, "Position");
@@ -378,12 +402,11 @@ void Renderer::shutdown(Platform &platform)
     if (state->defFs) funcs->glDeleteShader(state->defFs);
     if (state->defVs) funcs->glDeleteShader(state->defVs);
 
-    for (auto &meshIter : state->meshes)
+    Mesh::PrivateInfo *meshPrivateBegin = nullptr, *meshPrivateEnd = nullptr;
+    platform.stateDb.refStateAll(Mesh::PrivateInfo::STATE, &meshPrivateBegin, &meshPrivateEnd);
+    for (auto meshPrivate = meshPrivateBegin; meshPrivate != meshPrivateEnd; ++meshPrivate)
     {
-        // After restructuring 'meshes' into several vectors we could
-        // actually use 'glDeleteBuffers' SIMD style...
-        if (meshIter.second.positionsVbo) funcs->glDeleteBuffers(1, &meshIter.second.positionsVbo);
-        if (meshIter.second.normalsVbo)   funcs->glDeleteBuffers(1, &meshIter.second.normalsVbo);
+        funcs->glDeleteBuffers(2, &meshPrivate->positionsVbo);
     }
 
     helpers = std::make_shared< GlHelpers >(funcs.get());
@@ -394,6 +417,8 @@ void Renderer::shutdown(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void Renderer::update(Platform &platform, double deltaTimeInS)
 {
+    updateTransforms(platform);
+
     funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     float aspect = 16.0f / 9.0f;
@@ -410,51 +435,98 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
             cameraInfo->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
     }
 
-    glm::fmat4 model, modelView;
+    // Set dirty flags for all dynamic meshes
+    Mesh::PrivateInfo *meshPrivateBegin = nullptr, *meshPrivateEnd = nullptr;
+    platform.stateDb.refStateAll(Mesh::PrivateInfo::STATE, &meshPrivateBegin, &meshPrivateEnd);
+    for (auto meshPrivate = meshPrivateBegin; meshPrivate != meshPrivateEnd; ++meshPrivate)
+    {
+        if (meshPrivate->flags & Mesh::PrivateInfo::Flag::DYNAMIC)
+        {
+            meshPrivate->flags |= Mesh::PrivateInfo::Flag::DIRTY;
+        }
+    }
 
     // Pseudo-instanced rendering of meshes
     Mesh::Info *meshBegin = nullptr, *meshEnd = nullptr;
     platform.stateDb.refStateAll(Mesh::Info::STATE, &meshBegin, &meshEnd);
-    for (Mesh::Info *mesh = meshBegin; mesh != meshEnd; ++mesh)
+    Mesh::PrivateInfo *meshPrivate = meshPrivateBegin;
+    for (auto mesh = meshBegin; mesh != meshEnd; ++mesh, ++meshPrivate)
     {
-        // TODO(MARTINMO): Replace map by array and store index in mesh private state
-        GlMesh &glMesh = state->meshes[mesh->modelAsset];
-        if (!glMesh.positionsVbo)
+        if (!meshPrivate->model)
         {
-            const Assets::Model *model = platform.assets.refModel(mesh->modelAsset);
-            COMMON_ASSERT(model);
-            if (!model->positions.empty())
+            // TODO(martinmo): Add way of getting asset and flags in one call/lookup
+            meshPrivate->model = platform.assets.refModel(mesh->modelAsset);
+            bool dynamic = platform.assets.assetFlags(mesh->modelAsset) & Assets::Flag::DYNAMIC;
+            COMMON_ASSERT(meshPrivate->model);
+
+            GLenum usage = GL_STATIC_DRAW;
+            if (dynamic)
             {
-                funcs->glGenBuffers(1, &glMesh.positionsVbo);
-                funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh.positionsVbo);
-                funcs->glBufferData(GL_ARRAY_BUFFER,
-                    model->positions.size() * sizeof(glm::fvec3),
-                    &model->positions[0].x, GL_STATIC_DRAW);
-                funcs->glGenBuffers(1, &glMesh.normalsVbo);
-                funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh.normalsVbo);
-                funcs->glBufferData(GL_ARRAY_BUFFER,
-                    model->normals.size() * sizeof(glm::fvec3),
-                    &model->normals[0].x, GL_STATIC_DRAW);
-                glMesh.vertexCount = GLsizei(model->positions.size());
+                meshPrivate->flags |= Mesh::PrivateInfo::Flag::DYNAMIC;
+                usage = GL_DYNAMIC_DRAW;
             }
+
+            meshPrivate->vertexCount = GLsizei(meshPrivate->model->positions.size());
+            funcs->glGenBuffers(1, &meshPrivate->positionsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, meshPrivate->positionsVbo);
+            funcs->glBufferData(GL_ARRAY_BUFFER,
+                meshPrivate->vertexCount * sizeof(glm::fvec3),
+                &meshPrivate->model->positions[0].x, usage);
+            funcs->glGenBuffers(1, &meshPrivate->normalsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, meshPrivate->normalsVbo);
+            funcs->glBufferData(GL_ARRAY_BUFFER,
+                meshPrivate->vertexCount * sizeof(glm::fvec3),
+                &meshPrivate->model->normals[0].x, usage);
+
+            meshPrivate->flags &= ~Mesh::PrivateInfo::Flag::DIRTY;
+        }
+        else if (meshPrivate->flags & Mesh::PrivateInfo::Flag::DIRTY)
+        {
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, meshPrivate->positionsVbo);
+            funcs->glBufferSubData(GL_ARRAY_BUFFER, 0,
+                meshPrivate->vertexCount * sizeof(glm::fvec3),
+                &meshPrivate->model->positions[0].x);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, meshPrivate->normalsVbo);
+            funcs->glBufferSubData(GL_ARRAY_BUFFER, 0,
+                meshPrivate->vertexCount * sizeof(glm::fvec3),
+                &meshPrivate->model->normals[0].x);
+            meshPrivate->flags &= ~Mesh::PrivateInfo::Flag::DIRTY;
         }
 
         // Vertex attribute assignments are stored inside the bound VAO
-        // --> Think about creating one VAO per renderable mesh
-        funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh.positionsVbo);
-        funcs->glVertexAttribPointer(state->defProgAttribPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
-        funcs->glEnableVertexAttribArray(state->defProgAttribPosition);
-        funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh.normalsVbo);
-        funcs->glVertexAttribPointer(state->defProgAttribNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
-        funcs->glEnableVertexAttribArray(state->defProgAttribNormal);
+        // ==> Think about creating one VAO per renderable mesh
+        {
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, meshPrivate->positionsVbo);
+            funcs->glVertexAttribPointer(
+                state->defProgAttribPosition,3, GL_FLOAT, GL_FALSE, 0, 0);
+            funcs->glEnableVertexAttribArray(state->defProgAttribPosition);
 
-        model = glm::translate(glm::fmat4(), mesh->translation.xyz());
-        model = model * glm::mat4_cast(mesh->rotation);
-        modelView = view * model;
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, meshPrivate->normalsVbo);
+            funcs->glVertexAttribPointer(
+                state->defProgAttribNormal,3, GL_FLOAT, GL_FALSE, 0, 0);
+            funcs->glEnableVertexAttribArray(state->defProgAttribNormal);
+        }
+
+        glm::fmat4 worldToModel;
+        worldToModel = glm::translate(glm::fmat4(), mesh->translation);
+        worldToModel = worldToModel * glm::mat4_cast(mesh->rotation);
+        glm::fmat4 modelView = view * worldToModel;
         funcs->glUniformMatrix4fv(
             state->defProgUniformModelViewMatrix, 1, GL_FALSE, glm::value_ptr(modelView));
 
-        funcs->glDrawArrays(GL_TRIANGLES, 0, glMesh.vertexCount);
+        funcs->glDrawArrays(GL_TRIANGLES, 0, meshPrivate->vertexCount);
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+void Renderer::updateTransforms(Platform &platform)
+{
+    Transform::Info *transformBegin = nullptr, *transformEnd = nullptr;
+    platform.stateDb.refStateAll(Transform::Info::STATE, &transformBegin, &transformEnd);
+    for (Transform::Info *transform = transformBegin;
+                          transform != transformEnd; ++transform)
+    {
+        // ...
     }
 }
 
@@ -471,7 +543,7 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
 bool Renderer::initializeGl()
 {
     RENDERER_GL_FUNC(glEnable);
-
+    RENDERER_GL_FUNC(glCullFace);
     RENDERER_GL_FUNC(glClearColor);
     RENDERER_GL_FUNC(glClear);
 

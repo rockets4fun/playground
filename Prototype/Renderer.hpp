@@ -29,6 +29,7 @@ struct Renderer : public ModuleIf
             glm::fquat rotation;
             u32 modelAsset = 0;
         };
+        struct PrivateInfo;
     };
 
     struct Camera
@@ -42,16 +43,17 @@ struct Renderer : public ModuleIf
         };
     };
 
-    // TODO(martinmo): Define transform hierarchy that other entities link to
     struct Transform
     {
         static u64 TYPE;
         struct Info
         {
             static u64 STATE;
-            u64 parent = 0;
-            glm::fmat4 world;
-            glm::fmat4 local;
+            u64 parentTransformHandle = 0;
+            glm::fvec3 translation;
+            glm::fquat rotation;
+            glm::fmat4 localToWorld;
+            glm::fmat4 worldToLocal;
         };
     };
 
@@ -68,7 +70,6 @@ public: // Implementation of module interface
 
 private:
     struct GlFuncs;
-    struct GlMesh;
     struct GlState;
     struct GlHelpers;
 
@@ -76,6 +77,7 @@ private:
     std::shared_ptr< GlState > state;
     std::shared_ptr< GlHelpers > helpers;
 
+    void updateTransforms(Platform &platform);
     bool initializeGl();
 
 private:

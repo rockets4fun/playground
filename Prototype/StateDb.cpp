@@ -50,11 +50,11 @@ u64 StateDb::registerType(const std::string &name, u64 maxObjectCount)
     newType.name = name;
 
     newType.id = m_types.size();
-    // Make sure we can store the type ID in an object objectHandle
+    // Make sure we can store the type ID in an object handle
     COMMON_ASSERT(newType.id <= 0xffff);
 
     newType.maxObjectCount = maxObjectCount;
-    // Make sure we can store the highest object ID in an object objectHandle
+    // Make sure we can store the highest object ID in an object handle
     COMMON_ASSERT(newType.maxObjectCount <= 0xffffffff);
 
     newType.lifecycleByObjectId.resize(maxObjectCount + 1, 0);
@@ -130,18 +130,18 @@ u64 StateDb::registerState(u64 typeId, const std::string &name, u64 elemSize)
 // -------------------------------------------------------------------------------------------------
 bool StateDb::isObjectHandleValid(u64 objectHandle)
 {
-    u32 objectId;
-    u16 typeId, lifecycle;
-    decomposeObjectHandle(objectHandle, typeId, lifecycle, objectId);
+    u16 typeId = objectHandleTypeId(objectHandle);
     if (!isTypeIdValid(typeId))
     {
         return false;
     }
     const Type &type = m_types[typeId];
+    u32 objectId  = objectHandleObjectId(objectHandle);
     if (objectId < 1 || objectId > type.maxObjectCount)
     {
         return false;
     }
+    u16 lifecycle = objectHandleLifecycle(objectHandle);
     if (type.lifecycleByObjectId[objectId] != lifecycle)
     {
         return false;
@@ -170,15 +170,11 @@ void StateDb::destroyObject(u64 objectHandle)
 {
     COMMON_ASSERT(isObjectHandleValid(objectHandle));
 
-    u32 objectId;
-    u16 typeId, lifecycle;
-    decomposeObjectHandle(objectHandle, typeId, lifecycle, objectId);
+    Type &type = m_types[objectHandleTypeId(objectHandle)];
+    u32 objectId = objectHandleObjectId(objectHandle);
 
-    Type &type = m_types[typeId];
-    if (type.objectCount < 1)
-    {
-        return;
-    }
+    COMMON_ASSERT(m_types[objectHandleTypeId(objectHandle)].objectCount > 0);
+
     if (type.objectCount > 1)
     {
         u64 idxToDestroy = type.objectIdToIdx[objectId];
@@ -196,17 +192,26 @@ void StateDb::destroyObject(u64 objectHandle)
         }
         std::swap(type.objectIdToIdx[objectIdToSwapIn], type.objectIdToIdx[objectId]);
         std::swap(type.idxToObjectId[type.objectCount], type.idxToObjectId[idxToDestroy]);
-
-        ++type.lifecycleByObjectId[objectId];
-        COMMON_ASSERT(lifecycle != type.lifecycleByObjectId[objectId]);
     }
+
+    ++type.lifecycleByObjectId[objectId];
+    COMMON_ASSERT(objectHandleLifecycle(objectHandle) != type.lifecycleByObjectId[objectId]);
+
     --type.objectCount;
+}
+
+// -------------------------------------------------------------------------------------------------
+int StateDb::objectCount(u64 typeId)
+{
+    COMMON_ASSERT(isTypeIdValid(typeId));
+    return m_types[typeId].objectCount;
 }
 
 // -------------------------------------------------------------------------------------------------
 u64 StateDb::objectHandleFromElem(u64 stateId, void *elem)
 {
     COMMON_ASSERT(isStateIdValid(stateId));
+
     const State &state = m_states[stateId];
     const Type &type = m_types[state.typeId];
 
@@ -231,9 +236,19 @@ u64 StateDb::composeObjectHandle(u16 typeId, u16 lifecycle, u32 objectId)
 }
 
 // -------------------------------------------------------------------------------------------------
-void StateDb::decomposeObjectHandle(u64 objectHandle, u16 &typeId, u16 &lifecycle, u32 &objectId)
+u16 StateDb::objectHandleTypeId(u64 objectHandle)
 {
-    typeId = objectHandle >> 48;
-    lifecycle = (objectHandle >> 32) & 0xffff;
-    objectId = objectHandle & 0xffffffff;
+    return objectHandle >> 48 & 0xffff;
+}
+
+// -------------------------------------------------------------------------------------------------
+u16 StateDb::objectHandleLifecycle(u64 objectHandle)
+{
+    return (objectHandle >> 32) & 0xffff;
+}
+
+// -------------------------------------------------------------------------------------------------
+u32 StateDb::objectHandleObjectId(u64 objectHandle)
+{
+    return objectHandle & 0xffffffff;
 }

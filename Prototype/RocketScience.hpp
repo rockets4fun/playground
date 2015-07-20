@@ -30,10 +30,15 @@ private:
     u64 m_cameraHandle = 0;
     u64 m_gridMeshHandle = 0;
     u64 m_arrowMeshHandle = 0;
-    u64 m_pusherForce = 0;
+    u64 m_pusherForceHandle = 0;
+
+    u32 m_oceanModelAsset = 0;
+    std::vector< u64 > m_oceanMeshHandles;
 
     std::vector< u64 > m_meshHandles;
     std::map< u64, u64 > m_rigidBodyByMeshHandle;
+
+    double m_timeInS = 0.0;
 
 private:
     COMMON_DISABLE_COPY(RocketScience);

@@ -19,15 +19,23 @@
 /// @brief Application assets handling
 struct Assets
 {
+    enum Type
+    {
+        UNDEFINED,
+        MODEL,
+    };
+
+    enum Flag
+    {
+        PROCEDURAL = 0x1,
+        DYNAMIC    = 0x2
+    };
+
     struct Info
     {
-        enum Type
-        {
-            UNDEFINED,
-            MODEL
-        };
         u32 hash = 0;
         std::string name;
+        u32 flags = 0;
         Type type = UNDEFINED;
         u32 version = 0;
     };
@@ -56,10 +64,11 @@ struct Assets
     Assets();
     virtual ~Assets();
 
-    u32 asset(const std::string &name);
+    u32 asset(const std::string &name, u32 flags = 0);
     u32 assetVersion(u32 hash);
+    u32 assetFlags(u32 hash);
 
-    const Model *refModel(u32 hash);
+    Model *refModel(u32 hash);
 
 private:
     struct PrivateState;
@@ -69,7 +78,26 @@ private:
     std::map< u32, Info > m_assetInfos;
     std::map< u32, Model > m_models;
 
-    static bool loadModel(PrivateState &privateState, Info &info, Model &model);
+    template< class AssetType >
+    std::pair< AssetType *, Info * > refAsset(u32 hash,
+        Type assetType, std::map< u32, AssetType > &assetMap)
+    {
+        auto ref = std::make_pair((AssetType *)(nullptr), (Info *)(nullptr));
+        auto infoIter = m_assetInfos.find(hash);
+        if (infoIter == m_assetInfos.end())
+        {
+            return ref;
+        }
+        ref.second = &infoIter->second;
+        if (ref.second->type != Type::UNDEFINED && ref.second->type != assetType)
+        {
+            return ref;
+        }
+        ref.first = &assetMap[hash];
+        return ref;
+    }
+
+    static bool loadModel(PrivateState &privateState, Model &model, Info &info);
 
     u32 krHash(const char *data, size_t size);
 

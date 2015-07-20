@@ -15,6 +15,8 @@ typedef signed   long int s32;
 typedef unsigned long long int u64;
 typedef signed   long long int s64;
 
+#define COMMON_DEBUG
+
 #define COMMON_DISABLE_COPY(Class) \
 private: \
      Class(const Class &); \

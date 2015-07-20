@@ -7,6 +7,8 @@
 
 #include <list>
 
+#include <SDL.h>
+
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -31,7 +33,7 @@ Assets::~Assets()
 }
 
 // -------------------------------------------------------------------------------------------------
-u32 Assets::asset(const std::string &name)
+u32 Assets::asset(const std::string &name, u32 flags)
 {
     u32 hash = krHash(name.c_str(), name.length());
     auto infoIter = m_assetInfos.find(hash);
@@ -45,6 +47,7 @@ u32 Assets::asset(const std::string &name)
         Info &info = m_assetInfos[hash];
         info.name = name;
         info.hash = hash;
+        info.flags = flags;
     }
     return hash;
 }
@@ -61,38 +64,48 @@ u32 Assets::assetVersion(u32 hash)
 }
 
 // -------------------------------------------------------------------------------------------------
-const Assets::Model *Assets::refModel(u32 hash)
+u32 Assets::assetFlags(u32 hash)
 {
-    // TODO(martinmo): Generalize this into a template function for all asset types
     auto infoIter = m_assetInfos.find(hash);
     if (infoIter == m_assetInfos.end())
     {
-        return nullptr;
+        return 0;
     }
-    Info &info = infoIter->second;
-    if (info.type != Info::Type::UNDEFINED && info.type != Info::Type::MODEL)
-    {
-        return nullptr;
-    }
-    Model &model = m_models[hash];
-    if (info.type == Info::Type::UNDEFINED)
-    {
-        // This function triggers a load only the first time it touches an asset
-        if (loadModel(*m_privateState.get(), info, model))
-        {
-            ++info.version;
-        }
-        info.type = Info::Type::MODEL;
-    }
-    if (info.version == 0)
-    {
-        // TODO(martinmo): Return default model data if we failed to load (e.g. unit cube)
-    }
-    return &model;
+    return infoIter->second.flags;
 }
 
 // -------------------------------------------------------------------------------------------------
-bool Assets::loadModel(PrivateState &privateState, Info &info, Model &model)
+Assets::Model *Assets::refModel(u32 hash)
+{
+    auto ref = refAsset(hash, Type::MODEL, m_models);
+    if (!ref.first)
+    {
+        return nullptr;
+    }
+    if (ref.second->type == Type::UNDEFINED)
+    {
+        // This is the first time the model is referenced
+        if (ref.second->flags & Flag::PROCEDURAL)
+        {
+            // Procedural models will be defined by application logic
+        }
+        else if (loadModel(*m_privateState.get(), *ref.first, *ref.second))
+        {
+            ++ref.second->version;
+            SDL_Log("Model \"%s\" loaded", ref.second->name.c_str());
+        }
+        else
+        {
+            SDL_Log("ERROR: Failed to load model \"%s\"", ref.second->name.c_str());
+            // TODO(martinmo): Default to unit cube if we fail to load?
+        }
+        ref.second->type = Type::MODEL;
+    }
+    return ref.first;
+}
+
+// -------------------------------------------------------------------------------------------------
+bool Assets::loadModel(PrivateState &privateState, Model &model, Info &info)
 {
     model.positions.clear();
     model.normals.clear();
