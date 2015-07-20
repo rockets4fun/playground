@@ -415,9 +415,9 @@ void Renderer::shutdown(Platform &platform)
         funcs->glDeleteBuffers(2, &mapIter.second.positionsVbo);
     }
 
-    helpers = std::make_shared< GlHelpers >(funcs.get());
-    state = std::make_shared< GlState >();
-    funcs = std::make_shared< GlFuncs >();
+    helpers = nullptr;
+    state = nullptr;
+    funcs = nullptr;
 }
 
 // -------------------------------------------------------------------------------------------------
