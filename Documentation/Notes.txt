@@ -7,6 +7,7 @@ h1. Current Coding Roadmap
 *** Outer controller for changing position by adjusting yaw/pitch
 *** Consider rotational speed for dampening controller
 ** Simple infinite water/buoyancy simulation
+** Mouse-based interaction with rocket (pick and attach string)
 ** Land rocket on drone ship
 ** Later: 2x nose thruster controlled flip maneuver
 *** Wing tip thruster based control of roll for aiming nose thrusters
@@ -84,6 +85,8 @@ h2. State Machine Logic Module
 
 h2. State Database Module
 
+* Think about making individual state fields introspectible by registering them
+** Could also be used to implement a field-based automatic interpolation mechanism
 * Do we need to support stateful events in addition to states in recordings?
 * Callback-based observer (w/o using inheritance!)
 * Support for hierarchical state queries
