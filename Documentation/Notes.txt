@@ -9,9 +9,10 @@ h1. Current Coding Roadmap
 ** Simple infinite water/buoyancy simulation
 ** Mouse-based interaction with rocket (pick and attach string)
 ** Land rocket on drone ship
-** Later: 2x nose thruster controlled flip maneuver
-*** Wing tip thruster based control of roll for aiming nose thrusters
-** Explore comic visual style
+** Explore comic visual style incl. sphere-based smoke
+
+* Flip maneuver controlled by nose thruster
+** Wing tip thruster based control of roll for aiming nose thrusters
 
 * Rocket payload launch abort landing
 ** Launch from drone ship
@@ -176,6 +177,7 @@ h2. Profiling Module
 h2. Physics Module
 
 * Hot-reload of mesh triggers collision shape update (version field in mesh)
+
 
 h1. Design
 ----------------------------------------------------------------------------------------------------
