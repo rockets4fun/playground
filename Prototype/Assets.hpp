@@ -88,12 +88,12 @@ private:
         {
             return ref;
         }
-        ref.second = &infoIter->second;
         if (ref.second->type != Type::UNDEFINED && ref.second->type != assetType)
         {
             return ref;
         }
         ref.first = &assetMap[hash];
+        ref.second = &infoIter->second;
         return ref;
     }
 
