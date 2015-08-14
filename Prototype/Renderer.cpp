@@ -85,6 +85,7 @@ struct Renderer::GlState
 
     GLint defProgAttribPosition;
     GLint defProgAttribNormal;
+    GLint defProgAttribColor;
 
     GLuint defVao = 0;
 
@@ -106,6 +107,7 @@ struct Renderer::GlMesh
     Assets::Model *model = nullptr;
     GLuint positionsVbo = 0;
     GLuint normalsVbo = 0;
+    GLuint colorsVbo = 0;
     GLsizei vertexCount = 0;
     u32 flags = 0;
 };
@@ -287,14 +289,15 @@ bool Renderer::initialize(Platform &platform)
         "uniform mat4 ModelViewMatrix;\n"
         "uniform mat4 ProjectionMatrix;\n"
         "\n"
-        "in vec4 Position;\n"
-        "in vec4 Normal;\n"
+        "in vec3 Position;\n"
+        "in vec3 Normal;\n"
+        "in vec3 Color;\n"
         "\n"
         "out vec4 vertexColor;\n"
         "\n"
         "void main()\n"
         "{\n"
-        "   vertexColor = abs(Normal);\n"
+        "   vertexColor = vec4(abs(Normal) * Color, 1.0);\n"
         "   gl_Position = ProjectionMatrix * ModelViewMatrix * vec4(Position.xyz, 1.0);\n"
         "}\n";
     helpers->createAndCompileShader(state->defVs, GL_VERTEX_SHADER, defVsSrc);
@@ -331,6 +334,8 @@ bool Renderer::initialize(Platform &platform)
         funcs->glGetAttribLocation(state->defProg, "Position");
     state->defProgAttribNormal =
         funcs->glGetAttribLocation(state->defProg, "Normal");
+    state->defProgAttribColor =
+        funcs->glGetAttribLocation(state->defProg, "Color");
 
     funcs->glUseProgram(state->defProg);
 
@@ -487,11 +492,18 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
             funcs->glBufferData(GL_ARRAY_BUFFER,
                 glMesh->vertexCount * sizeof(glm::fvec3),
                 &glMesh->model->positions[0].x, usage);
+
             funcs->glGenBuffers(1, &glMesh->normalsVbo);
             funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->normalsVbo);
             funcs->glBufferData(GL_ARRAY_BUFFER,
                 glMesh->vertexCount * sizeof(glm::fvec3),
                 &glMesh->model->normals[0].x, usage);
+
+            funcs->glGenBuffers(1, &glMesh->colorsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->colorsVbo);
+            funcs->glBufferData(GL_ARRAY_BUFFER,
+                glMesh->vertexCount * sizeof(glm::fvec3),
+                &glMesh->model->colors[0].r, usage);
 
             glMesh->flags &= ~GlMesh::Flag::DIRTY;
         }
@@ -501,10 +513,18 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
             funcs->glBufferSubData(GL_ARRAY_BUFFER, 0,
                 glMesh->vertexCount * sizeof(glm::fvec3),
                 &glMesh->model->positions[0].x);
+
             funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->normalsVbo);
             funcs->glBufferSubData(GL_ARRAY_BUFFER, 0,
                 glMesh->vertexCount * sizeof(glm::fvec3),
                 &glMesh->model->normals[0].x);
+
+            // FIXME(martinmo): Should we really update colors?
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->colorsVbo);
+            funcs->glBufferSubData(GL_ARRAY_BUFFER, 0,
+                glMesh->vertexCount * sizeof(glm::fvec3),
+                &glMesh->model->colors[0].r);
+
             glMesh->flags &= ~GlMesh::Flag::DIRTY;
         }
 
@@ -513,13 +533,18 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
         {
             funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->positionsVbo);
             funcs->glVertexAttribPointer(
-                state->defProgAttribPosition,3, GL_FLOAT, GL_FALSE, 0, 0);
+                state->defProgAttribPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
             funcs->glEnableVertexAttribArray(state->defProgAttribPosition);
 
             funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->normalsVbo);
             funcs->glVertexAttribPointer(
-                state->defProgAttribNormal,3, GL_FLOAT, GL_FALSE, 0, 0);
+                state->defProgAttribNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
             funcs->glEnableVertexAttribArray(state->defProgAttribNormal);
+
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->colorsVbo);
+            funcs->glVertexAttribPointer(
+                state->defProgAttribColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
+            funcs->glEnableVertexAttribArray(state->defProgAttribColor);
         }
 
         glm::fmat4 worldToModel;

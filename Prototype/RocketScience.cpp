@@ -81,7 +81,7 @@ bool RocketScience::initialize(Platform &platform)
         }
         else if (rand() % 9 > 5)
         {
-            mesh->modelAsset = platform.assets.asset("Assets/Cube.obj");
+            mesh->modelAsset = platform.assets.asset("Assets/AppleCube.obj");
         }
         else if (rand() % 9 > 2)
         {
@@ -162,12 +162,11 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
                     model->positions.push_back(topRight);
                     // Triangle normals
                     glm::fvec3 normal(0.0f, 0.0f, 1.0f);
-                    model->normals.push_back(normal);
-                    model->normals.push_back(normal);
-                    model->normals.push_back(normal);
-                    model->normals.push_back(normal);
-                    model->normals.push_back(normal);
-                    model->normals.push_back(normal);
+                    for (int vIdx = 0; vIdx < 6; ++vIdx) model->normals.push_back(normal);
+                    // Triangle colors
+                    float value = glm::linearRand(0.5f, 1.0f);
+                    glm::fvec3 color(value, value, value);
+                    for (int vIdx = 0; vIdx < 6; ++vIdx) model->colors.push_back(color);
                 }
             }
             // Create ocean tiles
@@ -193,7 +192,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
             // Update Z and normal depending on X and Y
             position.z = oceanEquation(position.xy(), unitSize, m_timeInS);
         }
-        // Update normals according to ocean equation
+        // Update normals and colors according to ocean equation
         const int triCount = model->normals.size() / 3;
         for (int triIdx = 0; triIdx < triCount; ++triIdx)
         {

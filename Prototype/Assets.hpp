@@ -49,9 +49,10 @@ struct Assets
 
     struct Model
     {
-        // Positions and normals for triangle vertices
+        // Vertex attributes
         std::vector< glm::fvec3 > positions;
         std::vector< glm::fvec3 > normals;
+        std::vector< glm::fvec3 > colors;
 
         std::vector< SubMeshInfo > subMeshes;
 
@@ -88,7 +89,7 @@ private:
         {
             return ref;
         }
-        if (ref.second->type != Type::UNDEFINED && ref.second->type != assetType)
+        if (infoIter->second.type != Type::UNDEFINED && infoIter->second.type != assetType)
         {
             return ref;
         }

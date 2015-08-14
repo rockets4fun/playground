@@ -150,8 +150,26 @@ bool Assets::loadModel(PrivateState &privateState, Model &model, Info &info)
             // TODO(martinmo): Support more than just triangles...
             if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
             {
+                // FIXME(martinmo): Add warning if we skip meshes...
                 continue;
             }
+
+            glm::fvec3 diffuseColor(1.0f, 1.0f, 1.0f);
+
+            aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
+            aiString materialNameAssimp;
+            material->Get(AI_MATKEY_NAME, materialNameAssimp);
+            std::string materialName = materialNameAssimp.C_Str();
+            if (materialName != "DefaultMaterial")
+            {
+                aiColor3D diffuseColorAssimp;
+                if (material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColorAssimp) == AI_SUCCESS)
+                {
+                    diffuseColor = glm::fvec3(
+                        diffuseColorAssimp.r, diffuseColorAssimp.g, diffuseColorAssimp.b);
+                }
+            }
+
             for (size_t faceIdx = 0; faceIdx < mesh->mNumFaces; ++faceIdx)
             {
                 const aiFace *face = &mesh->mFaces[faceIdx];
@@ -165,6 +183,7 @@ bool Assets::loadModel(PrivateState &privateState, Model &model, Info &info)
                         mesh->mNormals[face->mIndices[idx]].x,
                         mesh->mNormals[face->mIndices[idx]].y,
                         mesh->mNormals[face->mIndices[idx]].z));
+                    model.colors.push_back(diffuseColor);
                 }
             }
             u64 triangleCount = model.positions.size() / 3;
