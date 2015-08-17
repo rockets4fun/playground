@@ -47,7 +47,10 @@ struct Physics : ModuleIf
                 CONVEX_HULL_COMPOUND
             };
             u64 meshHandle = 0;
+            glm::fvec3 linearVelocityLimit;
             u32 collisionShapeType = 0;
+            u32 collisionGroup = 0;
+            u32 collisionMask = 0;
             // TODO(martinmo): Add additional physics state here
             // TODO(martinmo): Translation and roation are already stored in mesh
         };

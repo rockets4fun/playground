@@ -109,9 +109,6 @@ int main(int argc, char *argv[])
         {
             module->shutdown(platform);
         }
-
-        int meshCount = platform.stateDb.objectCount(Renderer::Mesh::TYPE);
-        SDL_Log("Meshes still alive: %d", meshCount);
     }
 
     SDL_GL_DeleteContext(context);

@@ -15,12 +15,16 @@
 // -------------------------------------------------------------------------------------------------
 /// @brief State database implementation
 ///
-/// This class implements a state database that ensures that states of a specific type
+/// This class implements a state database that ensures that all states of a specific type
 /// are always stored tightly packed in memory (think loose structure of arrays).
 ///
 /// Also this class adds means of introspection by storing metadata on state registration.
 ///
 /// Handles are like pointers but they follow an object upon relocation in memory.
+///
+/// With this implementation we pay on:
+/// - Object deletion (fill hole by moving in state from end of state vector)
+/// - Object lookup through handle (ID to index traslation via per-type vector)
 struct StateDb
 {
     StateDb();
@@ -35,12 +39,26 @@ struct StateDb
     u64 registerState(u64 typeId, const std::string &name, u64 elemSize);
 
     bool isObjectHandleValid(u64 objectHandle);
+
     u64 createObject(u64 typeId);
     void destroyObject(u64 objectHandle);
 
     int objectCount(u64 typeId);
-
     u64 objectHandleFromElem(u64 stateId, void *elem);
+
+    template< class ElementType >
+    u64 createObjectAndRefState(u64 stateId, ElementType **elem)
+    {
+        COMMON_ASSERT(isStateIdValid(stateId));
+
+        // TODO(martinmo): Encode type ID into the state ID (==> state handle)
+        // TODO(martinmo): ==> This way we can avoid lookup in 'm_states'
+        const State &state = m_states[stateId];
+
+        u64 objectHandle = createObject(state.typeId);
+        refState(stateId, objectHandle, elem);
+        return objectHandle;
+    }
 
     template< class ElementType >
     void refState(u64 stateId, u64 objectHandle, ElementType **elem)
@@ -57,6 +75,14 @@ struct StateDb
         const Type &type = m_types[typeIdFromHandle];
         *elem = (ElementType *)&m_stateValues[stateId][
             type.objectIdToIdx[objectHandle & 0xffffffff] * sizeof(ElementType)];
+    }
+
+    template< class ElementType >
+    ElementType *ref(u64 objectHandle)
+    {
+        ElementType *result = nullptr;
+        refState(ElementType::STATE, objectHandle, &result);
+        return result;
     }
 
     template< class ElementType >
@@ -79,20 +105,6 @@ struct StateDb
         {
             *end = (ElementType *)(memoryBegin + sizeof(ElementType) * type.objectCount);
         }
-    }
-
-    template< class ElementType >
-    u64 createObjectAndRefState(u64 stateId, ElementType **elem)
-    {
-        COMMON_ASSERT(isStateIdValid(stateId));
-
-        // TODO(martinmo): Encode type ID into the state ID (==> state handle)
-        // TODO(martinmo): ==> This way we can avoid lookup in 'm_states'
-        const State &state = m_states[stateId];
-
-        u64 objectHandle = createObject(state.typeId);
-        refState(stateId, objectHandle, elem);
-        return objectHandle;
     }
 
 private:

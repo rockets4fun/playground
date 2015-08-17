@@ -58,7 +58,12 @@ struct Physics::PrivateState
 
     std::list< PrivateRigidBody > rigidBodies;
 
+    StateDb &stateDb;
+
     static void preTickCallback(btDynamicsWorld *world, btScalar timeStep);
+
+    PrivateState(StateDb &stateDbInit);
+
     void preTick(btScalar timeStep);
 };
 
@@ -201,9 +206,14 @@ void Physics::PrivateRigidBody::initialize(
     rigidBody = std::make_shared< btRigidBody >(constructionInfo);
 
     // TODO(martinmo): Add flag to disable this for specific RBs only
-    rigidBody->setActivationState(DISABLE_DEACTIVATION);
+    rigidBody->forceActivationState(DISABLE_DEACTIVATION);
 
-    state.dynamicsWorld->addRigidBody(rigidBody.get());
+    // Bullet collision groups/masks are 16 bit only
+    COMMON_ASSERT(!(info->collisionGroup & 0xffff0000));
+    COMMON_ASSERT(!(info->collisionMask & 0xffff0000));
+
+    state.dynamicsWorld->addRigidBody(
+        rigidBody.get(), info->collisionGroup, info->collisionMask);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -211,6 +221,12 @@ void Physics::PrivateState::preTickCallback(btDynamicsWorld *world, btScalar tim
 {
     PrivateState *state = (PrivateState *)world->getWorldUserInfo();
     state->preTick(timeStep);
+}
+
+// -------------------------------------------------------------------------------------------------
+Physics::PrivateState::PrivateState(StateDb &stateDbInit) :
+    stateDb(stateDbInit)
+{
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -226,6 +242,40 @@ void Physics::PrivateState::preTick(btScalar timeStep)
             btVector3 bulletForcePosition(force.second.x, force.second.y, force.second.z);
             privRigidBody.rigidBody->applyForce(bulletForce, bulletForcePosition);
         }
+    }
+
+    // Apply linear velocity limits to all RBs
+    RigidBody::Info *info = nullptr, *infoBegin = nullptr, *infoEnd = nullptr;
+    stateDb.refStateAll(RigidBody::Info::STATE, &infoBegin, &infoEnd);
+    RigidBody::PrivateInfo *privateInfo = nullptr, *privateInfoBegin = nullptr;
+    stateDb.refStateAll(RigidBody::PrivateInfo::STATE, &privateInfoBegin);
+    for (info = infoBegin, privateInfo = privateInfoBegin;
+         info != infoEnd; ++info, ++privateInfo)
+    {
+        btVector3 linearVelocity = privateInfo->rigidBody->rigidBody->getLinearVelocity();
+        glm::fvec3 limit = info->linearVelocityLimit;
+        if (limit.x > 0.0f)
+        {
+            if (linearVelocity.x() >  limit.x) linearVelocity.setX( limit.x);
+            if (linearVelocity.x() < -limit.x) linearVelocity.setX(-limit.x);
+        }
+        if (limit.y > 0.0f)
+        {
+            if (linearVelocity.y() >  limit.y) linearVelocity.setY( limit.y);
+            if (linearVelocity.y() < -limit.y) linearVelocity.setY(-limit.y);
+        }
+        if (limit.z > 0.0f)
+        {
+            if (linearVelocity.z() >  limit.z)
+            {
+                linearVelocity.setZ( limit.z);
+            }
+            if (linearVelocity.z() < -limit.z)
+            {
+                linearVelocity.setZ(-limit.z);
+            }
+        }
+        privateInfo->rigidBody->rigidBody->setLinearVelocity(linearVelocity);
     }
 }
 
@@ -256,7 +306,7 @@ void Physics::registerTypesAndStates(StateDb &stateDb)
 // -------------------------------------------------------------------------------------------------
 bool Physics::initialize(Platform &platform)
 {
-    state = std::make_shared< PrivateState >();
+    state = std::make_shared< PrivateState >(platform.stateDb);
 
     state->collisionConfiguration = std::make_shared< btDefaultCollisionConfiguration >();
     state->dispatcher = std::make_shared< btCollisionDispatcher >(
@@ -281,7 +331,7 @@ bool Physics::initialize(Platform &platform)
         groundRigidBodyCI.m_friction = btScalar(1.0);
         groundRigidBodyCI.m_rollingFriction = btScalar(1.0);
         state->groundRigidBody = std::make_shared< btRigidBody >(groundRigidBodyCI);
-        state->dynamicsWorld->addRigidBody(state->groundRigidBody.get());
+        state->dynamicsWorld->addRigidBody(state->groundRigidBody.get(), 1, 0xffff);
     }
 
     {

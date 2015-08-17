@@ -21,6 +21,9 @@
 #include "Renderer.hpp"
 #include "Physics.hpp"
 
+const glm::fvec2 RocketScience::OCEAN_TILE_UNIT_SIZE =
+    glm::fvec2((OCEAN_TILE_VERTEX_COUNT - 1) * OCEAN_TILE_VERTEX_DIST);
+
 // -------------------------------------------------------------------------------------------------
 RocketScience::RocketScience()
 {
@@ -119,27 +122,15 @@ void RocketScience::shutdown(Platform &platform)
 }
 
 // -------------------------------------------------------------------------------------------------
-float oceanEquation(const glm::fvec2 &position, const glm::fvec2 &unitSize, double timeInS)
-{
-    float twoPi = 2.0f * glm::pi< float >();
-    float result = 0.0f;
-    result += 0.50f * sinf((twoPi / (0.500f * unitSize.x)) * (position.x + position.y + timeInS));
-    result += 0.50f * sinf((twoPi / (1.000f * unitSize.x)) * (position.x - position.y + timeInS));
-    result += 0.10f * sinf((twoPi / (0.250f * unitSize.x)) * (position.x + position.y - timeInS * 0.5f));
-    return result;
-}
-
-// -------------------------------------------------------------------------------------------------
 void RocketScience::update(Platform &platform, double deltaTimeInS)
 {
     m_timeInS += deltaTimeInS;
 
     // Update tileable dynamic ocean model
     {
-        const int vertexCount = 32;
-        const float vertexDist = 1.0;
-        const glm::fvec2 unitSize = glm::fvec2((vertexCount - 1) * vertexDist);
-
+        glm::fvec2 unitSize = OCEAN_TILE_UNIT_SIZE;
+        int vertexCount = OCEAN_TILE_VERTEX_COUNT;
+        float vertexDist = OCEAN_TILE_VERTEX_DIST;
         Assets::Model *model = platform.assets.refModel(m_oceanModelAsset);
         if (model->positions.empty())
         {
@@ -179,9 +170,8 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
                     u64 oceanMeshHandle = platform.stateDb.createObjectAndRefState(
                         Renderer::Mesh::Info::STATE, &meshInfo);
                     meshInfo->modelAsset = m_oceanModelAsset;
-                    meshInfo->translation = glm::fvec3(
-                        glm::fvec2(float(x), float(y)) * unitSize -
-                        0.5f * float(tileCount) * unitSize, -10.0f);
+                    meshInfo->translation = glm::fvec3(glm::fvec2(float(x), float(y))
+                        * unitSize - 0.5f * float(tileCount) * unitSize, 0.0f);
                     m_oceanMeshHandles.push_back(oceanMeshHandle);
                 }
             }
@@ -190,7 +180,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         for (glm::fvec3 &position : model->positions)
         {
             // Update Z and normal depending on X and Y
-            position.z = oceanEquation(position.xy(), unitSize, m_timeInS);
+            position.z = oceanEquation(position.xy(), m_timeInS);
         }
         // Update normals and colors according to ocean equation
         const int triCount = model->normals.size() / 3;
@@ -262,6 +252,8 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         u64 rigidBodyHandle = platform.stateDb.createObjectAndRefState(
             Physics::RigidBody::Info::STATE, &rigidBodyInfo);
         rigidBodyInfo->meshHandle = meshHandle;
+        rigidBodyInfo->collisionGroup = 1;
+        rigidBodyInfo->collisionMask = 0xffff;
 
         Renderer::Mesh::Info *meshInfo = nullptr;
         platform.stateDb.refState(Renderer::Mesh::Info::STATE, meshHandle, &meshInfo);
@@ -270,6 +262,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         {
             rigidBodyInfo->collisionShapeType =
                 Physics::RigidBody::Info::CollisionShapeType::CONVEX_HULL_COMPOUND;
+            // Create Pusher rocket motor force
             {
                 Physics::Force::Info *forceInfo = nullptr;
                 m_pusherForceHandle = platform.stateDb.createObjectAndRefState(
@@ -280,8 +273,18 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         }
         else if (meshInfo->modelAsset == platform.assets.asset("Assets/Sphere.obj"))
         {
+            // Simulate buoyancy for spheres instead of collisions
+            rigidBodyInfo->collisionMask = 0;
             rigidBodyInfo->collisionShapeType =
                 Physics::RigidBody::Info::CollisionShapeType::BOUNDING_SPHERE;
+            // Create sphere buoyancy force
+            {
+                Physics::Force::Info *forceInfo = nullptr;
+                u64 buoyancyForceHandle = platform.stateDb.createObjectAndRefState(
+                    Physics::Force::Info::STATE, &forceInfo);
+                forceInfo->rigidBodyHandle = rigidBodyHandle;
+                m_buoyancyForceHandles.push_back(buoyancyForceHandle);
+            }
         }
 
         m_rigidBodyByMeshHandle[meshHandle] = rigidBodyHandle;
@@ -359,5 +362,66 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
             platform.stateDb.destroyObject(m_pusherForceHandle);
             m_pusherForceHandle = 0;
         }
+    }
+
+    // Update buoyancy forces
+    {
+        for (auto buoyancyForceHandle : m_buoyancyForceHandles)
+        {
+            updateBuoyancyForce(platform.stateDb, m_timeInS, buoyancyForceHandle);
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+float RocketScience::oceanEquation(const glm::fvec2 &position, double timeInS)
+{
+    glm::fvec2 unitSize = OCEAN_TILE_UNIT_SIZE;
+    float twoPi = 2.0f * glm::pi< float >();
+    float result = 0.0f;
+    result += 0.50f * sinf((twoPi / (0.500f * unitSize.x)) * (position.x + position.y + timeInS));
+    result += 0.50f * sinf((twoPi / (1.000f * unitSize.x)) * (position.x - position.y + timeInS));
+    result += 0.10f * sinf((twoPi / (0.250f * unitSize.x)) * (position.x + position.y - timeInS * 0.5f));
+    return result - 10.0f;
+}
+
+// -------------------------------------------------------------------------------------------------
+void RocketScience::updateBuoyancyForce(
+    StateDb &stateDb, double timeInS, u64 buoyancyForceHandle)
+{
+    // TODO(martinmo): Get rid of multi-level indirection by
+    // TODO(martinmo): - Storing buoyancy type hint in force info
+    // TODO(martinmo): - Keeping a copy of all relevant state in force info
+    // TODO(martinmo):
+    // TODO(martinmo): ==> Less efficient in space but more efficent in time
+    // TODO(martinmo): ==> Flatten only if time-efficiency really is an issue
+
+    auto force     = stateDb.ref< Physics::Force::Info     >(buoyancyForceHandle);
+    auto rigidBody = stateDb.ref< Physics::RigidBody::Info >(force->rigidBodyHandle);
+    auto mesh      = stateDb.ref< Renderer::Mesh::Info     >(rigidBody->meshHandle);
+
+    glm::fvec3 oceanPt     (mesh->translation.xy() + glm::fvec2(0.0f, 0.0f), 0.0f);
+    glm::fvec3 oceanPtRight(mesh->translation.xy() + glm::fvec2(1.0f, 0.0f), 0.0f);
+    glm::fvec3 oceanPtAbove(mesh->translation.xy() + glm::fvec2(0.0f, 1.0f), 0.0f);
+
+    oceanPt.z      = oceanEquation(oceanPt.xy(), m_timeInS);
+    oceanPtRight.z = oceanEquation(oceanPtRight.xy(), m_timeInS);
+    oceanPtAbove.z = oceanEquation(oceanPtAbove.xy(), m_timeInS);
+
+    glm::fvec3 normal = glm::normalize(
+        glm::cross(oceanPtRight - oceanPt, oceanPtAbove - oceanPt));
+
+    float depth = oceanPt.z - mesh->translation.z;
+    if (depth > -0.35f)
+    {
+        rigidBody->linearVelocityLimit.z = 1.0f;
+        force->force = normal;
+        force->force.z = 55.0f * glm::clamp(0.0f, 1.0f, depth + 1.0f);
+        force->enabled = 1;
+    }
+    else
+    {
+        rigidBody->linearVelocityLimit.z = 0.0f;
+        force->enabled = 0;
     }
 }
