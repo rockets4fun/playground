@@ -149,8 +149,8 @@ void Physics::PrivateRigidBody::initialize(
 
                 btConvexHullShape *shape = new btConvexHullShape;
                 const glm::fvec3 *positionIter = &model->positions[subMesh.triangleOffset * 3];
-                const int pointCount = subMesh.triangleCount * 3;
-                for (int pointIdx = 0; pointIdx < pointCount; ++pointIdx)
+                const u64 pointCount = subMesh.triangleCount * 3;
+                for (u64 pointIdx = 0; pointIdx < pointCount; ++pointIdx)
                 {
                     btVector3 point = btVector3(positionIter->x, positionIter->y, positionIter->z);
                     shape->addPoint(point);
@@ -213,7 +213,7 @@ void Physics::PrivateRigidBody::initialize(
     COMMON_ASSERT(!(info->collisionMask & 0xffff0000));
 
     state.dynamicsWorld->addRigidBody(
-        rigidBody.get(), info->collisionGroup, info->collisionMask);
+        rigidBody.get(), short(info->collisionGroup), short(info->collisionMask));
 }
 
 // -------------------------------------------------------------------------------------------------
