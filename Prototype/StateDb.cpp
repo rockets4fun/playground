@@ -21,7 +21,7 @@ StateDb::~StateDb()
     {
         if (type.objectCount > 0)
         {
-            SDL_Log("WARNING: Detected %d active %s objects",
+            SDL_Log("WARNING: Detected %d active \"%s\"-objects",
                 type.objectCount, type.name.c_str());
         }
     }
@@ -171,8 +171,8 @@ u64 StateDb::createObject(u64 typeId)
     }
     u64 objectId = type.idxToObjectId[++type.objectCount];
     ++type.lifecycleByObjectId[objectId];
-    return composeObjectHandle(u16(typeId),
-        u16(type.lifecycleByObjectId[objectId]), u32(objectId));
+    return composeObjectHandle(
+        u16(typeId), u16(type.lifecycleByObjectId[objectId]), u32(objectId));
 }
 
 // -------------------------------------------------------------------------------------------------
