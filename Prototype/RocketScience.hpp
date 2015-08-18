@@ -29,10 +29,8 @@ public: // Implementation of module interface
     virtual void update(Platform &platform, double deltaTimeInS);
 
 private:
-
-    static const int OCEAN_TILE_VERTEX_COUNT = 32;
-    constexpr static const float OCEAN_TILE_VERTEX_DIST = 1.0f;
-
+    static const int OCEAN_TILE_VERTEX_COUNT;
+    static const float OCEAN_TILE_VERTEX_DIST;
     static const glm::fvec2 OCEAN_TILE_UNIT_SIZE;
 
     u64 m_cameraHandle = 0;

@@ -21,8 +21,10 @@
 #include "Renderer.hpp"
 #include "Physics.hpp"
 
+const int RocketScience::OCEAN_TILE_VERTEX_COUNT = 32;
 const glm::fvec2 RocketScience::OCEAN_TILE_UNIT_SIZE =
     glm::fvec2((OCEAN_TILE_VERTEX_COUNT - 1) * OCEAN_TILE_VERTEX_DIST);
+const float RocketScience::OCEAN_TILE_VERTEX_DIST = 1.0f;
 
 // -------------------------------------------------------------------------------------------------
 RocketScience::RocketScience()
@@ -84,7 +86,7 @@ bool RocketScience::initialize(Platform &platform)
         }
         else if (rand() % 9 > 5)
         {
-            mesh->modelAsset = platform.assets.asset("Assets/AppleCube.obj");
+            mesh->modelAsset = platform.assets.asset("Assets/MaterialCube.obj");
         }
         else if (rand() % 9 > 2)
         {
