@@ -57,18 +57,18 @@ win32 | macx {
 
 # Bullet
 win32 {
+    # Check "USE_MSVC_RUNTIME_LIBRARY_DLL" before pressing "Generate"
     INCLUDEPATH += $$THIRDPARTY/bullet3/src
-    LIBS += -L$$THIRDPARTY/bullet3/bin
     win32:contains(QMAKE_HOST.arch, x86_64) {
         CONFIG(debug, debug|release) {
-            LIBS += $$THIRDPARTY/bullet3/bin/BulletCollision_vs2010_x64_debug.lib
-            LIBS += $$THIRDPARTY/bullet3/bin/BulletDynamics_vs2010_x64_debug.lib
-            LIBS += $$THIRDPARTY/bullet3/bin/LinearMath_vs2010_x64_debug.lib
+            LIBS += $$THIRDPARTY/bullet3/lib/Debug/BulletCollision_Debug.lib
+            LIBS += $$THIRDPARTY/bullet3/lib/Debug/BulletDynamics_Debug.lib
+            LIBS += $$THIRDPARTY/bullet3/lib/Debug/LinearMath_Debug.lib
         }
         CONFIG(release, debug|release) {
-            LIBS += $$THIRDPARTY/bullet3/bin/BulletCollision_vs2010_x64_release.lib
-            LIBS += $$THIRDPARTY/bullet3/bin/BulletDynamics_vs2010_x64_release.lib
-            LIBS += $$THIRDPARTY/bullet3/bin/LinearMath_vs2010_x64_release.lib
+            LIBS += $$THIRDPARTY/bullet3/lib/Release/BulletCollision.lib
+            LIBS += $$THIRDPARTY/bullet3/lib/Release/BulletDynamics.lib
+            LIBS += $$THIRDPARTY/bullet3/lib/Release/LinearMath.lib
         }
     }
     else {
