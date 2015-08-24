@@ -426,8 +426,8 @@ void Physics::update(Platform &platform, double deltaTimeInS)
         Renderer::Mesh::Info *meshInfo = nullptr;
         platform.stateDb.refState(Renderer::Mesh::Info::STATE, info->meshHandle, &meshInfo);
 
-        btTransform worldTrans;
-        privateInfo->rigidBody->motionState->getWorldTransform(worldTrans);
+        const btTransform &worldTrans =
+            privateInfo->rigidBody->rigidBody->getCenterOfMassTransform();
 
         btVector3 origin = worldTrans.getOrigin();
         meshInfo->translation = glm::fvec3(origin.x(), origin.y(), origin.z());
