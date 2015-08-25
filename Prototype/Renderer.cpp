@@ -476,7 +476,7 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
         {
             // TODO(martinmo): Add way of getting asset and flags in one call/lookup
             glMesh->model = platform.assets.refModel(mesh->modelAsset);
-            bool dynamic = platform.assets.assetFlags(mesh->modelAsset) & Assets::Flag::DYNAMIC;
+            int dynamic = platform.assets.assetFlags(mesh->modelAsset) & Assets::Flag::DYNAMIC;
             COMMON_ASSERT(glMesh->model);
 
             GLenum usage = GL_STATIC_DRAW;

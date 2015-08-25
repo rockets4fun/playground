@@ -214,7 +214,7 @@ void StateDb::destroyObject(u64 objectHandle)
 int StateDb::objectCount(u64 typeId)
 {
     COMMON_ASSERT(isTypeIdValid(typeId));
-    return m_types[typeId].objectCount;
+    return int(m_types[typeId].objectCount);
 }
 
 // -------------------------------------------------------------------------------------------------

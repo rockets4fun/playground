@@ -180,7 +180,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
             position.z = oceanEquation(position.xy(), m_timeInS);
         }
         // Update normals and colors according to ocean equation
-        const int triCount = model->normals.size() / 3;
+        const int triCount = int(model->normals.size()) / 3;
         for (int triIdx = 0; triIdx < triCount; ++triIdx)
         {
             glm::fvec3 normal = glm::normalize(glm::cross(
@@ -257,7 +257,8 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         if (meshInfo->modelAsset == platform.assets.asset("Assets/Pusher.obj"))
         {
             rigidBodyInfo->collisionShapeType =
-                Physics::RigidBody::Info::CollisionShapeType::CONVEX_HULL_COMPOUND;
+                Physics::RigidBody::Info::CollisionShapeType::BOUNDING_BOX;
+                //Physics::RigidBody::Info::CollisionShapeType::CONVEX_HULL_COMPOUND;
             // Create Pusher rocket motor force
             {
                 Physics::Force::Info *forceInfo = nullptr;
@@ -394,23 +395,38 @@ void RocketScience::updateBuoyancyForce(
     auto rigidBody = stateDb.refState< Physics::RigidBody::Info >(force->rigidBodyHandle);
     auto mesh      = stateDb.refState< Renderer::Mesh::Info     >(rigidBody->meshHandle);
 
-    glm::fvec3 oceanPt     (mesh->translation.xy() + glm::fvec2(0.0f, 0.0f), 0.0f);
-    glm::fvec3 oceanPtRight(mesh->translation.xy() + glm::fvec2(1.0f, 0.0f), 0.0f);
-    glm::fvec3 oceanPtAbove(mesh->translation.xy() + glm::fvec2(0.0f, 1.0f), 0.0f);
+    glm::fvec2 pos2 = mesh->translation.xy();
+    glm::fvec3 oceanPt     (pos2 + glm::fvec2( 0.0f,  0.0f), 0.0f);
+    glm::fvec3 oceanPtLeft (pos2 + glm::fvec2(-1.0f,  0.0f), 0.0f);
+    glm::fvec3 oceanPtRight(pos2 + glm::fvec2(+1.0f,  0.0f), 0.0f);
+    glm::fvec3 oceanPtAbove(pos2 + glm::fvec2( 0.0f, +1.0f), 0.0f);
+    glm::fvec3 oceanPtBelow(pos2 + glm::fvec2( 0.0f, -1.0f), 0.0f);
 
-    oceanPt.z      = oceanEquation(oceanPt.xy(), m_timeInS);
+    oceanPt.z      = oceanEquation(oceanPt.xy(),      m_timeInS);
+    oceanPtLeft.z  = oceanEquation(oceanPtLeft.xy(),  m_timeInS);
     oceanPtRight.z = oceanEquation(oceanPtRight.xy(), m_timeInS);
     oceanPtAbove.z = oceanEquation(oceanPtAbove.xy(), m_timeInS);
+    oceanPtBelow.z = oceanEquation(oceanPtBelow.xy(), m_timeInS);
 
     glm::fvec3 normal = glm::normalize(
-        glm::cross(oceanPtRight - oceanPt, oceanPtAbove - oceanPt));
+        glm::cross(oceanPtRight - oceanPtLeft, oceanPtAbove - oceanPtBelow));
 
-    float depth = oceanPt.z - mesh->translation.z;
-    if (depth > -0.35f)
+    double sphereRadius = 0.5;
+    double spherePenetrationDepth = glm::clamp(double(oceanPt.z - mesh->translation.z + sphereRadius), 0.0, 2.0 * sphereRadius);
+    double spherePenetrationVolume = 0.0;
+    if (spherePenetrationDepth > 0.0)
+    {
+        spherePenetrationVolume = (1.0 / 3.0) * glm::pi< double >() * glm::pow(spherePenetrationDepth, 2.0) * (3.0 * sphereRadius - spherePenetrationDepth);
+    }
+
+    // Water at 22 degrees (https://en.wikipedia.org/wiki/Density#Water)
+    double waterDensity = 200.0;
+    double buoyancy = spherePenetrationVolume * waterDensity;
+    if (buoyancy > 0.0)
     {
         rigidBody->linearVelocityLimit.z = 1.0f;
         force->force = normal;
-        force->force.z = 55.0f * glm::clamp(0.0f, 1.0f, depth + 1.0f);
+        force->force.z *= float(buoyancy);
         force->enabled = 1;
     }
     else

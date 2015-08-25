@@ -64,7 +64,8 @@ struct StateDb
         }
 
         u64 objectId = type.idxToObjectId[offsetInB / state.elemSize];
-        return composeObjectHandle(state.typeId, type.lifecycleByObjectId[objectId], objectId);
+        return composeObjectHandle(u16(state.typeId),
+            u16(type.lifecycleByObjectId[objectId]), u32(objectId));
     }
 
     template< class ElementType >
@@ -138,7 +139,7 @@ private:
         std::vector< u64 > stateIds;
         std::vector< u64 > objectIdToIdx;
         std::vector< u64 > idxToObjectId;
-        std::vector< u16 > lifecycleByObjectId;
+        std::vector< u64 > lifecycleByObjectId;
     };
 
     struct State
