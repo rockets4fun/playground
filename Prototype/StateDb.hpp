@@ -22,7 +22,7 @@
 ///
 /// Handles are like pointers but they follow an object upon relocation in memory.
 ///
-/// With this implementation we pay on:
+/// With this implementation we pay (in terms of run-time) on:
 /// - Object deletion (fill hole by moving in state from end of state vector)
 /// - Object lookup through handle (ID to index traslation via per-type vector)
 struct StateDb
