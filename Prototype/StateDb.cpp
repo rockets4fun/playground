@@ -218,28 +218,6 @@ int StateDb::objectCount(u64 typeId)
 }
 
 // -------------------------------------------------------------------------------------------------
-u64 StateDb::objectHandleFromElem(u64 stateId, void *elem)
-{
-    COMMON_ASSERT(isStateIdValid(stateId));
-
-    const State &state = m_states[stateId];
-    const Type &type = m_types[state.typeId];
-
-    u64 offsetInB = (unsigned char *)elem - &m_stateValues[stateId][0];
-    if (offsetInB % state.elemSize != 0)
-    {
-        return 0;
-    }
-    if (offsetInB / state.elemSize > type.objectCount)
-    {
-        return 0;
-    }
-
-    u64 objectId = type.idxToObjectId[offsetInB / state.elemSize];
-    return composeObjectHandle(state.typeId, type.lifecycleByObjectId[objectId], objectId);
-}
-
-// -------------------------------------------------------------------------------------------------
 u64 StateDb::composeObjectHandle(u16 typeId, u16 lifecycle, u32 objectId)
 {
     return u64(typeId) << 48 | u64(lifecycle) << 32 | objectId;

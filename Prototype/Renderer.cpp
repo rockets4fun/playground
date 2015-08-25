@@ -441,15 +441,15 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     if (activeCameraHandle)
     {
         Camera::Info *cameraInfo = nullptr;
-        platform.stateDb.refState(Camera::Info::STATE, activeCameraHandle, &cameraInfo);
+        platform.stateDb.refState(activeCameraHandle, &cameraInfo);
         view = glm::lookAt(cameraInfo->position.xyz(),
             cameraInfo->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
     }
 
     Mesh::Info *meshBegin = nullptr, *meshEnd = nullptr;
-    platform.stateDb.refStateAll(Mesh::Info::STATE, &meshBegin, &meshEnd);
+    platform.stateDb.refStateAll(&meshBegin, &meshEnd);
     Mesh::PrivateInfo *meshPrivateBegin = nullptr, *meshPrivateEnd = nullptr;
-    platform.stateDb.refStateAll(Mesh::PrivateInfo::STATE, &meshPrivateBegin, &meshPrivateEnd);
+    platform.stateDb.refStateAll(&meshPrivateBegin, &meshPrivateEnd);
     Mesh::PrivateInfo *meshPrivate = nullptr;
 
     // Set dirty flags for all dynamic meshes
@@ -562,7 +562,7 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
 void Renderer::updateTransforms(Platform &platform)
 {
     Transform::Info *transformBegin = nullptr, *transformEnd = nullptr;
-    platform.stateDb.refStateAll(Transform::Info::STATE, &transformBegin, &transformEnd);
+    platform.stateDb.refStateAll(&transformBegin, &transformEnd);
     for (Transform::Info *transform = transformBegin;
                           transform != transformEnd; ++transform)
     {
