@@ -246,9 +246,9 @@ void Physics::PrivateState::preTick(btScalar timeStep)
 
     // Apply linear velocity limits to all RBs
     RigidBody::Info *info = nullptr, *infoBegin = nullptr, *infoEnd = nullptr;
-    stateDb.refStateAll(RigidBody::Info::STATE, &infoBegin, &infoEnd);
+    stateDb.refStateAll(&infoBegin, &infoEnd);
     RigidBody::PrivateInfo *privateInfo = nullptr, *privateInfoBegin = nullptr;
-    stateDb.refStateAll(RigidBody::PrivateInfo::STATE, &privateInfoBegin);
+    stateDb.refStateAll(&privateInfoBegin);
     for (info = infoBegin, privateInfo = privateInfoBegin;
          info != infoEnd; ++info, ++privateInfo)
     {
@@ -357,20 +357,19 @@ void Physics::shutdown(Platform &platform)
 void Physics::update(Platform &platform, double deltaTimeInS)
 {
     RigidBody::Info *info = nullptr, *infoBegin = nullptr, *infoEnd = nullptr;
-    platform.stateDb.refStateAll(RigidBody::Info::STATE, &infoBegin, &infoEnd);
+    platform.stateDb.refStateAll(&infoBegin, &infoEnd);
     RigidBody::PrivateInfo *privateInfo = nullptr, *privateInfoBegin = nullptr;
-    platform.stateDb.refStateAll(RigidBody::PrivateInfo::STATE, &privateInfoBegin);
+    platform.stateDb.refStateAll(&privateInfoBegin);
 
     // Check for newly created rigid bodies
     for (info = infoBegin, privateInfo = privateInfoBegin;
          info != infoEnd; ++info, ++privateInfo)
     {
         Renderer::Mesh::Info *meshInfo = nullptr;
-        platform.stateDb.refState(Renderer::Mesh::Info::STATE, info->meshHandle, &meshInfo);
+        platform.stateDb.refState(info->meshHandle, &meshInfo);
         if (!privateInfo->rigidBody)
         {
-            u64 objectHandle = platform.stateDb.objectHandleFromElem(
-                Physics::RigidBody::Info::STATE, info);
+            u64 objectHandle = platform.stateDb.objectHandleFromElem(info);
             state->rigidBodies.push_back(PrivateRigidBody(*state.get()));
             PrivateRigidBody *rigidBody = &state->rigidBodies.back();
 
@@ -383,11 +382,10 @@ void Physics::update(Platform &platform, double deltaTimeInS)
     }
 
     Force::Info *forceInfo = nullptr, *forceInfoBegin = nullptr, *forceInfoEnd = nullptr;
-    platform.stateDb.refStateAll(Force::Info::STATE, &forceInfoBegin, &forceInfoEnd);
+    platform.stateDb.refStateAll(&forceInfoBegin, &forceInfoEnd);
     for (forceInfo = forceInfoBegin; forceInfo != forceInfoEnd; ++forceInfo)
     {
-        platform.stateDb.refState(RigidBody::PrivateInfo::STATE,
-            forceInfo->rigidBodyHandle, &privateInfo);
+        platform.stateDb.refState(forceInfo->rigidBodyHandle, &privateInfo);
         if (forceInfo->enabled)
         {
             privateInfo->rigidBody->forces.push_back(
@@ -424,7 +422,7 @@ void Physics::update(Platform &platform, double deltaTimeInS)
         }
 
         Renderer::Mesh::Info *meshInfo = nullptr;
-        platform.stateDb.refState(Renderer::Mesh::Info::STATE, info->meshHandle, &meshInfo);
+        platform.stateDb.refState(info->meshHandle, &meshInfo);
 
         const btTransform &worldTrans =
             privateInfo->rigidBody->rigidBody->getCenterOfMassTransform();

@@ -44,61 +44,82 @@ struct StateDb
     void destroyObject(u64 objectHandle);
 
     int objectCount(u64 typeId);
-    u64 objectHandleFromElem(u64 stateId, void *elem);
 
     template< class ElementType >
-    u64 createObjectAndRefState(u64 stateId, ElementType **elem)
+    u64 objectHandleFromElem(ElementType *elem)
     {
-        COMMON_ASSERT(isStateIdValid(stateId));
+        COMMON_ASSERT(isStateIdValid(ElementType::STATE));
+
+        const State &state = m_states[ElementType::STATE];
+        const Type &type = m_types[state.typeId];
+
+        u64 offsetInB = (unsigned char *)elem - &m_stateValues[ElementType::STATE][0];
+        if (offsetInB % state.elemSize != 0)
+        {
+            return 0;
+        }
+        if (offsetInB / state.elemSize > type.objectCount)
+        {
+            return 0;
+        }
+
+        u64 objectId = type.idxToObjectId[offsetInB / state.elemSize];
+        return composeObjectHandle(state.typeId, type.lifecycleByObjectId[objectId], objectId);
+    }
+
+    template< class ElementType >
+    u64 createObjectAndRefState(ElementType **elem)
+    {
+        COMMON_ASSERT(isStateIdValid(ElementType::STATE));
 
         // TODO(martinmo): Encode type ID into the state ID (==> state handle)
         // TODO(martinmo): ==> This way we can avoid lookup in 'm_states'
-        const State &state = m_states[stateId];
+        const State &state = m_states[ElementType::STATE];
 
         u64 objectHandle = createObject(state.typeId);
-        refState(stateId, objectHandle, elem);
+        refState(objectHandle, elem);
         return objectHandle;
     }
 
     template< class ElementType >
-    void refState(u64 stateId, u64 objectHandle, ElementType **elem)
+    void refState(u64 objectHandle, ElementType **elem)
     {
-        COMMON_ASSERT(isStateIdValid(stateId));
-        COMMON_ASSERT(m_states[stateId].elemSize == sizeof(ElementType));
+        COMMON_ASSERT(isStateIdValid(ElementType::STATE));
+        COMMON_ASSERT(m_states[ElementType::STATE].elemSize == sizeof(ElementType));
 
         u64 typeIdFromHandle = objectHandleTypeId(objectHandle);
 
         COMMON_ASSERT(isObjectHandleValid(objectHandle));
-        COMMON_ASSERT(typeIdFromHandle == m_states[stateId].typeId);
+        COMMON_ASSERT(typeIdFromHandle == m_states[ElementType::STATE].typeId);
 
         // Type lookup needed here for object ID to index translation
         const Type &type = m_types[typeIdFromHandle];
-        *elem = (ElementType *)&m_stateValues[stateId][
+        *elem = (ElementType *)&m_stateValues[ElementType::STATE][
             type.objectIdToIdx[objectHandle & 0xffffffff] * sizeof(ElementType)];
     }
 
     template< class ElementType >
-    ElementType *ref(u64 objectHandle)
+    ElementType *refState(u64 objectHandle)
     {
         ElementType *result = nullptr;
-        refState(ElementType::STATE, objectHandle, &result);
+        refState(objectHandle, &result);
         return result;
     }
 
     template< class ElementType >
-    void refStateAll(u64 stateId, ElementType **begin, ElementType **end = nullptr)
+    void refStateAll(ElementType **begin, ElementType **end = nullptr)
     {
-        COMMON_ASSERT(isStateIdValid(stateId));
-        COMMON_ASSERT(m_states[stateId].elemSize == sizeof(ElementType));
+        COMMON_ASSERT(isStateIdValid(ElementType::STATE));
+        COMMON_ASSERT(m_states[ElementType::STATE].elemSize == sizeof(ElementType));
 
         // TODO(martinmo): Encode type ID into the state ID (==> state handle)
         // TODO(martinmo): ==> This way we can avoid lookup in 'm_states'
         // TODO(martinmo): ==> See 'createObjectAndRefState' for more profiteers
         // TODO(martinmo): Store object count in memory block itself
         // TODO(martinmo): ==> This way we can avoid type/implicit state lookup altogether
-        const Type &type = m_types[m_states[stateId].typeId];
+        const Type &type = m_types[m_states[ElementType::STATE].typeId];
 
-        std::vector< unsigned char > &memory = m_stateValues[stateId];
+        std::vector< unsigned char > &memory = m_stateValues[ElementType::STATE];
         unsigned char *memoryBegin = &memory[sizeof(ElementType)];
         *begin = (ElementType *)memoryBegin;
         if (end)

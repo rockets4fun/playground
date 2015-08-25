@@ -45,8 +45,7 @@ void RocketScience::registerTypesAndStates(StateDb &stateDb)
 bool RocketScience::initialize(Platform &platform)
 {
     Renderer::Camera::Info *camera = nullptr;
-    m_cameraHandle = platform.stateDb.createObjectAndRefState(
-        Renderer::Camera::Info::STATE, &camera);
+    m_cameraHandle = platform.stateDb.createObjectAndRefState(&camera);
     camera->position = glm::fvec3(20.0f, 20.0f, 20.0f);
     camera->target   = glm::fvec3( 0.0f,  0.0f,  0.0f);
 
@@ -54,14 +53,12 @@ bool RocketScience::initialize(Platform &platform)
 
     {
         Renderer::Mesh::Info *meshInfo = nullptr;
-        m_gridMeshHandle = platform.stateDb.createObjectAndRefState(
-            Renderer::Mesh::Info::STATE, &meshInfo);
+        m_gridMeshHandle = platform.stateDb.createObjectAndRefState(&meshInfo);
         meshInfo->modelAsset = platform.assets.asset("Assets/Grid.obj");
     }
     {
         Renderer::Mesh::Info *meshInfo = nullptr;
-        m_arrowMeshHandle = platform.stateDb.createObjectAndRefState(
-            Renderer::Mesh::Info::STATE, &meshInfo);
+        m_arrowMeshHandle = platform.stateDb.createObjectAndRefState(&meshInfo);
         meshInfo->modelAsset = platform.assets.asset("Assets/Arrow.obj");
     }
 
@@ -73,8 +70,7 @@ bool RocketScience::initialize(Platform &platform)
     for (int meshIdx = 0; meshIdx < 128; ++meshIdx)
     {
         Renderer::Mesh::Info *mesh = nullptr;
-        u64 meshHandle = platform.stateDb.createObjectAndRefState(
-            Renderer::Mesh::Info::STATE, &mesh);
+        u64 meshHandle = platform.stateDb.createObjectAndRefState(&mesh);
         mesh->translation = glm::linearRand(
             glm::fvec3(-10.0f, -10.0f, +20.0f), glm::fvec3(+10.0f, +10.0f, +40.0f));
 
@@ -169,8 +165,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
                 for (int x = 0; x < tileCount; ++x)
                 {
                     Renderer::Mesh::Info *meshInfo = nullptr;
-                    u64 oceanMeshHandle = platform.stateDb.createObjectAndRefState(
-                        Renderer::Mesh::Info::STATE, &meshInfo);
+                    u64 oceanMeshHandle = platform.stateDb.createObjectAndRefState(&meshInfo);
                     meshInfo->modelAsset = m_oceanModelAsset;
                     meshInfo->translation = glm::fvec3(glm::fvec2(float(x), float(y))
                         * unitSize - 0.5f * float(tileCount) * unitSize, 0.0f);
@@ -213,7 +208,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         if (state[SDL_SCANCODE_S]) translationInM -= deltaTimeInS * 20.0;
 
         Renderer::Camera::Info *cameraInfo = nullptr;
-        platform.stateDb.refState(Renderer::Camera::Info::STATE, m_cameraHandle, &cameraInfo);
+        platform.stateDb.refState(m_cameraHandle, &cameraInfo);
 
         glm::fvec3 cameraDir = (cameraInfo->target - cameraInfo->position).xyz();
 
@@ -251,14 +246,13 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         u64 meshHandle = m_meshHandles[m_rigidBodyByMeshHandle.size()];
 
         Physics::RigidBody::Info *rigidBodyInfo = nullptr;
-        u64 rigidBodyHandle = platform.stateDb.createObjectAndRefState(
-            Physics::RigidBody::Info::STATE, &rigidBodyInfo);
+        u64 rigidBodyHandle = platform.stateDb.createObjectAndRefState(&rigidBodyInfo);
         rigidBodyInfo->meshHandle = meshHandle;
         rigidBodyInfo->collisionGroup = 1;
         rigidBodyInfo->collisionMask = 0xffff;
 
         Renderer::Mesh::Info *meshInfo = nullptr;
-        platform.stateDb.refState(Renderer::Mesh::Info::STATE, meshHandle, &meshInfo);
+        platform.stateDb.refState(meshHandle, &meshInfo);
 
         if (meshInfo->modelAsset == platform.assets.asset("Assets/Pusher.obj"))
         {
@@ -267,8 +261,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
             // Create Pusher rocket motor force
             {
                 Physics::Force::Info *forceInfo = nullptr;
-                m_pusherForceHandle = platform.stateDb.createObjectAndRefState(
-                    Physics::Force::Info::STATE, &forceInfo);
+                m_pusherForceHandle = platform.stateDb.createObjectAndRefState(&forceInfo);
                 forceInfo->rigidBodyHandle = rigidBodyHandle;
                 forceInfo->enabled = 1;
             }
@@ -282,8 +275,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
             // Create sphere buoyancy force
             {
                 Physics::Force::Info *forceInfo = nullptr;
-                u64 buoyancyForceHandle = platform.stateDb.createObjectAndRefState(
-                    Physics::Force::Info::STATE, &forceInfo);
+                u64 buoyancyForceHandle = platform.stateDb.createObjectAndRefState(&forceInfo);
                 forceInfo->rigidBodyHandle = rigidBodyHandle;
                 m_buoyancyForceHandles.push_back(buoyancyForceHandle);
             }
@@ -296,10 +288,10 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
     if (m_pusherForceHandle)
     {
         Renderer::Mesh::Info *meshInfo = nullptr;
-        platform.stateDb.refState(Renderer::Mesh::Info::STATE, m_meshHandles.front(), &meshInfo);
+        platform.stateDb.refState(m_meshHandles.front(), &meshInfo);
 
         Physics::Force::Info *forceInfo = nullptr;
-        platform.stateDb.refState(Physics::Force::Info::STATE, m_pusherForceHandle, &forceInfo);
+        platform.stateDb.refState(m_pusherForceHandle, &forceInfo);
 
         glm::fmat3 meshRot = glm::mat3_cast(meshInfo->rotation);
 
@@ -350,7 +342,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 
         // Use arrow mesh to display thrust vector
         Renderer::Mesh::Info *arrowMeshInfo = nullptr;
-        platform.stateDb.refState(Renderer::Mesh::Info::STATE, m_arrowMeshHandle, &arrowMeshInfo);
+        platform.stateDb.refState(m_arrowMeshHandle, &arrowMeshInfo);
         arrowMeshInfo->translation = meshInfo->translation + forceInfo->position;
         arrowMeshInfo->rotation = Math::rotateFromTo(
             glm::fvec3(0.0f, 1.0f, 0.0f), -forceInfo->force);
@@ -398,9 +390,9 @@ void RocketScience::updateBuoyancyForce(
     // TODO(martinmo): ==> Less efficient in space but more efficent in time
     // TODO(martinmo): ==> Flatten only if time-efficiency really is an issue
 
-    auto force     = stateDb.ref< Physics::Force::Info     >(buoyancyForceHandle);
-    auto rigidBody = stateDb.ref< Physics::RigidBody::Info >(force->rigidBodyHandle);
-    auto mesh      = stateDb.ref< Renderer::Mesh::Info     >(rigidBody->meshHandle);
+    auto force     = stateDb.refState< Physics::Force::Info     >(buoyancyForceHandle);
+    auto rigidBody = stateDb.refState< Physics::RigidBody::Info >(force->rigidBodyHandle);
+    auto mesh      = stateDb.refState< Renderer::Mesh::Info     >(rigidBody->meshHandle);
 
     glm::fvec3 oceanPt     (mesh->translation.xy() + glm::fvec2(0.0f, 0.0f), 0.0f);
     glm::fvec3 oceanPtRight(mesh->translation.xy() + glm::fvec2(1.0f, 0.0f), 0.0f);
