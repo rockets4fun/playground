@@ -69,14 +69,14 @@ public: // Implementation of module interface
     virtual void update(Platform &platform, double deltaTimeInS);
 
 private:
-    struct GlFuncs;
-    struct GlState;
-    struct GlMesh;
-    struct GlHelpers;
+    struct PrivateFuncs;
+    struct PrivateState;
+    struct PrivateMesh;
+    struct PrivateHelpers;
 
-    std::shared_ptr< GlFuncs > funcs;
-    std::shared_ptr< GlState > state;
-    std::shared_ptr< GlHelpers > helpers;
+    std::shared_ptr< PrivateFuncs > funcs;
+    std::shared_ptr< PrivateState > state;
+    std::shared_ptr< PrivateHelpers > helpers;
 
     void updateTransforms(Platform &platform);
     bool initializeGl();

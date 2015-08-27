@@ -52,14 +52,14 @@ bool RocketScience::initialize(Platform &platform)
     platform.renderer.activeCameraHandle = m_cameraHandle;
 
     {
-        Renderer::Mesh::Info *meshInfo = nullptr;
-        m_gridMeshHandle = platform.stateDb.createObjectAndRefState(&meshInfo);
-        meshInfo->modelAsset = platform.assets.asset("Assets/Grid.obj");
+        Renderer::Mesh::Info *mesh = nullptr;
+        m_gridMeshHandle = platform.stateDb.createObjectAndRefState(&mesh);
+        mesh->modelAsset = platform.assets.asset("Assets/Grid.obj");
     }
     {
-        Renderer::Mesh::Info *meshInfo = nullptr;
-        m_arrowMeshHandle = platform.stateDb.createObjectAndRefState(&meshInfo);
-        meshInfo->modelAsset = platform.assets.asset("Assets/Arrow.obj");
+        Renderer::Mesh::Info *mesh = nullptr;
+        m_arrowMeshHandle = platform.stateDb.createObjectAndRefState(&mesh);
+        mesh->modelAsset = platform.assets.asset("Assets/Arrow.obj");
     }
 
     m_oceanModelAsset = platform.assets.asset("procedural/ocean",
@@ -164,10 +164,10 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
             {
                 for (int x = 0; x < tileCount; ++x)
                 {
-                    Renderer::Mesh::Info *meshInfo = nullptr;
-                    u64 oceanMeshHandle = platform.stateDb.createObjectAndRefState(&meshInfo);
-                    meshInfo->modelAsset = m_oceanModelAsset;
-                    meshInfo->translation = glm::fvec3(glm::fvec2(float(x), float(y))
+                    Renderer::Mesh::Info *mesh = nullptr;
+                    u64 oceanMeshHandle = platform.stateDb.createObjectAndRefState(&mesh);
+                    mesh->modelAsset = m_oceanModelAsset;
+                    mesh->translation = glm::fvec3(glm::fvec2(float(x), float(y))
                         * unitSize - 0.5f * float(tileCount) * unitSize, 0.0f);
                     m_oceanMeshHandles.push_back(oceanMeshHandle);
                 }
@@ -207,10 +207,9 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         if (state[SDL_SCANCODE_W]) translationInM += deltaTimeInS * 20.0;
         if (state[SDL_SCANCODE_S]) translationInM -= deltaTimeInS * 20.0;
 
-        Renderer::Camera::Info *cameraInfo = nullptr;
-        platform.stateDb.refState(m_cameraHandle, &cameraInfo);
+        auto camera = platform.stateDb.refState< Renderer::Camera::Info >(m_cameraHandle);
 
-        glm::fvec3 cameraDir = (cameraInfo->target - cameraInfo->position).xyz();
+        glm::fvec3 cameraDir = (camera->target - camera->position).xyz();
 
         // Vertical rotation axis in world space
         // FIXME(martinmo): Correctly handle near +/- 90 deg cases
@@ -221,7 +220,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         verticalRotationAxis = glm::normalize(verticalRotationAxis);
 
         glm::fmat4 xform;
-        xform = glm::translate(xform, cameraInfo->target.xyz());
+        xform = glm::translate(xform, camera->target.xyz());
         if (glm::abs(horizontalRotationInDeg) > 0.001)
         {
             xform = glm::rotate(xform, glm::radians(
@@ -232,11 +231,11 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
             xform = glm::rotate(xform, glm::radians(
                 float(verticalRotationInDeg)), verticalRotationAxis);
         }
-        xform = glm::translate(xform, -cameraInfo->target.xyz());
-        cameraInfo->position = glm::fvec3(xform * glm::fvec4(cameraInfo->position, 1.0f));
+        xform = glm::translate(xform, -camera->target.xyz());
+        camera->position = glm::fvec3(xform * glm::fvec4(camera->position, 1.0f));
         if (glm::abs(translationInM) > 0.001)
         {
-            cameraInfo->position += glm::normalize(cameraDir) * float(translationInM);
+            camera->position += glm::normalize(cameraDir) * float(translationInM);
         }
     }
 
@@ -249,36 +248,36 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         u64 rigidBodyHandle = platform.stateDb.createObjectAndRefState(&rigidBodyInfo);
         rigidBodyInfo->meshHandle = meshHandle;
         rigidBodyInfo->collisionGroup = 1;
-        rigidBodyInfo->collisionMask = 0xffff;
+        rigidBodyInfo->collisionMask = 1;
 
-        Renderer::Mesh::Info *meshInfo = nullptr;
-        platform.stateDb.refState(meshHandle, &meshInfo);
+        auto mesh = platform.stateDb.refState< Renderer::Mesh::Info >(meshHandle);
 
-        if (meshInfo->modelAsset == platform.assets.asset("Assets/Pusher.obj"))
+        if (mesh->modelAsset == platform.assets.asset("Assets/Pusher.obj"))
         {
             rigidBodyInfo->collisionShapeType =
                 Physics::RigidBody::Info::CollisionShapeType::BOUNDING_BOX;
                 //Physics::RigidBody::Info::CollisionShapeType::CONVEX_HULL_COMPOUND;
             // Create Pusher rocket motor force
             {
-                Physics::Force::Info *forceInfo = nullptr;
-                m_pusherForceHandle = platform.stateDb.createObjectAndRefState(&forceInfo);
-                forceInfo->rigidBodyHandle = rigidBodyHandle;
-                forceInfo->enabled = 1;
+                Physics::Affector::Info *affector = nullptr;
+                m_pusherAffectorHandle = platform.stateDb.createObjectAndRefState(&affector);
+                affector->rigidBodyHandle = rigidBodyHandle;
+                affector->enabled = 1;
             }
         }
-        else if (meshInfo->modelAsset == platform.assets.asset("Assets/Sphere.obj"))
+        else if (mesh->modelAsset == platform.assets.asset("Assets/Sphere.obj"))
         {
             // Simulate buoyancy for spheres instead of collisions
-            rigidBodyInfo->collisionMask = 0;
+            rigidBodyInfo->collisionGroup = 2;
+            rigidBodyInfo->collisionMask = 2;
             rigidBodyInfo->collisionShapeType =
                 Physics::RigidBody::Info::CollisionShapeType::BOUNDING_SPHERE;
             // Create sphere buoyancy force
             {
-                Physics::Force::Info *forceInfo = nullptr;
-                u64 buoyancyForceHandle = platform.stateDb.createObjectAndRefState(&forceInfo);
-                forceInfo->rigidBodyHandle = rigidBodyHandle;
-                m_buoyancyForceHandles.push_back(buoyancyForceHandle);
+                Physics::Affector::Info *affector = nullptr;
+                u64 buoyancyAffectorHandle = platform.stateDb.createObjectAndRefState(&affector);
+                affector->rigidBodyHandle = rigidBodyHandle;
+                m_buoyancyAffectorHandles.push_back(buoyancyAffectorHandle);
             }
         }
 
@@ -286,25 +285,23 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
     }
 
     // Update rocket force control logic
-    if (m_pusherForceHandle)
+    if (m_pusherAffectorHandle)
     {
-        Renderer::Mesh::Info *meshInfo = nullptr;
-        platform.stateDb.refState(m_meshHandles.front(), &meshInfo);
+        auto mesh = platform.stateDb.refState< Renderer::Mesh::Info >(m_meshHandles.front());
+        auto affector = platform.stateDb.refState<
+            Physics::Affector::Info >(m_pusherAffectorHandle);
 
-        Physics::Force::Info *forceInfo = nullptr;
-        platform.stateDb.refState(m_pusherForceHandle, &forceInfo);
-
-        glm::fmat3 meshRot = glm::mat3_cast(meshInfo->rotation);
+        glm::fmat3 meshRot = glm::mat3_cast(mesh->rotation);
 
         /*
         // Top wing position
-        forceInfo->position = meshRot * glm::fvec3(0.00f, -2.64, 2.75f);
+        forceInfo->forcePosition = meshRot * glm::fvec3(0.00f, -2.64, 2.75f);
         // Head position
-        forceInfo->position = meshRot * glm::fvec3(0.00f,  3.61, 0.00f);
+        forceInfo->forcePosition = meshRot * glm::fvec3(0.00f,  3.61, 0.00f);
         */
 
         // Tail/main engine position
-        forceInfo->position = meshRot * glm::fvec3(0.00f, -2.14, 0.00f);
+        affector->forcePosition = meshRot * glm::fvec3(0.00f, -2.14, 0.00f);
 
         /*
         // This force applied to top wing makes rocket spin clockwise
@@ -313,7 +310,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 
         // Main engine force to keep height of 10 m
         float mainEngineForce = 0.0f;
-        if (meshInfo->translation.z < 10.0)
+        if (mesh->translation.z < 10.0)
         {
             // Mass of rocket is 5 kg (hard-coded for all RBs ATM)
             // ==> Force needs to be at least 9.81 x 5 ==> 50
@@ -329,7 +326,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         glm::fvec3 actualDir  = meshRot * glm::fvec3(0.0f, 1.0f, 0.0f);
 
         // Tilt nominal direction to steer rocket towards origin
-        nominalDir += glm::normalize(-meshInfo->translation) / 20.0f;
+        nominalDir += glm::normalize(-mesh->translation) / 20.0f;
         nominalDir  = glm::normalize(nominalDir);
 
         // Thrust vector tries to align rocket with nominal direction
@@ -339,14 +336,13 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         glm::fvec3 maxNoise = glm::fvec3(0.05f, 0.05f, 0.05f);
         thrustVector += glm::linearRand(-maxNoise, maxNoise);
 
-        forceInfo->force = thrustVector * mainEngineForce;
+        affector->force = thrustVector * mainEngineForce;
 
         // Use arrow mesh to display thrust vector
-        Renderer::Mesh::Info *arrowMeshInfo = nullptr;
-        platform.stateDb.refState(m_arrowMeshHandle, &arrowMeshInfo);
-        arrowMeshInfo->translation = meshInfo->translation + forceInfo->position;
-        arrowMeshInfo->rotation = Math::rotateFromTo(
-            glm::fvec3(0.0f, 1.0f, 0.0f), -forceInfo->force);
+        auto arrowMesh = platform.stateDb.refState< Renderer::Mesh::Info >(m_arrowMeshHandle);
+        arrowMesh->translation = mesh->translation + affector->forcePosition;
+        arrowMesh->rotation = Math::rotateFromTo(
+            glm::fvec3(0.0f, 1.0f, 0.0f), -affector->force);
 
         // Emergency motors off...
         double errorAngleInDeg = glm::degrees(
@@ -354,16 +350,16 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         //SDL_Log("errorAngleInDeg: %5.2f", errorAngleInDeg);
         if (glm::abs(errorAngleInDeg) > 20.0f)
         {
-            platform.stateDb.destroyObject(m_pusherForceHandle);
-            m_pusherForceHandle = 0;
+            platform.stateDb.destroyObject(m_pusherAffectorHandle);
+            m_pusherAffectorHandle = 0;
         }
     }
 
     // Update buoyancy forces
     {
-        for (auto buoyancyForceHandle : m_buoyancyForceHandles)
+        for (auto buoyancyAffectorHandle : m_buoyancyAffectorHandles)
         {
-            updateBuoyancyForce(platform.stateDb, m_timeInS, buoyancyForceHandle);
+            updateBuoyancyAffector(platform.stateDb, m_timeInS, buoyancyAffectorHandle);
         }
     }
 }
@@ -381,8 +377,8 @@ float RocketScience::oceanEquation(const glm::fvec2 &position, double timeInS)
 }
 
 // -------------------------------------------------------------------------------------------------
-void RocketScience::updateBuoyancyForce(
-    StateDb &stateDb, double timeInS, u64 buoyancyForceHandle)
+void RocketScience::updateBuoyancyAffector(
+    StateDb &stateDb, double timeInS, u64 affectorHandle)
 {
     // TODO(martinmo): Get rid of multi-level indirection by
     // TODO(martinmo): - Storing buoyancy type hint in force info
@@ -391,8 +387,8 @@ void RocketScience::updateBuoyancyForce(
     // TODO(martinmo): ==> Less efficient in space but more efficent in time
     // TODO(martinmo): ==> Flatten only if time-efficiency really is an issue
 
-    auto force     = stateDb.refState< Physics::Force::Info     >(buoyancyForceHandle);
-    auto rigidBody = stateDb.refState< Physics::RigidBody::Info >(force->rigidBodyHandle);
+    auto affector  = stateDb.refState< Physics::Affector::Info  >(affectorHandle);
+    auto rigidBody = stateDb.refState< Physics::RigidBody::Info >(affector->rigidBodyHandle);
     auto mesh      = stateDb.refState< Renderer::Mesh::Info     >(rigidBody->meshHandle);
 
     glm::fvec2 pos2 = mesh->translation.xy();
@@ -412,26 +408,42 @@ void RocketScience::updateBuoyancyForce(
         glm::cross(oceanPtRight - oceanPtLeft, oceanPtAbove - oceanPtBelow));
 
     double sphereRadius = 0.5;
-    double spherePenetrationDepth = glm::clamp(double(oceanPt.z - mesh->translation.z + sphereRadius), 0.0, 2.0 * sphereRadius);
+    double sphereDepth = double(oceanPt.z - mesh->translation.z) + sphereRadius;
+    double spherePenetrationDepth = glm::clamp(sphereDepth, 0.0, 2.0 * sphereRadius);
     double spherePenetrationVolume = 0.0;
     if (spherePenetrationDepth > 0.0)
     {
-        spherePenetrationVolume = (1.0 / 3.0) * glm::pi< double >() * glm::pow(spherePenetrationDepth, 2.0) * (3.0 * sphereRadius - spherePenetrationDepth);
+        spherePenetrationVolume = (1.0 / 3.0) * glm::pi< double >()
+            * glm::pow(spherePenetrationDepth, 2.0)
+            * (3.0 * sphereRadius - spherePenetrationDepth);
     }
-
-    // Water at 22 degrees (https://en.wikipedia.org/wiki/Density#Water)
-    double waterDensity = 200.0;
+    // Density of water at 22 degrees is 997.7735 kg/m^3
+    // (https://en.wikipedia.org/wiki/Density#Water)
+    double waterDensity = 300.0;
     double buoyancy = spherePenetrationVolume * waterDensity;
+
     if (buoyancy > 0.0)
     {
-        rigidBody->linearVelocityLimit.z = 1.0f;
-        force->force = normal;
-        force->force.z *= float(buoyancy);
-        force->enabled = 1;
+        rigidBody->linearVelocityLimit.z = 0.8f;
+
+        // Force from buoyancy
+        affector->force = normal * float(buoyancy);
+        // Force from friction between moving sphere and water
+        affector->force += -40.0f * glm::fvec3(rigidBody->linearVelocity.xy(), 0.0f);
+        // Force from friction between spinning sphere and water
+        glm::fvec3 avFriction = rigidBody->angularVelocity;
+        avFriction.z = 0.0f;
+        std::swap(avFriction.x, avFriction.y);
+        avFriction.y = -avFriction.y;
+        affector->force += 2.0f * avFriction;
+        // Torque from friction between spinning sphere and water
+        affector->torque = -0.15f * rigidBody->angularVelocity;
+
+        affector->enabled = 1;
     }
     else
     {
         rigidBody->linearVelocityLimit.z = 0.0f;
-        force->enabled = 0;
+        affector->enabled = 0;
     }
 }

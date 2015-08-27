@@ -27,15 +27,15 @@ struct Physics::PrivateRigidBody
     u64 objectHandle = 0;
 
     std::shared_ptr< btDefaultMotionState > motionState;
-    std::shared_ptr< btRigidBody > rigidBody;
+    std::shared_ptr< btRigidBody > bulletRigidBody;
 
-    std::vector< std::pair< glm::fvec3, glm::fvec3 > > forces;
+    std::vector< Affector::Info * > affectors;
 
     PrivateRigidBody(PrivateState &state);
     virtual ~PrivateRigidBody();
 
-    void initialize(u64 objectHandle, Physics::RigidBody::Info *info,
-        Renderer::Mesh::Info *meshInfo, const Assets::Model *model);
+    void initialize(u64 objectHandle, Physics::RigidBody::Info *rigidBody,
+        Renderer::Mesh::Info *mesh, const Assets::Model *model);
 };
 
 struct Physics::PrivateState
@@ -56,7 +56,7 @@ struct Physics::PrivateState
     std::map< u64, btCollisionShape * > collisionShapes;
     std::list< std::shared_ptr< btCollisionShape > > collisionShapesStorage;
 
-    std::list< PrivateRigidBody > rigidBodies;
+    std::list< PrivateRigidBody > privateRigidBodies;
 
     StateDb &stateDb;
 
@@ -70,15 +70,33 @@ struct Physics::PrivateState
 struct Physics::RigidBody::PrivateInfo
 {
     static u64 STATE;
-    PrivateRigidBody *rigidBody = nullptr;
+    PrivateRigidBody *privateRigidBody = nullptr;
 };
 
 u64 Physics::RigidBody::TYPE = 0;
 u64 Physics::RigidBody::Info::STATE = 0;
 u64 Physics::RigidBody::PrivateInfo::STATE = 0;
 
-u64 Physics::Force::TYPE = 0;
-u64 Physics::Force::Info::STATE = 0;
+u64 Physics::Affector::TYPE = 0;
+u64 Physics::Affector::Info::STATE = 0;
+
+// -------------------------------------------------------------------------------------------------
+glm::fvec3 fromBulletVec(const btVector3 &bulletVec)
+{
+    return glm::fvec3(bulletVec.x(), bulletVec.y(), bulletVec.z());
+}
+
+// -------------------------------------------------------------------------------------------------
+btVector3 toBulletVec(const glm::fvec3 &vec)
+{
+    return btVector3(vec.x, vec.y, vec.z);
+}
+
+// -------------------------------------------------------------------------------------------------
+glm::quat fromBulletQuat(const btQuaternion &bulletQuat)
+{
+    return glm::fquat(bulletQuat.w(), bulletQuat.x(), bulletQuat.y(), bulletQuat.z());
+}
 
 // -------------------------------------------------------------------------------------------------
 Physics::PrivateRigidBody::PrivateRigidBody(PrivateState &state) :
@@ -89,21 +107,21 @@ Physics::PrivateRigidBody::PrivateRigidBody(PrivateState &state) :
 // -------------------------------------------------------------------------------------------------
 Physics::PrivateRigidBody::~PrivateRigidBody()
 {
-    if (rigidBody)
+    if (bulletRigidBody)
     {
-        state.dynamicsWorld->removeRigidBody(rigidBody.get());
+        state.dynamicsWorld->removeRigidBody(bulletRigidBody.get());
     }
 }
 
 // -------------------------------------------------------------------------------------------------
 void Physics::PrivateRigidBody::initialize(
-    u64 objectHandle, Physics::RigidBody::Info *info,
-    Renderer::Mesh::Info *meshInfo, const Assets::Model *model)
+    u64 objectHandle, Physics::RigidBody::Info *rigidBody,
+    Renderer::Mesh::Info *mesh, const Assets::Model *model)
 {
     this->objectHandle = objectHandle;
 
     btCollisionShape *collisionShape = nullptr;
-    u64 collisionShapeKey = u64(info->collisionShapeType) << 32 | u64(meshInfo->modelAsset);
+    u64 collisionShapeKey = u64(rigidBody->collisionShapeType) << 32 | u64(mesh->modelAsset);
 
     // TODO(martinmo): Find way to get rid of map lookup
     auto collisionShapeIter = state.collisionShapes.find(collisionShapeKey);
@@ -127,16 +145,16 @@ void Physics::PrivateRigidBody::initialize(
         }
         glm::fvec3 halfExtent = 0.5f * (max - min);
 
-        if (info->collisionShapeType == Physics::RigidBody::Info::BOUNDING_BOX)
+        if (rigidBody->collisionShapeType == Physics::RigidBody::Info::BOUNDING_BOX)
         {
             collisionShape = new btBoxShape(btVector3(halfExtent.x, halfExtent.y, halfExtent.z));
         }
-        else if (info->collisionShapeType == Physics::RigidBody::Info::BOUNDING_SPHERE)
+        else if (rigidBody->collisionShapeType == Physics::RigidBody::Info::BOUNDING_SPHERE)
         {
             collisionShape = new btSphereShape(glm::max(
                 glm::max(halfExtent.x, halfExtent.y), halfExtent.z));
         }
-        else if (info->collisionShapeType == Physics::RigidBody::Info::CONVEX_HULL_COMPOUND)
+        else if (rigidBody->collisionShapeType == Physics::RigidBody::Info::CONVEX_HULL_COMPOUND)
         {
             btCompoundShape *compoundShape = new btCompoundShape;
             for (auto &subMesh : model->subMeshes)
@@ -183,16 +201,16 @@ void Physics::PrivateRigidBody::initialize(
     // TODO(martinmo): Update collision shape if asset version changes
 
     // Make sure initial rotation is a sane value
-    if (glm::abs(meshInfo->rotation.x) + glm::abs(meshInfo->rotation.x)
-        + glm::abs(meshInfo->rotation.x) + glm::abs(meshInfo->rotation.x) < 0.01f)
+    if (glm::abs(mesh->rotation.x) + glm::abs(mesh->rotation.x)
+        + glm::abs(mesh->rotation.x) + glm::abs(mesh->rotation.x) < 0.01f)
     {
-        meshInfo->rotation = glm::fquat(1.0, 0.0, 0.0, 0.0);
+        mesh->rotation = glm::fquat(1.0, 0.0, 0.0, 0.0);
     }
     btQuaternion rotation(
-        meshInfo->rotation.x, meshInfo->rotation.y,
-        meshInfo->rotation.z, meshInfo->rotation.w);
+        mesh->rotation.x, mesh->rotation.y,
+        mesh->rotation.z, mesh->rotation.w);
     btVector3 translation(
-        meshInfo->translation.x, meshInfo->translation.y, meshInfo->translation.z);
+        mesh->translation.x, mesh->translation.y, mesh->translation.z);
     motionState = std::make_shared< btDefaultMotionState >(btTransform(rotation, translation));
 
     btScalar mass = 5;
@@ -203,17 +221,17 @@ void Physics::PrivateRigidBody::initialize(
     constructionInfo.m_restitution = btScalar(0.25);
     constructionInfo.m_friction = btScalar(0.5);
     constructionInfo.m_rollingFriction = btScalar(0.2);
-    rigidBody = std::make_shared< btRigidBody >(constructionInfo);
+    bulletRigidBody = std::make_shared< btRigidBody >(constructionInfo);
 
     // TODO(martinmo): Add flag to disable this for specific RBs only
-    rigidBody->forceActivationState(DISABLE_DEACTIVATION);
+    bulletRigidBody->forceActivationState(DISABLE_DEACTIVATION);
 
     // Bullet collision groups/masks are 16 bit only
-    COMMON_ASSERT(!(info->collisionGroup & 0xffff0000));
-    COMMON_ASSERT(!(info->collisionMask & 0xffff0000));
+    COMMON_ASSERT(!(rigidBody->collisionGroup & 0xffff0000));
+    COMMON_ASSERT(!(rigidBody->collisionMask & 0xffff0000));
 
-    state.dynamicsWorld->addRigidBody(
-        rigidBody.get(), short(info->collisionGroup), short(info->collisionMask));
+    state.dynamicsWorld->addRigidBody(bulletRigidBody.get(),
+        short(rigidBody->collisionGroup), short(rigidBody->collisionMask));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -232,28 +250,30 @@ Physics::PrivateState::PrivateState(StateDb &stateDbInit) :
 // -------------------------------------------------------------------------------------------------
 void Physics::PrivateState::preTick(btScalar timeStep)
 {
-    for (auto &privRigidBody : rigidBodies)
+    for (auto &privateRigidBody : privateRigidBodies)
     {
-        privRigidBody.rigidBody->clearForces();
-        privRigidBody.rigidBody->applyGravity();
-        for (const auto &force : privRigidBody.forces)
+        btRigidBody *bulletRigidBody = privateRigidBody.bulletRigidBody.get();
+        bulletRigidBody->clearForces();
+        bulletRigidBody->applyGravity();
+        for (const Affector::Info *affector : privateRigidBody.affectors)
         {
-            btVector3 bulletForce(force.first.x, force.first.y, force.first.z);
-            btVector3 bulletForcePosition(force.second.x, force.second.y, force.second.z);
-            privRigidBody.rigidBody->applyForce(bulletForce, bulletForcePosition);
+            bulletRigidBody->applyForce(
+                toBulletVec(affector->force), toBulletVec(affector->forcePosition));
+            bulletRigidBody->applyTorque(toBulletVec(affector->torque));
         }
     }
 
     // Apply linear velocity limits to all RBs
-    RigidBody::Info *info = nullptr, *infoBegin = nullptr, *infoEnd = nullptr;
-    stateDb.refStateAll(&infoBegin, &infoEnd);
-    RigidBody::PrivateInfo *privateInfo = nullptr, *privateInfoBegin = nullptr;
-    stateDb.refStateAll(&privateInfoBegin);
-    for (info = infoBegin, privateInfo = privateInfoBegin;
-         info != infoEnd; ++info, ++privateInfo)
+    RigidBody::Info *rigidBody = nullptr, *rigidBodyBegin = nullptr, *rigidBodyEnd = nullptr;
+    stateDb.refStateAll(&rigidBodyBegin, &rigidBodyEnd);
+    RigidBody::PrivateInfo *rigidBodyPrivate = nullptr, *rigidBodyPrivateBegin = nullptr;
+    stateDb.refStateAll(&rigidBodyPrivateBegin);
+    for (rigidBody  = rigidBodyBegin, rigidBodyPrivate = rigidBodyPrivateBegin;
+         rigidBody != rigidBodyEnd; ++rigidBody, ++rigidBodyPrivate)
     {
-        btVector3 linearVelocity = privateInfo->rigidBody->rigidBody->getLinearVelocity();
-        glm::fvec3 limit = info->linearVelocityLimit;
+        btRigidBody *bulletRigidBody = rigidBodyPrivate->privateRigidBody->bulletRigidBody.get();
+        btVector3 linearVelocity = bulletRigidBody->getLinearVelocity();
+        glm::fvec3 limit = rigidBody->linearVelocityLimit;
         if (limit.x > 0.0f)
         {
             if (linearVelocity.x() >  limit.x) linearVelocity.setX( limit.x);
@@ -275,7 +295,7 @@ void Physics::PrivateState::preTick(btScalar timeStep)
                 linearVelocity.setZ(-limit.z);
             }
         }
-        privateInfo->rigidBody->rigidBody->setLinearVelocity(linearVelocity);
+        bulletRigidBody->setLinearVelocity(linearVelocity);
     }
 }
 
@@ -298,9 +318,9 @@ void Physics::registerTypesAndStates(StateDb &stateDb)
     RigidBody::PrivateInfo::STATE = stateDb.registerState(
         RigidBody::TYPE, "PrivateInfo", sizeof(RigidBody::PrivateInfo));
 
-    Force::TYPE = stateDb.registerType("Force", 256);
-    Force::Info::STATE = stateDb.registerState(
-        Force::TYPE, "Info", sizeof(Force::Info));
+    Affector::TYPE = stateDb.registerType("Affector", 256);
+    Affector::Info::STATE = stateDb.registerState(
+        Affector::TYPE, "Info", sizeof(Affector::Info));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -356,40 +376,39 @@ void Physics::shutdown(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void Physics::update(Platform &platform, double deltaTimeInS)
 {
-    RigidBody::Info *info = nullptr, *infoBegin = nullptr, *infoEnd = nullptr;
-    platform.stateDb.refStateAll(&infoBegin, &infoEnd);
-    RigidBody::PrivateInfo *privateInfo = nullptr, *privateInfoBegin = nullptr;
-    platform.stateDb.refStateAll(&privateInfoBegin);
+    RigidBody::Info *rigidBody = nullptr, *rigidBodyBegin = nullptr, *rigidBodyEnd = nullptr;
+    platform.stateDb.refStateAll(&rigidBodyBegin, &rigidBodyEnd);
+    RigidBody::PrivateInfo *rigidBodyPrivate = nullptr, *rigidBodyPrivateBegin = nullptr;
+    platform.stateDb.refStateAll(&rigidBodyPrivateBegin);
 
     // Check for newly created rigid bodies
-    for (info = infoBegin, privateInfo = privateInfoBegin;
-         info != infoEnd; ++info, ++privateInfo)
+    for (rigidBody  = rigidBodyBegin, rigidBodyPrivate = rigidBodyPrivateBegin;
+         rigidBody != rigidBodyEnd; ++rigidBody, ++rigidBodyPrivate)
     {
-        Renderer::Mesh::Info *meshInfo = nullptr;
-        platform.stateDb.refState(info->meshHandle, &meshInfo);
-        if (!privateInfo->rigidBody)
+        auto mesh = platform.stateDb.refState< Renderer::Mesh::Info >(rigidBody->meshHandle);
+        if (!rigidBodyPrivate->privateRigidBody)
         {
-            u64 objectHandle = platform.stateDb.objectHandleFromElem(info);
-            state->rigidBodies.push_back(PrivateRigidBody(*state.get()));
-            PrivateRigidBody *rigidBody = &state->rigidBodies.back();
+            u64 objectHandle = platform.stateDb.objectHandleFromElem(rigidBody);
+            state->privateRigidBodies.push_back(PrivateRigidBody(*state.get()));
+            PrivateRigidBody *privateRigidBody = &state->privateRigidBodies.back();
 
-            const Assets::Model *model = platform.assets.refModel(meshInfo->modelAsset);
-            rigidBody->initialize(objectHandle, info, meshInfo, model);
+            const Assets::Model *model = platform.assets.refModel(mesh->modelAsset);
+            privateRigidBody->initialize(objectHandle, rigidBody, mesh, model);
 
-            privateInfo->rigidBody = rigidBody;
+            rigidBodyPrivate->privateRigidBody = privateRigidBody;
         }
-        privateInfo->rigidBody->forces.clear();
+        rigidBodyPrivate->privateRigidBody->affectors.clear();
     }
 
-    Force::Info *forceInfo = nullptr, *forceInfoBegin = nullptr, *forceInfoEnd = nullptr;
-    platform.stateDb.refStateAll(&forceInfoBegin, &forceInfoEnd);
-    for (forceInfo = forceInfoBegin; forceInfo != forceInfoEnd; ++forceInfo)
+    Affector::Info *affector = nullptr, *affectorBegin = nullptr, *affectorEnd = nullptr;
+    platform.stateDb.refStateAll(&affectorBegin, &affectorEnd);
+    for (affector = affectorBegin; affector != affectorEnd; ++affector)
     {
-        platform.stateDb.refState(forceInfo->rigidBodyHandle, &privateInfo);
-        if (forceInfo->enabled)
+        if (affector->enabled)
         {
-            privateInfo->rigidBody->forces.push_back(
-                std::make_pair(forceInfo->force, forceInfo->position));
+            rigidBodyPrivate = platform.stateDb.refState<
+                RigidBody::PrivateInfo >(affector->rigidBodyHandle);
+            rigidBodyPrivate->privateRigidBody->affectors.push_back(affector);
         }
     }
 
@@ -411,35 +430,33 @@ void Physics::update(Platform &platform, double deltaTimeInS)
 #endif
     */
 
-    for (info = infoBegin, privateInfo = privateInfoBegin;
-         info != infoEnd; ++info, ++privateInfo)
+    for (rigidBody  = rigidBodyBegin, rigidBodyPrivate = rigidBodyPrivateBegin;
+         rigidBody != rigidBodyEnd; ++rigidBody, ++rigidBodyPrivate)
     {
         // TODO(martinmo): Delete rigid bodies with bad mesh references?
         // TODO(martinmo): (e.g. mesh has been destroyed and rigid body still alive)
-        if (!platform.stateDb.isObjectHandleValid(info->meshHandle))
+        if (!platform.stateDb.isObjectHandleValid(rigidBody->meshHandle))
         {
             continue;
         }
 
-        Renderer::Mesh::Info *meshInfo = nullptr;
-        platform.stateDb.refState(info->meshHandle, &meshInfo);
+        btRigidBody *bulletRigidBody = rigidBodyPrivate->privateRigidBody->bulletRigidBody.get();
+        const btTransform &worldTrans = bulletRigidBody->getCenterOfMassTransform();
 
-        const btTransform &worldTrans =
-            privateInfo->rigidBody->rigidBody->getCenterOfMassTransform();
+        rigidBody->linearVelocity = fromBulletVec(bulletRigidBody->getLinearVelocity());
+        rigidBody->angularVelocity = fromBulletVec(bulletRigidBody->getAngularVelocity());
 
-        btVector3 origin = worldTrans.getOrigin();
-        meshInfo->translation = glm::fvec3(origin.x(), origin.y(), origin.z());
+        auto mesh = platform.stateDb.refState< Renderer::Mesh::Info >(rigidBody->meshHandle);
 
-        btQuaternion rotation = worldTrans.getRotation();
-        meshInfo->rotation =
-            glm::fquat(rotation.w(), rotation.x(), rotation.y(), rotation.z());
+        mesh->translation = fromBulletVec(worldTrans.getOrigin());
+        mesh->rotation = fromBulletQuat(worldTrans.getRotation());
     }
 
     // Check for destroyed rigid bodies
     std::list< PrivateRigidBody >::iterator rigidBodiesIter;
     std::vector< decltype(rigidBodiesIter) > deletions;
-    for (rigidBodiesIter = state->rigidBodies.begin();
-         rigidBodiesIter != state->rigidBodies.end();
+    for (rigidBodiesIter = state->privateRigidBodies.begin();
+         rigidBodiesIter != state->privateRigidBodies.end();
          ++rigidBodiesIter)
     {
         if (!platform.stateDb.isObjectHandleValid(rigidBodiesIter->objectHandle))
@@ -449,7 +466,7 @@ void Physics::update(Platform &platform, double deltaTimeInS)
     }
     while (!deletions.empty())
     {
-        state->rigidBodies.erase(deletions.back());
+        state->privateRigidBodies.erase(deletions.back());
         deletions.pop_back();
     }
 }

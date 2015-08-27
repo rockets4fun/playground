@@ -25,7 +25,7 @@
 #include "CoreGl/glcorearb.h"
 
 // Declared here because we do not want to expose OpenGL implementation details in header
-struct Renderer::GlFuncs
+struct Renderer::PrivateFuncs
 {
     // Basic functions
     PFNGLENABLEPROC   glEnable = nullptr;
@@ -74,7 +74,7 @@ struct Renderer::GlFuncs
 };
 
 // Declared here because we do not want to expose OpenGL implementation details in header
-struct Renderer::GlState
+struct Renderer::PrivateState
 {
     GLuint defVs = 0;
     GLuint defFs = 0;
@@ -92,11 +92,11 @@ struct Renderer::GlState
     GLuint cubePositionsVbo;
     GLuint cubeNormalsVbo;
 
-    std::map< u32, GlMesh > meshes;
+    std::map< u32, PrivateMesh > meshes;
 };
 
 // Declared here because we do not want to expose OpenGL implementation details in header
-struct Renderer::GlMesh
+struct Renderer::PrivateMesh
 {
     enum Flag
     {
@@ -113,21 +113,21 @@ struct Renderer::GlMesh
 };
 
 // Declared here because we do not want to expose OpenGL implementation details in header
-struct Renderer::GlHelpers
+struct Renderer::PrivateHelpers
 {
     typedef void (APIENTRYP GetProc)
         (GLuint shader, GLenum pname, GLint *params);
     typedef void (APIENTRYP InfoLogProc)
         (GLuint object, GLsizei bufSize, GLsizei *length, GLchar *infoLog);
 
-    GlHelpers(GlFuncs *funcs);
+    PrivateHelpers(PrivateFuncs *funcs);
 
     bool createAndCompileShader(GLuint &shader, GLenum type, const std::string &source);
     bool createAndLinkSimpleProgram(GLuint &program, GLuint vertexShader, GLuint fragmentShader);
     void printInfoLog(GLuint object, GetProc getProc, InfoLogProc infoLogProc);
 
 private:
-    GlFuncs *funcs = nullptr;
+    PrivateFuncs *funcs = nullptr;
 };
 
 u64 Renderer::Mesh::TYPE = 0;
@@ -137,7 +137,7 @@ u64 Renderer::Mesh::Info::STATE = 0;
 struct Renderer::Mesh::PrivateInfo
 {
     static u64 STATE;
-    GlMesh *glMesh = nullptr;
+    PrivateMesh *privateMesh = nullptr;
 };
 u64 Renderer::Mesh::PrivateInfo::STATE = 0;
 
@@ -148,12 +148,12 @@ u64 Renderer::Transform::TYPE = 0;
 u64 Renderer::Transform::Info::STATE = 0;
 
 // -------------------------------------------------------------------------------------------------
-Renderer::GlHelpers::GlHelpers(GlFuncs *funcs) : funcs(funcs)
+Renderer::PrivateHelpers::PrivateHelpers(PrivateFuncs *funcs) : funcs(funcs)
 {
 }
 
 // -------------------------------------------------------------------------------------------------
-bool Renderer::GlHelpers::createAndCompileShader(
+bool Renderer::PrivateHelpers::createAndCompileShader(
     GLuint &shader, GLenum type, const std::string &src)
 {
     shader = funcs->glCreateShader(type);
@@ -182,7 +182,7 @@ bool Renderer::GlHelpers::createAndCompileShader(
 }
 
 // -------------------------------------------------------------------------------------------------
-bool Renderer::GlHelpers::createAndLinkSimpleProgram(
+bool Renderer::PrivateHelpers::createAndLinkSimpleProgram(
     GLuint &program, GLuint vertexShader, GLuint fragmentShader)
 {
     program = funcs->glCreateProgram();
@@ -210,7 +210,7 @@ bool Renderer::GlHelpers::createAndLinkSimpleProgram(
 }
 
 // -------------------------------------------------------------------------------------------------
-void Renderer::GlHelpers::printInfoLog(GLuint object, GetProc getProc, InfoLogProc infoLogProc)
+void Renderer::PrivateHelpers::printInfoLog(GLuint object, GetProc getProc, InfoLogProc infoLogProc)
 {
     // TODO(martinmo): Refactor into 'getInfoLog' and separate print
     GLint infoLogLength = 0;
@@ -263,9 +263,9 @@ void Renderer::registerTypesAndStates(StateDb &stateDb)
 // -------------------------------------------------------------------------------------------------
 bool Renderer::initialize(Platform &platform)
 {
-    funcs = std::make_shared< GlFuncs >();
-    state = std::make_shared< GlState >();
-    helpers = std::make_shared< GlHelpers >(funcs.get());
+    funcs = std::make_shared< PrivateFuncs >();
+    state = std::make_shared< PrivateState >();
+    helpers = std::make_shared< PrivateHelpers >(funcs.get());
 
     if (!initializeGl())
     {
@@ -440,10 +440,9 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     glm::fmat4 view;
     if (activeCameraHandle)
     {
-        Camera::Info *cameraInfo = nullptr;
-        platform.stateDb.refState(activeCameraHandle, &cameraInfo);
-        view = glm::lookAt(cameraInfo->position.xyz(),
-            cameraInfo->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
+        auto camera = platform.stateDb.refState< Camera::Info >(activeCameraHandle);
+        view = glm::lookAt(camera->position.xyz(),
+            camera->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
     }
 
     Mesh::Info *meshBegin = nullptr, *meshEnd = nullptr;
@@ -456,13 +455,13 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     meshPrivate = meshPrivateBegin;
     for (auto mesh = meshBegin; mesh != meshEnd; ++mesh, ++meshPrivate)
     {
-        if (!meshPrivate->glMesh)
+        if (!meshPrivate->privateMesh)
         {
-            meshPrivate->glMesh = &state->meshes[mesh->modelAsset];
+            meshPrivate->privateMesh = &state->meshes[mesh->modelAsset];
         }
-        if (meshPrivate->glMesh->flags & GlMesh::Flag::DYNAMIC)
+        if (meshPrivate->privateMesh->flags & PrivateMesh::Flag::DYNAMIC)
         {
-            meshPrivate->glMesh->flags |= GlMesh::Flag::DIRTY;
+            meshPrivate->privateMesh->flags |= PrivateMesh::Flag::DIRTY;
         }
     }
 
@@ -471,77 +470,77 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     for (auto mesh = meshBegin; mesh != meshEnd; ++mesh, ++meshPrivate)
     {
         // FIXME(martinmo): We need to re-introduce GL state map for storing per-model state
-        GlMesh *glMesh = meshPrivate->glMesh;
-        if (!glMesh->positionsVbo)
+        PrivateMesh *privateMesh = meshPrivate->privateMesh;
+        if (!privateMesh->positionsVbo)
         {
             // TODO(martinmo): Add way of getting asset and flags in one call/lookup
-            glMesh->model = platform.assets.refModel(mesh->modelAsset);
+            privateMesh->model = platform.assets.refModel(mesh->modelAsset);
             int dynamic = platform.assets.assetFlags(mesh->modelAsset) & Assets::Flag::DYNAMIC;
-            COMMON_ASSERT(glMesh->model);
+            COMMON_ASSERT(privateMesh->model);
 
             GLenum usage = GL_STATIC_DRAW;
             if (dynamic)
             {
-                glMesh->flags |= GlMesh::Flag::DYNAMIC;
+                privateMesh->flags |= PrivateMesh::Flag::DYNAMIC;
                 usage = GL_DYNAMIC_DRAW;
             }
 
-            glMesh->vertexCount = GLsizei(glMesh->model->positions.size());
-            funcs->glGenBuffers(1, &glMesh->positionsVbo);
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->positionsVbo);
+            privateMesh->vertexCount = GLsizei(privateMesh->model->positions.size());
+            funcs->glGenBuffers(1, &privateMesh->positionsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->positionsVbo);
             funcs->glBufferData(GL_ARRAY_BUFFER,
-                glMesh->vertexCount * sizeof(glm::fvec3),
-                &glMesh->model->positions[0].x, usage);
+                privateMesh->vertexCount * sizeof(glm::fvec3),
+                &privateMesh->model->positions[0].x, usage);
 
-            funcs->glGenBuffers(1, &glMesh->normalsVbo);
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->normalsVbo);
+            funcs->glGenBuffers(1, &privateMesh->normalsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->normalsVbo);
             funcs->glBufferData(GL_ARRAY_BUFFER,
-                glMesh->vertexCount * sizeof(glm::fvec3),
-                &glMesh->model->normals[0].x, usage);
+                privateMesh->vertexCount * sizeof(glm::fvec3),
+                &privateMesh->model->normals[0].x, usage);
 
-            funcs->glGenBuffers(1, &glMesh->colorsVbo);
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->colorsVbo);
+            funcs->glGenBuffers(1, &privateMesh->colorsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->colorsVbo);
             funcs->glBufferData(GL_ARRAY_BUFFER,
-                glMesh->vertexCount * sizeof(glm::fvec3),
-                &glMesh->model->colors[0].r, usage);
+                privateMesh->vertexCount * sizeof(glm::fvec3),
+                &privateMesh->model->colors[0].r, usage);
 
-            glMesh->flags &= ~GlMesh::Flag::DIRTY;
+            privateMesh->flags &= ~PrivateMesh::Flag::DIRTY;
         }
-        else if (glMesh->flags & GlMesh::Flag::DIRTY)
+        else if (privateMesh->flags & PrivateMesh::Flag::DIRTY)
         {
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->positionsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->positionsVbo);
             funcs->glBufferSubData(GL_ARRAY_BUFFER, 0,
-                glMesh->vertexCount * sizeof(glm::fvec3),
-                &glMesh->model->positions[0].x);
+                privateMesh->vertexCount * sizeof(glm::fvec3),
+                &privateMesh->model->positions[0].x);
 
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->normalsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->normalsVbo);
             funcs->glBufferSubData(GL_ARRAY_BUFFER, 0,
-                glMesh->vertexCount * sizeof(glm::fvec3),
-                &glMesh->model->normals[0].x);
+                privateMesh->vertexCount * sizeof(glm::fvec3),
+                &privateMesh->model->normals[0].x);
 
             // FIXME(martinmo): Should we really update colors?
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->colorsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->colorsVbo);
             funcs->glBufferSubData(GL_ARRAY_BUFFER, 0,
-                glMesh->vertexCount * sizeof(glm::fvec3),
-                &glMesh->model->colors[0].r);
+                privateMesh->vertexCount * sizeof(glm::fvec3),
+                &privateMesh->model->colors[0].r);
 
-            glMesh->flags &= ~GlMesh::Flag::DIRTY;
+            privateMesh->flags &= ~PrivateMesh::Flag::DIRTY;
         }
 
         // Vertex attribute assignments are stored inside the bound VAO
         // ==> Think about creating one VAO per renderable mesh
         {
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->positionsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->positionsVbo);
             funcs->glVertexAttribPointer(
                 state->defProgAttribPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
             funcs->glEnableVertexAttribArray(state->defProgAttribPosition);
 
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->normalsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->normalsVbo);
             funcs->glVertexAttribPointer(
                 state->defProgAttribNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
             funcs->glEnableVertexAttribArray(state->defProgAttribNormal);
 
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, glMesh->colorsVbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->colorsVbo);
             funcs->glVertexAttribPointer(
                 state->defProgAttribColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
             funcs->glEnableVertexAttribArray(state->defProgAttribColor);
@@ -554,7 +553,7 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
         funcs->glUniformMatrix4fv(
             state->defProgUniformModelViewMatrix, 1, GL_FALSE, glm::value_ptr(modelView));
 
-        funcs->glDrawArrays(GL_TRIANGLES, 0, glMesh->vertexCount);
+        funcs->glDrawArrays(GL_TRIANGLES, 0, privateMesh->vertexCount);
     }
 }
 

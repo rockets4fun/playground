@@ -36,7 +36,7 @@ private:
     u64 m_cameraHandle = 0;
     u64 m_gridMeshHandle = 0;
     u64 m_arrowMeshHandle = 0;
-    u64 m_pusherForceHandle = 0;
+    u64 m_pusherAffectorHandle = 0;
 
     u32 m_oceanModelAsset = 0;
     std::vector< u64 > m_oceanMeshHandles;
@@ -44,13 +44,12 @@ private:
     std::vector< u64 > m_meshHandles;
     std::map< u64, u64 > m_rigidBodyByMeshHandle;
 
-    std::vector< u64 > m_buoyancyForceHandles;
+    std::vector< u64 > m_buoyancyAffectorHandles;
 
     double m_timeInS = 0.0;
 
     float oceanEquation(const glm::fvec2 &position, double timeInS);
-    void updateBuoyancyForce(
-        StateDb &stateDb, double timeInS, u64 buoyancyForceHandle);
+    void updateBuoyancyAffector(StateDb &stateDb, double timeInS, u64 affectorHandle);
 
 private:
     COMMON_DISABLE_COPY(RocketScience);

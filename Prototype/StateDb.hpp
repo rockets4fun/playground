@@ -78,32 +78,15 @@ struct StateDb
         const State &state = m_states[ElementType::STATE];
 
         u64 objectHandle = createObject(state.typeId);
-        refState(objectHandle, elem);
+        refStateInternal(objectHandle, elem);
         return objectHandle;
-    }
-
-    template< class ElementType >
-    void refState(u64 objectHandle, ElementType **elem)
-    {
-        COMMON_ASSERT(isStateIdValid(ElementType::STATE));
-        COMMON_ASSERT(m_states[ElementType::STATE].elemSize == sizeof(ElementType));
-
-        u64 typeIdFromHandle = objectHandleTypeId(objectHandle);
-
-        COMMON_ASSERT(isObjectHandleValid(objectHandle));
-        COMMON_ASSERT(typeIdFromHandle == m_states[ElementType::STATE].typeId);
-
-        // Type lookup needed here for object ID to index translation
-        const Type &type = m_types[typeIdFromHandle];
-        *elem = (ElementType *)&m_stateValues[ElementType::STATE][
-            type.objectIdToIdx[objectHandle & 0xffffffff] * sizeof(ElementType)];
     }
 
     template< class ElementType >
     ElementType *refState(u64 objectHandle)
     {
         ElementType *result = nullptr;
-        refState(objectHandle, &result);
+        refStateInternal(objectHandle, &result);
         return result;
     }
 
@@ -158,6 +141,23 @@ private:
     std::vector< State > m_states;
 
     std::vector< std::vector< unsigned char > > m_stateValues;
+
+    template< class ElementType >
+    void refStateInternal(u64 objectHandle, ElementType **elem)
+    {
+        COMMON_ASSERT(isStateIdValid(ElementType::STATE));
+        COMMON_ASSERT(m_states[ElementType::STATE].elemSize == sizeof(ElementType));
+
+        u64 typeIdFromHandle = objectHandleTypeId(objectHandle);
+
+        COMMON_ASSERT(isObjectHandleValid(objectHandle));
+        COMMON_ASSERT(typeIdFromHandle == m_states[ElementType::STATE].typeId);
+
+        // Type lookup needed here for object ID to index translation
+        const Type &type = m_types[typeIdFromHandle];
+        *elem = (ElementType *)&m_stateValues[ElementType::STATE][
+            type.objectIdToIdx[objectHandle & 0xffffffff] * sizeof(ElementType)];
+    }
 
     static u64 composeObjectHandle(u16 typeId, u16 lifecycle, u32 objectId);
     static u16 objectHandleTypeId(u64 objectHandle);
