@@ -1,34 +1,33 @@
 // -------------------------------------------------------------------------------------------------
 /// @author Martin Moerth (MARTINMO)
-/// @date 02.01.2015
+/// @date 28.08.2015
 // -------------------------------------------------------------------------------------------------
 
-#ifndef PLATFORM_HPP
-#define PLATFORM_HPP
+#ifndef LOGGING_HPP
+#define LOGGING_HPP
 
 #include "Common.hpp"
 
-struct StateDb;
-struct Renderer;
-struct Assets;
-
 // -------------------------------------------------------------------------------------------------
-/// @brief Platform abstraction
-struct Platform
+/// @brief Logging module
+struct Logging
 {
-    Platform(
-        StateDb &stateDbInit,
-        Assets &assetsInit,
-        Renderer &rendererInit);
-    virtual ~Platform();
+    Logging();
+    virtual ~Logging();
 
 public:
-    StateDb &stateDb;
-    Assets &assets;
-    Renderer &renderer;
+    enum MsgType
+    {
+        DEBUG,
+        INFO,
+        WARNING,
+        ERROR
+    };
+
+    static void debug(const char *format, ...);
 
 private:
-    COMMON_DISABLE_COPY(Platform);
+    COMMON_DISABLE_COPY(Logging);
 };
 
 #endif

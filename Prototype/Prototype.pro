@@ -119,6 +119,7 @@ HEADERS += \
     Assets.hpp \
     Physics.hpp \
     Platform.hpp \
+    Logging.hpp \
     Math.hpp \
     Renderer.hpp \
     RocketScience.hpp \
@@ -128,6 +129,7 @@ SOURCES += \
     Assets.cpp \
     Physics.cpp \
     Platform.cpp \
+    Logging.cpp \
     Math.cpp \
     Renderer.cpp \
     RocketScience.cpp \

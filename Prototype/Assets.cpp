@@ -7,11 +7,11 @@
 
 #include <list>
 
-#include <SDL.h>
-
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+
+#include "Logging.hpp"
 
 struct Assets::PrivateState
 {
@@ -92,11 +92,11 @@ Assets::Model *Assets::refModel(u32 hash)
         else if (loadModel(*m_privateState.get(), *ref.first, *ref.second))
         {
             ++ref.second->version;
-            SDL_Log("Model \"%s\" loaded", ref.second->name.c_str());
+            Logging::debug("Model \"%s\" loaded", ref.second->name.c_str());
         }
         else
         {
-            SDL_Log("ERROR: Failed to load model \"%s\"", ref.second->name.c_str());
+            Logging::debug("ERROR: Failed to load model \"%s\"", ref.second->name.c_str());
             // TODO(martinmo): Default to unit cube if we fail to load?
         }
         ref.second->type = Type::MODEL;

@@ -7,10 +7,10 @@
 
 #include "RocketScience.hpp"
 
+#include <SDL.h>
+
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/random.hpp>
-
-#include <SDL.h>
 
 #include "Math.hpp"
 
@@ -312,13 +312,13 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         float mainEngineForce = 0.0f;
         if (mesh->translation.z < 10.0)
         {
-            // Mass of rocket is 5 kg (hard-coded for all RBs ATM)
-            // ==> Force needs to be at least 9.81 x 5 ==> 50
-            mainEngineForce = 55.0f;
+            // Mass of rocket is 1 kg (hard-coded for all RBs ATM)
+            // ==> Force needs to be at least 9.81 x 1 ==> 10
+            mainEngineForce = 12.0f;
         }
         else
         {
-            mainEngineForce = 45.0f;
+            mainEngineForce = 9.0f;
         }
 
         // Rocket's local +Y should be aligned to global +Z
@@ -347,7 +347,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         // Emergency motors off...
         double errorAngleInDeg = glm::degrees(
             glm::angle(Math::rotateFromTo(nominalDir, actualDir)));
-        //SDL_Log("errorAngleInDeg: %5.2f", errorAngleInDeg);
+        //Logging::debug("errorAngleInDeg: %5.2f", errorAngleInDeg);
         if (glm::abs(errorAngleInDeg) > 20.0f)
         {
             platform.stateDb.destroyObject(m_pusherAffectorHandle);
@@ -419,7 +419,7 @@ void RocketScience::updateBuoyancyAffector(
     }
     // Density of water at 22 degrees is 997.7735 kg/m^3
     // (https://en.wikipedia.org/wiki/Density#Water)
-    double waterDensity = 300.0;
+    double waterDensity = 50.0;
     double buoyancy = spherePenetrationVolume * waterDensity;
 
     if (buoyancy > 0.0)
@@ -429,15 +429,15 @@ void RocketScience::updateBuoyancyAffector(
         // Force from buoyancy
         affector->force = normal * float(buoyancy);
         // Force from friction between moving sphere and water
-        affector->force += -40.0f * glm::fvec3(rigidBody->linearVelocity.xy(), 0.0f);
+        affector->force += -8.0f * glm::fvec3(rigidBody->linearVelocity.xy(), 0.0f);
         // Force from friction between spinning sphere and water
         glm::fvec3 avFriction = rigidBody->angularVelocity;
         avFriction.z = 0.0f;
         std::swap(avFriction.x, avFriction.y);
         avFriction.y = -avFriction.y;
-        affector->force += 2.0f * avFriction;
+        affector->force += 0.5f * avFriction;
         // Torque from friction between spinning sphere and water
-        affector->torque = -0.15f * rigidBody->angularVelocity;
+        affector->torque = -0.03f * rigidBody->angularVelocity;
 
         affector->enabled = 1;
     }

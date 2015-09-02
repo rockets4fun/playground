@@ -5,7 +5,7 @@
 
 #include "StateDb.hpp"
 
-#include <SDL.h>
+#include "Logging.hpp"
 
 // -------------------------------------------------------------------------------------------------
 StateDb::StateDb()
@@ -21,7 +21,7 @@ StateDb::~StateDb()
     {
         if (type.objectCount > 0)
         {
-            SDL_Log("WARNING: Detected %d active \"%s\"-objects",
+            Logging::debug("WARNING: Detected %d active \"%s\"-objects",
                 type.objectCount, type.name.c_str());
         }
     }

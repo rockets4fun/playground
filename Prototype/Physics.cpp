@@ -11,6 +11,8 @@
 
 #include <btBulletDynamicsCommon.h>
 
+#include "Logging.hpp"
+
 #include "StateDb.hpp"
 #include "Assets.hpp"
 
@@ -21,21 +23,27 @@ struct Physics::PrivateRigidBody
 {
     // FIXME(martinmo): Member-variables of structs/classes with non-static methods
     // FIXME(martinmo): other than c'tor/d'tor should start with 'm_' prefix
-
     PrivateState &state;
-
-    u64 objectHandle = 0;
+    u64 handle = 0;
 
     std::shared_ptr< btDefaultMotionState > motionState;
     std::shared_ptr< btRigidBody > bulletRigidBody;
 
     std::vector< Affector::Info * > affectors;
 
-    PrivateRigidBody(PrivateState &state);
+    PrivateRigidBody(PrivateState &stateInit, RigidBody::Info *rigidBody);
     virtual ~PrivateRigidBody();
+};
 
-    void initialize(u64 objectHandle, Physics::RigidBody::Info *rigidBody,
-        Renderer::Mesh::Info *mesh, const Assets::Model *model);
+struct Physics::PrivateConstraint
+{
+    PrivateState &state;
+    u64 handle = 0;
+
+    std::shared_ptr< btTypedConstraint > bulletConstraint;
+
+    PrivateConstraint(PrivateState &stateInit, Constraint::Info *constraint);
+    virtual ~PrivateConstraint();
 };
 
 struct Physics::PrivateState
@@ -56,13 +64,14 @@ struct Physics::PrivateState
     std::map< u64, btCollisionShape * > collisionShapes;
     std::list< std::shared_ptr< btCollisionShape > > collisionShapesStorage;
 
-    std::list< PrivateRigidBody > privateRigidBodies;
+    std::list< std::shared_ptr< PrivateRigidBody > > privateRigidBodies;
+    std::list< std::shared_ptr< PrivateConstraint > > privateConstraints;
 
-    StateDb &stateDb;
+    Platform &platform;
 
     static void preTickCallback(btDynamicsWorld *world, btScalar timeStep);
 
-    PrivateState(StateDb &stateDbInit);
+    PrivateState(Platform &platformInit);
 
     void preTick(btScalar timeStep);
 };
@@ -70,12 +79,22 @@ struct Physics::PrivateState
 struct Physics::RigidBody::PrivateInfo
 {
     static u64 STATE;
-    PrivateRigidBody *privateRigidBody = nullptr;
+    PrivateRigidBody *state = nullptr;
+};
+
+struct Physics::Constraint::PrivateInfo
+{
+    static u64 STATE;
+    PrivateConstraint *state = nullptr;
 };
 
 u64 Physics::RigidBody::TYPE = 0;
 u64 Physics::RigidBody::Info::STATE = 0;
 u64 Physics::RigidBody::PrivateInfo::STATE = 0;
+
+u64 Physics::Constraint::TYPE = 0;
+u64 Physics::Constraint::Info::STATE = 0;
+u64 Physics::Constraint::PrivateInfo::STATE = 0;
 
 u64 Physics::Affector::TYPE = 0;
 u64 Physics::Affector::Info::STATE = 0;
@@ -99,37 +118,22 @@ glm::quat fromBulletQuat(const btQuaternion &bulletQuat)
 }
 
 // -------------------------------------------------------------------------------------------------
-Physics::PrivateRigidBody::PrivateRigidBody(PrivateState &state) :
-    state(state)
+Physics::PrivateRigidBody::PrivateRigidBody(
+    PrivateState &stateInit, RigidBody::Info *rigidBody)
+    : state(stateInit)
 {
-}
-
-// -------------------------------------------------------------------------------------------------
-Physics::PrivateRigidBody::~PrivateRigidBody()
-{
-    if (bulletRigidBody)
-    {
-        state.dynamicsWorld->removeRigidBody(bulletRigidBody.get());
-    }
-}
-
-// -------------------------------------------------------------------------------------------------
-void Physics::PrivateRigidBody::initialize(
-    u64 objectHandle, Physics::RigidBody::Info *rigidBody,
-    Renderer::Mesh::Info *mesh, const Assets::Model *model)
-{
-    this->objectHandle = objectHandle;
+    handle = state.platform.stateDb.objectHandleFromElem(rigidBody);
 
     btCollisionShape *collisionShape = nullptr;
+    auto mesh = state.platform.stateDb.refState< Renderer::Mesh::Info >(rigidBody->meshHandle);
     u64 collisionShapeKey = u64(rigidBody->collisionShapeType) << 32 | u64(mesh->modelAsset);
 
     // TODO(martinmo): Find way to get rid of map lookup
     auto collisionShapeIter = state.collisionShapes.find(collisionShapeKey);
-
     if (collisionShapeIter == state.collisionShapes.end())
     {
+        const Assets::Model *model = state.platform.assets.refModel(mesh->modelAsset);
         COMMON_ASSERT(model != nullptr);
-
         glm::fvec3 min(
             std::numeric_limits< float >::max(),
             std::numeric_limits< float >::max(),
@@ -176,6 +180,7 @@ void Physics::PrivateRigidBody::initialize(
                 }
 
                 // TODO(martinmo): Optimize convex hull shape using 'btShapeHull'
+
                 btTransform transform = btTransform(btQuaternion(0.0f, 0.0f, 0.0f, 1.0f));
                 compoundShape->addChildShape(transform, shape);
             }
@@ -213,7 +218,7 @@ void Physics::PrivateRigidBody::initialize(
         mesh->translation.x, mesh->translation.y, mesh->translation.z);
     motionState = std::make_shared< btDefaultMotionState >(btTransform(rotation, translation));
 
-    btScalar mass = 5;
+    btScalar mass = 1;
     btVector3 inertia(0, 0, 0);
     collisionShape->calculateLocalInertia(mass, inertia);
     btRigidBody::btRigidBodyConstructionInfo constructionInfo(
@@ -228,10 +233,41 @@ void Physics::PrivateRigidBody::initialize(
 
     // Bullet collision groups/masks are 16 bit only
     COMMON_ASSERT(!(rigidBody->collisionGroup & 0xffff0000));
-    COMMON_ASSERT(!(rigidBody->collisionMask & 0xffff0000));
+    COMMON_ASSERT(!(rigidBody->collisionMask  & 0xffff0000));
 
     state.dynamicsWorld->addRigidBody(bulletRigidBody.get(),
         short(rigidBody->collisionGroup), short(rigidBody->collisionMask));
+}
+
+// -------------------------------------------------------------------------------------------------
+Physics::PrivateRigidBody::~PrivateRigidBody()
+{
+    if (bulletRigidBody)
+    {
+        state.dynamicsWorld->removeRigidBody(bulletRigidBody.get());
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+Physics::PrivateConstraint::PrivateConstraint(
+    PrivateState &stateInit, Constraint::Info *constraint)
+    : state(stateInit)
+{
+    handle = state.platform.stateDb.objectHandleFromElem(constraint);
+
+    btRigidBody *rbA = state.platform.stateDb.refState< RigidBody::PrivateInfo >(
+        constraint->rigidBodyAHandle)->state->bulletRigidBody.get();
+
+    bulletConstraint = new btFixedConstraint(rbA, rbB, frameInA, frameInB);
+}
+
+// -------------------------------------------------------------------------------------------------
+Physics::PrivateConstraint::~PrivateConstraint()
+{
+    if (bulletConstraint)
+    {
+        // ...
+    }
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -242,8 +278,8 @@ void Physics::PrivateState::preTickCallback(btDynamicsWorld *world, btScalar tim
 }
 
 // -------------------------------------------------------------------------------------------------
-Physics::PrivateState::PrivateState(StateDb &stateDbInit) :
-    stateDb(stateDbInit)
+Physics::PrivateState::PrivateState(Platform &platformInit) :
+    platform(platformInit)
 {
 }
 
@@ -252,10 +288,10 @@ void Physics::PrivateState::preTick(btScalar timeStep)
 {
     for (auto &privateRigidBody : privateRigidBodies)
     {
-        btRigidBody *bulletRigidBody = privateRigidBody.bulletRigidBody.get();
+        btRigidBody *bulletRigidBody = privateRigidBody->bulletRigidBody.get();
         bulletRigidBody->clearForces();
         bulletRigidBody->applyGravity();
-        for (const Affector::Info *affector : privateRigidBody.affectors)
+        for (const Affector::Info *affector : privateRigidBody->affectors)
         {
             bulletRigidBody->applyForce(
                 toBulletVec(affector->force), toBulletVec(affector->forcePosition));
@@ -265,13 +301,13 @@ void Physics::PrivateState::preTick(btScalar timeStep)
 
     // Apply linear velocity limits to all RBs
     RigidBody::Info *rigidBody = nullptr, *rigidBodyBegin = nullptr, *rigidBodyEnd = nullptr;
-    stateDb.refStateAll(&rigidBodyBegin, &rigidBodyEnd);
+    platform.stateDb.refStateAll(&rigidBodyBegin, &rigidBodyEnd);
     RigidBody::PrivateInfo *rigidBodyPrivate = nullptr, *rigidBodyPrivateBegin = nullptr;
-    stateDb.refStateAll(&rigidBodyPrivateBegin);
+    platform.stateDb.refStateAll(&rigidBodyPrivateBegin);
     for (rigidBody  = rigidBodyBegin, rigidBodyPrivate = rigidBodyPrivateBegin;
          rigidBody != rigidBodyEnd; ++rigidBody, ++rigidBodyPrivate)
     {
-        btRigidBody *bulletRigidBody = rigidBodyPrivate->privateRigidBody->bulletRigidBody.get();
+        btRigidBody *bulletRigidBody = rigidBodyPrivate->state->bulletRigidBody.get();
         btVector3 linearVelocity = bulletRigidBody->getLinearVelocity();
         glm::fvec3 limit = rigidBody->linearVelocityLimit;
         if (limit.x > 0.0f)
@@ -321,12 +357,18 @@ void Physics::registerTypesAndStates(StateDb &stateDb)
     Affector::TYPE = stateDb.registerType("Affector", 256);
     Affector::Info::STATE = stateDb.registerState(
         Affector::TYPE, "Info", sizeof(Affector::Info));
+
+    Constraint::TYPE = stateDb.registerType("Constraint", 256);
+    Constraint::Info::STATE = stateDb.registerState(
+        Constraint::TYPE, "Info", sizeof(Constraint::Info));
+    Constraint::PrivateInfo::STATE = stateDb.registerState(
+        Constraint::TYPE, "PrivateInfo", sizeof(Constraint::PrivateInfo));
 }
 
 // -------------------------------------------------------------------------------------------------
 bool Physics::initialize(Platform &platform)
 {
-    state = std::make_shared< PrivateState >(platform.stateDb);
+    state = std::make_shared< PrivateState >(platform);
 
     state->collisionConfiguration = std::make_shared< btDefaultCollisionConfiguration >();
     state->dispatcher = std::make_shared< btCollisionDispatcher >(
@@ -374,6 +416,50 @@ void Physics::shutdown(Platform &platform)
 }
 
 // -------------------------------------------------------------------------------------------------
+template< class SrcType, class DstType, class UserData >
+void trackCreations(StateDb &stateDb,
+    std::list< std::shared_ptr< DstType > > &dstStorage, UserData &userData)
+{
+    typename SrcType::Info *srcBegin = nullptr, *srcEnd = nullptr, *src = nullptr;
+    stateDb.refStateAll(&srcBegin, &srcEnd);
+    typename SrcType::PrivateInfo *srcPrivateBegin = nullptr, *srcPrivate = nullptr;
+    stateDb.refStateAll(&srcPrivateBegin);
+    for (src  = srcBegin, srcPrivate = srcPrivateBegin;
+         src != srcEnd; ++src, ++srcPrivate)
+    {
+        if (!srcPrivate->state)
+        {
+            dstStorage.push_back(std::make_shared< DstType >(userData, src));
+            srcPrivate->state = dstStorage.back().get();
+            Logging::debug("Tracked creation (storage size is %d)", int(dstStorage.size()));
+        }
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+template< class DstType >
+void trackDestructions(StateDb &stateDb,
+    std::list< std::shared_ptr< DstType > > &dstStorage)
+{
+    typename std::list< std::shared_ptr< DstType > >::iterator dstStorageIter;
+    std::vector< decltype(dstStorageIter) > deletions;
+    for (dstStorageIter  = dstStorage.begin();
+         dstStorageIter != dstStorage.end(); ++dstStorageIter)
+    {
+        if (!stateDb.isObjectHandleValid(dstStorageIter->get()->handle))
+        {
+            deletions.push_back(dstStorageIter);
+        }
+    }
+    while (!deletions.empty())
+    {
+        dstStorage.erase(deletions.back());
+        deletions.pop_back();
+        Logging::debug("Tracked destruction (storage size is %d)", int(dstStorage.size()));
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
 void Physics::update(Platform &platform, double deltaTimeInS)
 {
     RigidBody::Info *rigidBody = nullptr, *rigidBodyBegin = nullptr, *rigidBodyEnd = nullptr;
@@ -382,24 +468,16 @@ void Physics::update(Platform &platform, double deltaTimeInS)
     platform.stateDb.refStateAll(&rigidBodyPrivateBegin);
 
     // Check for newly created rigid bodies
+    trackCreations< RigidBody >(platform.stateDb, state->privateRigidBodies, *state.get());
+    // Check for newly created constraints
+    trackCreations< Constraint >(platform.stateDb, state->privateConstraints, *state.get());
+
+    // Clear old and find new affectors of rigid bodies
     for (rigidBody  = rigidBodyBegin, rigidBodyPrivate = rigidBodyPrivateBegin;
          rigidBody != rigidBodyEnd; ++rigidBody, ++rigidBodyPrivate)
     {
-        auto mesh = platform.stateDb.refState< Renderer::Mesh::Info >(rigidBody->meshHandle);
-        if (!rigidBodyPrivate->privateRigidBody)
-        {
-            u64 objectHandle = platform.stateDb.objectHandleFromElem(rigidBody);
-            state->privateRigidBodies.push_back(PrivateRigidBody(*state.get()));
-            PrivateRigidBody *privateRigidBody = &state->privateRigidBodies.back();
-
-            const Assets::Model *model = platform.assets.refModel(mesh->modelAsset);
-            privateRigidBody->initialize(objectHandle, rigidBody, mesh, model);
-
-            rigidBodyPrivate->privateRigidBody = privateRigidBody;
-        }
-        rigidBodyPrivate->privateRigidBody->affectors.clear();
+        rigidBodyPrivate->state->affectors.clear();
     }
-
     Affector::Info *affector = nullptr, *affectorBegin = nullptr, *affectorEnd = nullptr;
     platform.stateDb.refStateAll(&affectorBegin, &affectorEnd);
     for (affector = affectorBegin; affector != affectorEnd; ++affector)
@@ -408,7 +486,7 @@ void Physics::update(Platform &platform, double deltaTimeInS)
         {
             rigidBodyPrivate = platform.stateDb.refState<
                 RigidBody::PrivateInfo >(affector->rigidBodyHandle);
-            rigidBodyPrivate->privateRigidBody->affectors.push_back(affector);
+            rigidBodyPrivate->state->affectors.push_back(affector);
         }
     }
 
@@ -430,43 +508,31 @@ void Physics::update(Platform &platform, double deltaTimeInS)
 #endif
     */
 
+    // Update mesh transforms according to rigid bodies
     for (rigidBody  = rigidBodyBegin, rigidBodyPrivate = rigidBodyPrivateBegin;
          rigidBody != rigidBodyEnd; ++rigidBody, ++rigidBodyPrivate)
     {
         // TODO(martinmo): Delete rigid bodies with bad mesh references?
-        // TODO(martinmo): (e.g. mesh has been destroyed and rigid body still alive)
+        // TODO(martinmo): (e.g. mesh has been destroyed but rigid body still alive)
         if (!platform.stateDb.isObjectHandleValid(rigidBody->meshHandle))
         {
             continue;
         }
 
-        btRigidBody *bulletRigidBody = rigidBodyPrivate->privateRigidBody->bulletRigidBody.get();
+        btRigidBody *bulletRigidBody = rigidBodyPrivate->state->bulletRigidBody.get();
         const btTransform &worldTrans = bulletRigidBody->getCenterOfMassTransform();
 
-        rigidBody->linearVelocity = fromBulletVec(bulletRigidBody->getLinearVelocity());
+        rigidBody->linearVelocity  = fromBulletVec(bulletRigidBody->getLinearVelocity());
         rigidBody->angularVelocity = fromBulletVec(bulletRigidBody->getAngularVelocity());
 
         auto mesh = platform.stateDb.refState< Renderer::Mesh::Info >(rigidBody->meshHandle);
 
         mesh->translation = fromBulletVec(worldTrans.getOrigin());
-        mesh->rotation = fromBulletQuat(worldTrans.getRotation());
+        mesh->rotation    = fromBulletQuat(worldTrans.getRotation());
     }
 
     // Check for destroyed rigid bodies
-    std::list< PrivateRigidBody >::iterator rigidBodiesIter;
-    std::vector< decltype(rigidBodiesIter) > deletions;
-    for (rigidBodiesIter = state->privateRigidBodies.begin();
-         rigidBodiesIter != state->privateRigidBodies.end();
-         ++rigidBodiesIter)
-    {
-        if (!platform.stateDb.isObjectHandleValid(rigidBodiesIter->objectHandle))
-        {
-            deletions.push_back(rigidBodiesIter);
-        }
-    }
-    while (!deletions.empty())
-    {
-        state->privateRigidBodies.erase(deletions.back());
-        deletions.pop_back();
-    }
+    trackDestructions(platform.stateDb, state->privateRigidBodies);
+    // Check for destroyed constraints
+    trackDestructions(platform.stateDb, state->privateConstraints);
 }

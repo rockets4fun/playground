@@ -16,6 +16,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "Logging.hpp"
+
 #include "Platform.hpp"
 #include "StateDb.hpp"
 #include "Assets.hpp"
@@ -159,7 +161,7 @@ bool Renderer::PrivateHelpers::createAndCompileShader(
     shader = funcs->glCreateShader(type);
     if (!shader)
     {
-        SDL_Log("ERROR: Failed to create shader object");
+        Logging::debug("ERROR: Failed to create shader object");
         return false;
     }
 
@@ -174,7 +176,7 @@ bool Renderer::PrivateHelpers::createAndCompileShader(
     funcs->glGetShaderiv(shader, GL_COMPILE_STATUS, &compileStatus);
     if (compileStatus == GL_FALSE)
     {
-        SDL_Log("ERROR: Failed to compile shader");
+        Logging::debug("ERROR: Failed to compile shader");
         return false;
     }
 
@@ -188,7 +190,7 @@ bool Renderer::PrivateHelpers::createAndLinkSimpleProgram(
     program = funcs->glCreateProgram();
     if (!program)
     {
-        SDL_Log("ERROR: Failed to create program object");
+        Logging::debug("ERROR: Failed to create program object");
         return false;
     }
 
@@ -202,7 +204,7 @@ bool Renderer::PrivateHelpers::createAndLinkSimpleProgram(
     funcs->glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
     if (linkStatus == GL_FALSE)
     {
-        SDL_Log("ERROR: Failed to link program");
+        Logging::debug("ERROR: Failed to link program");
         return false;
     }
 
@@ -219,9 +221,9 @@ void Renderer::PrivateHelpers::printInfoLog(GLuint object, GetProc getProc, Info
     {
         std::string infoLog(infoLogLength, 'x');
         infoLogProc(object, GLsizei(infoLog.length()), nullptr, &infoLog[0]);
-        SDL_Log("----------------------------------------");
-        SDL_Log("%s", infoLog.c_str());
-        SDL_Log("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+        Logging::debug("----------------------------------------");
+        Logging::debug("%s", infoLog.c_str());
+        Logging::debug("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
     }
 }
 
@@ -229,7 +231,7 @@ void Renderer::PrivateHelpers::printInfoLog(GLuint object, GetProc getProc, Info
 void APIENTRY debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
     GLsizei length, const GLchar *message, const void *userParam)
 {
-    SDL_Log("GL: %s", message);
+    Logging::debug("GL: %s", message);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -575,7 +577,7 @@ void Renderer::updateTransforms(Platform &platform)
         funcs->Name = (decltype(funcs->Name))(SDL_GL_GetProcAddress(#Name)); \
         if (funcs->Name == nullptr) \
         { \
-            SDL_Log("ERROR: Failed to resolve '%s'", #Name); \
+            Logging::debug("ERROR: Failed to resolve '%s'", #Name); \
             return false; \
         } \
     }

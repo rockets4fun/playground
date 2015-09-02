@@ -10,6 +10,8 @@
 
 #include <SDL.h>
 
+#include "Logging.hpp"
+
 #include "StateDb.hpp"
 #include "Assets.hpp"
 #include "Platform.hpp"
@@ -21,9 +23,11 @@
 // -------------------------------------------------------------------------------------------------
 int main(int argc, char *argv[])
 {
+    Logging logging;
+
     if (SDL_Init(SDL_INIT_VIDEO))
     {
-        SDL_Log("ERROR: Failed to initialize SDL");
+        Logging::debug("ERROR: Failed to initialize SDL");
         return EXIT_FAILURE;
     }
 
@@ -53,7 +57,7 @@ int main(int argc, char *argv[])
     int profileMask = 0;
     SDL_GL_GetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, &profileMask);
 
-    SDL_Log("OpenGL context: %d.%d (%s)", majorVersion, minorVersion,
+    Logging::debug("OpenGL context: %d.%d (%s)", majorVersion, minorVersion,
         profileMask == SDL_GL_CONTEXT_PROFILE_CORE ? "core" : "non-core");
 
     {
@@ -78,7 +82,7 @@ int main(int argc, char *argv[])
         {
             if (!module->initialize(platform))
             {
-                SDL_Log("ERROR: Failed to initialize module");
+                Logging::debug("ERROR: Failed to initialize module");
                 // FIXME(martinmo): Shutdown modules already initilized
                 return EXIT_FAILURE;
             }

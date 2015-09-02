@@ -15,6 +15,8 @@
 
 #include <glm/glm.hpp>
 
+struct Platform;
+
 // -------------------------------------------------------------------------------------------------
 /// @brief Application assets handling
 struct Assets

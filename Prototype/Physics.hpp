@@ -11,6 +11,7 @@
 #include <memory>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include "ModuleIf.hpp"
 
@@ -20,23 +21,6 @@ struct Physics : ModuleIf
 {
     Physics();
     virtual ~Physics();
-
-    struct Affector
-    {
-        static u64 TYPE;
-        struct Info
-        {
-            static u64 STATE;
-
-            u64 rigidBodyHandle = 0;
-            u32 enabled = 0;
-
-            glm::fvec3 force;
-            glm::fvec3 forcePosition;
-
-            glm::fvec3 torque;
-        };
-    };
 
     struct RigidBody
     {
@@ -69,6 +53,46 @@ struct Physics : ModuleIf
         struct PrivateInfo;
     };
 
+    struct Constraint
+    {
+        static u64 TYPE;
+        struct Info
+        {
+            static u64 STATE;
+
+            enum ConstraintType
+            {
+                FIXED
+            };
+
+            u64 rigidBodyAHandle = 0;
+            glm::fvec3 paramVecA;
+            glm::fquat paramQuatA;
+
+            u64 rigidBodyBHandle = 0;
+            glm::fvec3 paramVecB;
+            glm::fquat paramQuatB;
+        };
+        struct PrivateInfo;
+    };
+
+    struct Affector
+    {
+        static u64 TYPE;
+        struct Info
+        {
+            static u64 STATE;
+
+            u64 rigidBodyHandle = 0;
+            u32 enabled = 0;
+
+            glm::fvec3 force;
+            glm::fvec3 forcePosition;
+
+            glm::fvec3 torque;
+        };
+    };
+
 public: // Implementation of module interface
     virtual void registerTypesAndStates(StateDb &stateDb);
     virtual bool initialize(Platform &platform);
@@ -77,6 +101,7 @@ public: // Implementation of module interface
 
 private:
     struct PrivateRigidBody;
+    struct PrivateConstraint;
     struct PrivateState;
 
     std::shared_ptr< PrivateState > state;
