@@ -24,10 +24,15 @@ struct Renderer : public ModuleIf
         static u64 TYPE;
         struct Info
         {
+            enum Flag
+            {
+                HIDDEN = 0x1
+            };
             static u64 STATE;
             glm::fvec3 translation;
             glm::fquat rotation;
             u32 modelAsset = 0;
+            u32 flags = 0;
         };
         struct PrivateInfo;
     };

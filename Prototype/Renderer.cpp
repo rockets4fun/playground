@@ -473,6 +473,10 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     {
         // FIXME(martinmo): We need to re-introduce GL state map for storing per-model state
         PrivateMesh *privateMesh = meshPrivate->privateMesh;
+        if (mesh->flags & Mesh::Info::Flag::HIDDEN)
+        {
+            continue;
+        }
         if (!privateMesh->positionsVbo)
         {
             // TODO(martinmo): Add way of getting asset and flags in one call/lookup

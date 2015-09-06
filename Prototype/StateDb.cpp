@@ -100,6 +100,13 @@ u64 StateDb::stateIdByName(const std::string &name)
 }
 
 // -------------------------------------------------------------------------------------------------
+std::string StateDb::stateNameById(u64 stateId)
+{
+    COMMON_ASSERT(isStateIdValid(stateId));
+    return m_states[stateId].name;
+}
+
+// -------------------------------------------------------------------------------------------------
 u64 StateDb::registerState(u64 typeId, const std::string &name, u64 elemSize)
 {
     // Element size has to be non-zero and a multiple of 4 B (32 bit)
@@ -157,6 +164,13 @@ bool StateDb::isObjectHandleValid(u64 objectHandle)
         return false;
     }
     return true;
+}
+
+// -------------------------------------------------------------------------------------------------
+std::string StateDb::objectHandleTypeName(u64 objectHandle)
+{
+    COMMON_ASSERT(isObjectHandleValid(objectHandle));
+    return m_types[objectHandleTypeId(objectHandle)].name;
 }
 
 // -------------------------------------------------------------------------------------------------

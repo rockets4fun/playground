@@ -122,8 +122,6 @@ Physics::PrivateRigidBody::PrivateRigidBody(
     PrivateState &stateInit, RigidBody::Info *rigidBody)
     : state(stateInit)
 {
-    handle = state.platform.stateDb.objectHandleFromElem(rigidBody);
-
     btCollisionShape *collisionShape = nullptr;
     auto mesh = state.platform.stateDb.refState< Renderer::Mesh::Info >(rigidBody->meshHandle);
     u64 collisionShapeKey = u64(rigidBody->collisionShapeType) << 32 | u64(mesh->modelAsset);
@@ -148,15 +146,28 @@ Physics::PrivateRigidBody::PrivateRigidBody(
             max = glm::max(max, position);
         }
         glm::fvec3 halfExtent = 0.5f * (max - min);
+        glm::fvec3 center = min + halfExtent;
+
+        btTransform centerTransform = btTransform(
+            btQuaternion(0.0f, 0.0f, 0.0f, 1.0f),
+            btVector3(center.x, center.y, center.z));
 
         if (rigidBody->collisionShapeType == Physics::RigidBody::Info::BOUNDING_BOX)
         {
             collisionShape = new btBoxShape(btVector3(halfExtent.x, halfExtent.y, halfExtent.z));
+
+            btCompoundShape *compoundShape = new btCompoundShape;
+            compoundShape->addChildShape(centerTransform, collisionShape);
+            collisionShape = compoundShape;
         }
         else if (rigidBody->collisionShapeType == Physics::RigidBody::Info::BOUNDING_SPHERE)
         {
             collisionShape = new btSphereShape(glm::max(
                 glm::max(halfExtent.x, halfExtent.y), halfExtent.z));
+
+            btCompoundShape *compoundShape = new btCompoundShape;
+            compoundShape->addChildShape(centerTransform, collisionShape);
+            collisionShape = compoundShape;
         }
         else if (rigidBody->collisionShapeType == Physics::RigidBody::Info::CONVEX_HULL_COMPOUND)
         {
@@ -218,7 +229,7 @@ Physics::PrivateRigidBody::PrivateRigidBody(
         mesh->translation.x, mesh->translation.y, mesh->translation.z);
     motionState = std::make_shared< btDefaultMotionState >(btTransform(rotation, translation));
 
-    btScalar mass = 1;
+    btScalar mass = rigidBody->mass > 0.0f ? rigidBody->mass : 1.0f;
     btVector3 inertia(0, 0, 0);
     collisionShape->calculateLocalInertia(mass, inertia);
     btRigidBody::btRigidBodyConstructionInfo constructionInfo(
@@ -253,12 +264,24 @@ Physics::PrivateConstraint::PrivateConstraint(
     PrivateState &stateInit, Constraint::Info *constraint)
     : state(stateInit)
 {
-    handle = state.platform.stateDb.objectHandleFromElem(constraint);
-
     btRigidBody *rbA = state.platform.stateDb.refState< RigidBody::PrivateInfo >(
         constraint->rigidBodyAHandle)->state->bulletRigidBody.get();
+    btRigidBody *rbB = state.platform.stateDb.refState< RigidBody::PrivateInfo >(
+        constraint->rigidBodyBHandle)->state->bulletRigidBody.get();
 
-    bulletConstraint = new btFixedConstraint(rbA, rbB, frameInA, frameInB);
+    btTransform frameInA = btTransform(
+        btQuaternion(
+            constraint->paramQuatA.x, constraint->paramQuatA.y,
+            constraint->paramQuatA.z, constraint->paramQuatA.w),
+        btVector3(constraint->paramVecA.x, constraint->paramVecA.y, constraint->paramVecA.z));
+    btTransform frameInB = btTransform(
+        btQuaternion(
+            constraint->paramQuatB.x, constraint->paramQuatB.y,
+            constraint->paramQuatB.z, constraint->paramQuatB.w),
+        btVector3(constraint->paramVecB.x, constraint->paramVecB.y, constraint->paramVecB.z));
+
+    bulletConstraint = std::make_shared< btFixedConstraint >(*rbA, *rbB, frameInA, frameInB);
+    state.dynamicsWorld->addConstraint(bulletConstraint.get(), true);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -266,7 +289,7 @@ Physics::PrivateConstraint::~PrivateConstraint()
 {
     if (bulletConstraint)
     {
-        // ...
+        state.dynamicsWorld->removeConstraint(bulletConstraint.get());
     }
 }
 
@@ -431,7 +454,10 @@ void trackCreations(StateDb &stateDb,
         {
             dstStorage.push_back(std::make_shared< DstType >(userData, src));
             srcPrivate->state = dstStorage.back().get();
-            Logging::debug("Tracked creation (storage size is %d)", int(dstStorage.size()));
+            srcPrivate->state->handle = stateDb.objectHandleFromElem(src);
+            Logging::debug("Creation of \"%s\" (%d instances tracked)",
+                stateDb.objectHandleTypeName(srcPrivate->state->handle).c_str(),
+                int(dstStorage.size()));
         }
     }
 }
@@ -455,7 +481,9 @@ void trackDestructions(StateDb &stateDb,
     {
         dstStorage.erase(deletions.back());
         deletions.pop_back();
-        Logging::debug("Tracked destruction (storage size is %d)", int(dstStorage.size()));
+        Logging::debug("Destruction of \"%s\" (%d instances tracked)",
+            stateDb.objectHandleTypeName(dstStorageIter->get()->handle).c_str(),
+            int(dstStorage.size()));
     }
 }
 

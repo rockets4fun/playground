@@ -42,6 +42,8 @@ struct Physics : ModuleIf
             u32 collisionGroup = 0;
             u32 collisionMask = 0;
 
+            float mass = 0.0f;
+
             glm::fvec3 linearVelocity;
             glm::fvec3 linearVelocityLimit;
 
@@ -64,6 +66,8 @@ struct Physics : ModuleIf
             {
                 FIXED
             };
+
+            u32 type;
 
             u64 rigidBodyAHandle = 0;
             glm::fvec3 paramVecA;

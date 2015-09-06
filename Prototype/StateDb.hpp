@@ -36,9 +36,11 @@ struct StateDb
 
     bool isStateIdValid(u64 stateId);
     u64 stateIdByName(const std::string &name);
+    std::string stateNameById(u64 stateId);
     u64 registerState(u64 typeId, const std::string &name, u64 elemSize);
 
     bool isObjectHandleValid(u64 objectHandle);
+    std::string objectHandleTypeName(u64 objectHandle);
 
     u64 createObject(u64 typeId);
     void destroyObject(u64 objectHandle);

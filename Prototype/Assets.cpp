@@ -92,7 +92,9 @@ Assets::Model *Assets::refModel(u32 hash)
         else if (loadModel(*m_privateState.get(), *ref.first, *ref.second))
         {
             ++ref.second->version;
-            Logging::debug("Model \"%s\" loaded", ref.second->name.c_str());
+            Logging::debug("Model \"%s\" loaded (%d triangles)",
+                ref.second->name.c_str(),
+                int(ref.first->positions.size() / 3));
         }
         else
         {
