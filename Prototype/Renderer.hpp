@@ -22,12 +22,12 @@ struct Renderer : public ModuleIf
     struct Mesh
     {
         static u64 TYPE;
+        enum Flag
+        {
+            HIDDEN = 0x1
+        };
         struct Info
         {
-            enum Flag
-            {
-                HIDDEN = 0x1
-            };
             static u64 STATE;
             glm::fvec3 translation;
             glm::fquat rotation;

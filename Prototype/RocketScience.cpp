@@ -92,7 +92,7 @@ bool RocketScience::initialize(Platform &platform)
                     -0.5f * platformSize + double(row)
                             / double(PLATFORM_SPHERE_COUNT - 1) * platformSize, -2.0);
                 sphereMesh->modelAsset = platform.assets.asset("Assets/Sphere.obj");
-                sphereMesh->flags |= Renderer::Mesh::Info::Flag::HIDDEN;
+                sphereMesh->flags |= Renderer::Mesh::Flag::HIDDEN;
                 // Create sphere rigid body
                 Physics::RigidBody::Info *sphereRigidBody = nullptr;
                 u64 sphereRigidBodyHandle =

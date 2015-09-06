@@ -473,7 +473,7 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     {
         // FIXME(martinmo): We need to re-introduce GL state map for storing per-model state
         PrivateMesh *privateMesh = meshPrivate->privateMesh;
-        if (mesh->flags & Mesh::Info::Flag::HIDDEN)
+        if (mesh->flags & Mesh::Flag::HIDDEN)
         {
             continue;
         }
