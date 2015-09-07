@@ -67,7 +67,7 @@ bool RocketScience::initialize(Platform &platform)
         // Create platform mesh
         Renderer::Mesh::Info *platformMesh = nullptr;
         u64 platformMeshHandle = platform.stateDb.createObjectAndRefState(&platformMesh);
-        platformMesh->translation = glm::fvec3(0.0f, 0.0f, 0.0f);
+        platformMesh->translation = glm::fvec3(0.0f, 0.0f, 2.5f);
         platformMesh->rotation = glm::dquat(1.0f, 0.0f, 0.0f, 0.0f);
         platformMesh->modelAsset = platform.assets.asset("Assets/Platform.obj");
         // Create platform rigid body
@@ -75,47 +75,20 @@ bool RocketScience::initialize(Platform &platform)
         u64 platformRigidBodyHandle = platform.stateDb.createObjectAndRefState(&platformRigidBody);
         platformRigidBody->mass = 10.0f;
         platformRigidBody->meshHandle = platformMeshHandle;
-        platformRigidBody->collisionGroup = 2;
-        platformRigidBody->collisionMask  = 2;
+        platformRigidBody->collisionGroup = 1;
+        platformRigidBody->collisionMask  = 1;
         // Create buoyancy spheres
         const float platformSize = 9.5f;
         for (int col = 0; col < PLATFORM_SPHERE_COUNT; ++col)
         {
             for (int row = 0; row < PLATFORM_SPHERE_COUNT; ++row)
             {
-                // Create sphere mesh
-                Renderer::Mesh::Info *sphereMesh = nullptr;
-                u64 sphereMeshHandle = platform.stateDb.createObjectAndRefState(&sphereMesh);
-                sphereMesh->translation = glm::fvec3(
+                glm::fvec3 translation = glm::fvec3(
                     -0.5f * platformSize + double(col)
                             / double(PLATFORM_SPHERE_COUNT - 1) * platformSize,
                     -0.5f * platformSize + double(row)
-                            / double(PLATFORM_SPHERE_COUNT - 1) * platformSize, -2.0);
-                sphereMesh->modelAsset = platform.assets.asset("Assets/Sphere.obj");
-                sphereMesh->flags |= Renderer::Mesh::Flag::HIDDEN;
-                // Create sphere rigid body
-                Physics::RigidBody::Info *sphereRigidBody = nullptr;
-                u64 sphereRigidBodyHandle =
-                    platform.stateDb.createObjectAndRefState(&sphereRigidBody);
-                sphereRigidBody->meshHandle = sphereMeshHandle;
-                sphereRigidBody->collisionGroup = 2;
-                sphereRigidBody->collisionMask  = 2;
-                sphereRigidBody->collisionShapeType =
-                    Physics::RigidBody::Info::CollisionShapeType::BOUNDING_SPHERE;
-                // Buoyancy affectors
-                Physics::Affector::Info *buoyancyAffector = nullptr;
-                u64 buoyancyAffectorHandle =
-                    platform.stateDb.createObjectAndRefState(&buoyancyAffector);
-                buoyancyAffector->rigidBodyHandle = sphereRigidBodyHandle;
-                m_buoyancyAffectorHandles.push_back(buoyancyAffectorHandle);
-                // Constrain buoyancy sphere to platform
-                Physics::Constraint::Info *constraint = nullptr;
-                platform.stateDb.createObjectAndRefState(&constraint);
-                constraint->rigidBodyAHandle = platformRigidBodyHandle;
-                constraint->rigidBodyBHandle = sphereRigidBodyHandle;
-                constraint->paramQuatA = glm::fquat(1.0f, 0.0f, 0.0f, 0.0f);
-                constraint->paramQuatB = glm::fquat(1.0f, 0.0f, 0.0f, 0.0f);
-                constraint->paramVecA = sphereMesh->translation;
+                            / double(PLATFORM_SPHERE_COUNT - 1) * platformSize, -1.0);
+                addBuoyancySphere(platform, translation, platformRigidBodyHandle);
             }
         }
     }
@@ -299,7 +272,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 
         Physics::RigidBody::Info *rigidBodyInfo = nullptr;
         u64 rigidBodyHandle = platform.stateDb.createObjectAndRefState(&rigidBodyInfo);
-
+        rigidBodyInfo->mass = 1.0f;
         rigidBodyInfo->meshHandle = meshHandle;
         rigidBodyInfo->collisionGroup = 1;
         rigidBodyInfo->collisionMask  = 1;
@@ -313,6 +286,8 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
             rigidBodyInfo->collisionShapeType =
                 //Physics::RigidBody::Info::CollisionShapeType::BOUNDING_BOX;
                 Physics::RigidBody::Info::CollisionShapeType::CONVEX_HULL_COMPOUND;
+            rigidBodyInfo->mass = 5.0f;
+            /*
             // Create Pusher rocket motor force
             {
                 Physics::Affector::Info *affector = nullptr;
@@ -320,12 +295,10 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
                 affector->rigidBodyHandle = rigidBodyHandle;
                 affector->enabled = 1;
             }
+            */
         }
         else if (mesh->modelAsset == platform.assets.asset("Assets/Sphere.obj"))
         {
-            // Simulate buoyancy for spheres instead of collisions
-            rigidBodyInfo->collisionGroup = 2;
-            rigidBodyInfo->collisionMask  = 2;
             rigidBodyInfo->collisionShapeType =
                 Physics::RigidBody::Info::CollisionShapeType::BOUNDING_SPHERE;
             // Create sphere buoyancy force
@@ -334,6 +307,13 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
                 platform.stateDb.createObjectAndRefState(&affector);
             affector->rigidBodyHandle = rigidBodyHandle;
             m_buoyancyAffectorHandles.push_back(buoyancyAffectorHandle);
+        }
+        else
+        {
+            addBuoyancySphere(platform, glm::fvec3(-0.5, -0.5, 0.0), rigidBodyHandle);
+            addBuoyancySphere(platform, glm::fvec3(+0.5, -0.5, 0.0), rigidBodyHandle);
+            addBuoyancySphere(platform, glm::fvec3(+0.5, +0.5, 0.0), rigidBodyHandle);
+            addBuoyancySphere(platform, glm::fvec3(-0.5, +0.5, 0.0), rigidBodyHandle);
         }
     }
 
@@ -418,6 +398,50 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 }
 
 // -------------------------------------------------------------------------------------------------
+void RocketScience::addBuoyancySphere(Platform &platform,
+    const glm::fvec3 &translation, u64 parentRigidBodyHandle)
+{
+    auto parentRigidBody = platform.stateDb.refState<
+            Physics::RigidBody::Info >(parentRigidBodyHandle);
+    auto parentMesh = platform.stateDb.refState<
+            Renderer::Mesh::Info >(parentRigidBody->meshHandle);
+
+    // Create sphere mesh
+    Renderer::Mesh::Info *sphereMesh = nullptr;
+    u64 sphereMeshHandle = platform.stateDb.createObjectAndRefState(&sphereMesh);
+    sphereMesh->translation = /*parentMesh->translation + */translation;
+    sphereMesh->modelAsset = platform.assets.asset("Assets/Sphere.obj");
+    sphereMesh->flags |= Renderer::Mesh::Flag::HIDDEN;
+
+    // Create sphere rigid body
+    Physics::RigidBody::Info *sphereRigidBody = nullptr;
+    u64 sphereRigidBodyHandle =
+        platform.stateDb.createObjectAndRefState(&sphereRigidBody);
+    sphereRigidBody->meshHandle = sphereMeshHandle;
+    sphereRigidBody->collisionGroup = 0;
+    sphereRigidBody->collisionMask  = 0;
+    sphereRigidBody->mass = 0.1;
+    sphereRigidBody->collisionShapeType =
+        Physics::RigidBody::Info::CollisionShapeType::BOUNDING_SPHERE;
+
+    // Buoyancy affectors
+    Physics::Affector::Info *buoyancyAffector = nullptr;
+    u64 buoyancyAffectorHandle =
+        platform.stateDb.createObjectAndRefState(&buoyancyAffector);
+    buoyancyAffector->rigidBodyHandle = sphereRigidBodyHandle;
+    m_buoyancyAffectorHandles.push_back(buoyancyAffectorHandle);
+
+    // Constrain buoyancy sphere to platform
+    Physics::Constraint::Info *constraint = nullptr;
+    platform.stateDb.createObjectAndRefState(&constraint);
+    constraint->rigidBodyAHandle = parentRigidBodyHandle;
+    constraint->rigidBodyBHandle = sphereRigidBodyHandle;
+    constraint->paramQuatA = glm::fquat(1.0f, 0.0f, 0.0f, 0.0f);
+    constraint->paramQuatB = glm::fquat(1.0f, 0.0f, 0.0f, 0.0f);
+    constraint->paramVecA = sphereMesh->translation;
+}
+
+// -------------------------------------------------------------------------------------------------
 float RocketScience::oceanEquation(const glm::fvec2 &position, double timeInS)
 {
     glm::fvec2 unitSize = OCEAN_TILE_UNIT_SIZE;
@@ -426,7 +450,7 @@ float RocketScience::oceanEquation(const glm::fvec2 &position, double timeInS)
     result += 0.50f * sinf((twoPi / (0.500f * unitSize.x)) * (position.x + position.y + timeInS));
     result += 0.50f * sinf((twoPi / (1.000f * unitSize.x)) * (position.x - position.y + timeInS));
     result += 0.10f * sinf((twoPi / (0.250f * unitSize.x)) * (position.x + position.y - timeInS * 0.5f));
-    return result - 10.0f;
+    return result;
 }
 
 // -------------------------------------------------------------------------------------------------

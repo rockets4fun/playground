@@ -55,10 +55,6 @@ struct Physics::PrivateState
     std::shared_ptr< btSequentialImpulseConstraintSolver > solver;
     std::shared_ptr< btDiscreteDynamicsWorld > dynamicsWorld;
 
-    std::shared_ptr< btCollisionShape > groundShape;
-    std::shared_ptr< btDefaultMotionState > groundMotionState;
-    std::shared_ptr< btRigidBody > groundRigidBody;
-
     std::shared_ptr< btCollisionShape > cubeShape;
 
     std::map< u64, btCollisionShape * > collisionShapes;
@@ -229,11 +225,10 @@ Physics::PrivateRigidBody::PrivateRigidBody(
         mesh->translation.x, mesh->translation.y, mesh->translation.z);
     motionState = std::make_shared< btDefaultMotionState >(btTransform(rotation, translation));
 
-    btScalar mass = rigidBody->mass > 0.0f ? rigidBody->mass : 1.0f;
     btVector3 inertia(0, 0, 0);
-    collisionShape->calculateLocalInertia(mass, inertia);
+    collisionShape->calculateLocalInertia(rigidBody->mass, inertia);
     btRigidBody::btRigidBodyConstructionInfo constructionInfo(
-        mass, motionState.get(), collisionShape, inertia);
+        rigidBody->mass, motionState.get(), collisionShape, inertia);
     constructionInfo.m_restitution = btScalar(0.25);
     constructionInfo.m_friction = btScalar(0.5);
     constructionInfo.m_rollingFriction = btScalar(0.2);
@@ -377,11 +372,11 @@ void Physics::registerTypesAndStates(StateDb &stateDb)
     RigidBody::PrivateInfo::STATE = stateDb.registerState(
         RigidBody::TYPE, "PrivateInfo", sizeof(RigidBody::PrivateInfo));
 
-    Affector::TYPE = stateDb.registerType("Affector", 256);
+    Affector::TYPE = stateDb.registerType("Affector", 512);
     Affector::Info::STATE = stateDb.registerState(
         Affector::TYPE, "Info", sizeof(Affector::Info));
 
-    Constraint::TYPE = stateDb.registerType("Constraint", 256);
+    Constraint::TYPE = stateDb.registerType("Constraint", 512);
     Constraint::Info::STATE = stateDb.registerState(
         Constraint::TYPE, "Info", sizeof(Constraint::Info));
     Constraint::PrivateInfo::STATE = stateDb.registerState(
@@ -406,6 +401,7 @@ bool Physics::initialize(Platform &platform)
 
     state->dynamicsWorld->setGravity(btVector3(0, 0, -10));
 
+    /*
     {
         state->groundShape = std::make_shared< btStaticPlaneShape >(btVector3(0, 0, 1), 0.0f);
         state->groundMotionState = std::make_shared< btDefaultMotionState> (
@@ -418,6 +414,7 @@ bool Physics::initialize(Platform &platform)
         state->groundRigidBody = std::make_shared< btRigidBody >(groundRigidBodyCI);
         state->dynamicsWorld->addRigidBody(state->groundRigidBody.get(), 1, 0xffff);
     }
+    */
 
     {
         state->cubeShape = std::make_shared< btBoxShape >(btVector3(0.5, 0.5, 0.5));
@@ -434,7 +431,7 @@ bool Physics::initialize(Platform &platform)
 void Physics::shutdown(Platform &platform)
 {
     state->dynamicsWorld->setInternalTickCallback(nullptr);
-    state->dynamicsWorld->removeRigidBody(state->groundRigidBody.get());
+    //state->dynamicsWorld->removeRigidBody(state->groundRigidBody.get());
     state = nullptr;
 }
 

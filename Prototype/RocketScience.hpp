@@ -49,6 +49,9 @@ private:
 
     double m_timeInS = 0.0;
 
+    void addBuoyancySphere(Platform &platform,
+        const glm::fvec3 &translation, u64 parentRigidBody);
+
     float oceanEquation(const glm::fvec2 &position, double timeInS);
     void updateBuoyancyAffector(StateDb &stateDb, double timeInS, u64 affectorHandle);
 
