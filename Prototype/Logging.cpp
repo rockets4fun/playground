@@ -29,4 +29,5 @@ void Logging::debug(const char *format, ...)
     va_end(args);
 
     fprintf(stdout, "%s\n", buffer);
+    fflush(stdout);
 }

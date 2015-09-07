@@ -33,8 +33,9 @@ private:
     static const float OCEAN_TILE_VERTEX_DIST;
     static const glm::fvec2 OCEAN_TILE_UNIT_SIZE;
 
+    static const int PLATFORM_SPHERE_COUNT;
+
     u64 m_cameraHandle = 0;
-    u64 m_gridMeshHandle = 0;
     u64 m_arrowMeshHandle = 0;
     u64 m_pusherAffectorHandle = 0;
 
