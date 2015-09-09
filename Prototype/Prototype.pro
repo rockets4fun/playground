@@ -51,7 +51,7 @@ macx {
 
 # glm
 win32 | macx {
-    # Clone branch "9.6.0" from "https://github.com/g-truc/glm.git"
+    # Clone branch "0.9.6" from "https://github.com/g-truc/glm.git"
     INCLUDEPATH += $$THIRDPARTY/glm
 }
 
