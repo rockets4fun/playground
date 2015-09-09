@@ -67,7 +67,7 @@ bool RocketScience::initialize(Platform &platform)
         // Create platform mesh
         Renderer::Mesh::Info *platformMesh = nullptr;
         u64 platformMeshHandle = platform.stateDb.createObjectAndRefState(&platformMesh);
-        platformMesh->translation = glm::fvec3(0.0f, 0.0f, 2.5f);
+        platformMesh->translation = glm::fvec3(0.0f, 0.0f, 5.0f);
         platformMesh->rotation = glm::dquat(1.0f, 0.0f, 0.0f, 0.0f);
         platformMesh->modelAsset = platform.assets.asset("Assets/Platform.obj");
         // Create platform rigid body
@@ -320,9 +320,12 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
     // Update rocket force control logic
     if (m_pusherAffectorHandle)
     {
-        auto mesh = platform.stateDb.refState< Renderer::Mesh::Info >(m_meshHandles.front());
         auto affector = platform.stateDb.refState<
-            Physics::Affector::Info >(m_pusherAffectorHandle);
+                Physics::Affector::Info >(m_pusherAffectorHandle);
+        auto rigidBody = platform.stateDb.refState<
+                Physics::RigidBody::Info >(affector->rigidBodyHandle);
+        auto mesh = platform.stateDb.refState<
+                Renderer::Mesh::Info >(rigidBody->meshHandle);
 
         glm::fmat3 meshRot = glm::mat3_cast(mesh->rotation);
 
@@ -345,13 +348,11 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         float mainEngineForce = 0.0f;
         if (mesh->translation.z < 10.0)
         {
-            // Mass of rocket is 1 kg (hard-coded for all RBs ATM)
-            // ==> Force needs to be at least 9.81 x 1 ==> 10
-            mainEngineForce = 12.0f;
+            mainEngineForce = 10.0 * rigidBody->mass;
         }
         else
         {
-            mainEngineForce = 9.0f;
+            mainEngineForce = 9.0f * rigidBody->mass;
         }
 
         // Rocket's local +Y should be aligned to global +Z
@@ -411,7 +412,7 @@ void RocketScience::addBuoyancySphere(Platform &platform,
     u64 sphereMeshHandle = platform.stateDb.createObjectAndRefState(&sphereMesh);
     sphereMesh->translation = /*parentMesh->translation + */translation;
     sphereMesh->modelAsset = platform.assets.asset("Assets/Sphere.obj");
-    sphereMesh->flags |= Renderer::Mesh::Flag::HIDDEN;
+    //sphereMesh->flags |= Renderer::Mesh::Flag::HIDDEN;
 
     // Create sphere rigid body
     Physics::RigidBody::Info *sphereRigidBody = nullptr;
