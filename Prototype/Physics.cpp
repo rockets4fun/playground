@@ -114,6 +114,12 @@ glm::quat fromBulletQuat(const btQuaternion &bulletQuat)
 }
 
 // -------------------------------------------------------------------------------------------------
+btQuaternion toBulletQuat(const glm::fquat &quat)
+{
+    return btQuaternion(quat.x, quat.y, quat.z, quat.w);
+}
+
+// -------------------------------------------------------------------------------------------------
 Physics::PrivateRigidBody::PrivateRigidBody(
     PrivateState &stateInit, RigidBody::Info *rigidBody)
     : state(stateInit)
@@ -213,17 +219,13 @@ Physics::PrivateRigidBody::PrivateRigidBody(
     // TODO(martinmo): Update collision shape if asset version changes
 
     // Make sure initial rotation is a sane value
-    if (glm::abs(mesh->rotation.x) + glm::abs(mesh->rotation.x)
-        + glm::abs(mesh->rotation.x) + glm::abs(mesh->rotation.x) < 0.01f)
+    if (glm::abs(mesh->rotation.x) + glm::abs(mesh->rotation.y)
+      + glm::abs(mesh->rotation.z) + glm::abs(mesh->rotation.w) < 0.01f)
     {
         mesh->rotation = glm::fquat(1.0, 0.0, 0.0, 0.0);
     }
-    btQuaternion rotation(
-        mesh->rotation.x, mesh->rotation.y,
-        mesh->rotation.z, mesh->rotation.w);
-    btVector3 translation(
-        mesh->translation.x, mesh->translation.y, mesh->translation.z);
-    motionState = std::make_shared< btDefaultMotionState >(btTransform(rotation, translation));
+    motionState = std::make_shared< btDefaultMotionState >(
+        btTransform(toBulletQuat(mesh->rotation), toBulletVec(mesh->translation)));
 
     btVector3 inertia(0, 0, 0);
     collisionShape->calculateLocalInertia(rigidBody->mass, inertia);
