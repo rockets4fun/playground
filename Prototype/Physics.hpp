@@ -22,19 +22,24 @@ struct Physics : ModuleIf
     Physics();
     virtual ~Physics();
 
+    enum CollisionShapeType
+    {
+        BOUNDING_BOX,
+        BOUNDING_SPHERE,
+        CONVEX_HULL_COMPOUND
+    };
+
+    enum ConstraintType
+    {
+        FIXED
+    };
+
     struct RigidBody
     {
         static u64 TYPE;
         struct Info
         {
             static u64 STATE;
-
-            enum CollisionShapeType
-            {
-                BOUNDING_BOX,
-                BOUNDING_SPHERE,
-                CONVEX_HULL_COMPOUND
-            };
 
             u64 meshHandle = 0;
             u32 collisionShapeType = 0;
@@ -61,11 +66,6 @@ struct Physics : ModuleIf
         struct Info
         {
             static u64 STATE;
-
-            enum ConstraintType
-            {
-                FIXED
-            };
 
             u32 type;
 

@@ -19,13 +19,14 @@
 /// @brief Renderer module
 struct Renderer : public ModuleIf
 {
+    enum MeshFlag
+    {
+        HIDDEN = 0x1
+    };
+
     struct Mesh
     {
         static u64 TYPE;
-        enum Flag
-        {
-            HIDDEN = 0x1
-        };
         struct Info
         {
             static u64 STATE;

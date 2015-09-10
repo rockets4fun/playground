@@ -154,7 +154,7 @@ Physics::PrivateRigidBody::PrivateRigidBody(
             btQuaternion(0.0f, 0.0f, 0.0f, 1.0f),
             btVector3(center.x, center.y, center.z));
 
-        if (rigidBody->collisionShapeType == Physics::RigidBody::Info::BOUNDING_BOX)
+        if (rigidBody->collisionShapeType == CollisionShapeType::BOUNDING_BOX)
         {
             collisionShape = new btBoxShape(btVector3(halfExtent.x, halfExtent.y, halfExtent.z));
 
@@ -162,7 +162,7 @@ Physics::PrivateRigidBody::PrivateRigidBody(
             compoundShape->addChildShape(centerTransform, collisionShape);
             collisionShape = compoundShape;
         }
-        else if (rigidBody->collisionShapeType == Physics::RigidBody::Info::BOUNDING_SPHERE)
+        else if (rigidBody->collisionShapeType == CollisionShapeType::BOUNDING_SPHERE)
         {
             collisionShape = new btSphereShape(glm::max(
                 glm::max(halfExtent.x, halfExtent.y), halfExtent.z));
@@ -171,7 +171,7 @@ Physics::PrivateRigidBody::PrivateRigidBody(
             compoundShape->addChildShape(centerTransform, collisionShape);
             collisionShape = compoundShape;
         }
-        else if (rigidBody->collisionShapeType == Physics::RigidBody::Info::CONVEX_HULL_COMPOUND)
+        else if (rigidBody->collisionShapeType == CollisionShapeType::CONVEX_HULL_COMPOUND)
         {
             btCompoundShape *compoundShape = new btCompoundShape;
             for (auto &subMesh : model->subMeshes)

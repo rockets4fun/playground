@@ -75,6 +75,7 @@ bool RocketScience::initialize(Platform &platform)
         u64 platformRigidBodyHandle = platform.stateDb.createObjectAndRefState(&platformRigidBody);
         platformRigidBody->mass = 10.0f;
         platformRigidBody->meshHandle = platformMeshHandle;
+        platformRigidBody->collisionShapeType = Physics::CollisionShapeType::CONVEX_HULL_COMPOUND;
         platformRigidBody->collisionGroup = 1;
         platformRigidBody->collisionMask  = 1;
         // Create buoyancy spheres
@@ -283,9 +284,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 
         if (mesh->modelAsset == platform.assets.asset("Assets/Pusher.obj"))
         {
-            rigidBodyInfo->collisionShapeType =
-                //Physics::RigidBody::Info::CollisionShapeType::BOUNDING_BOX;
-                Physics::RigidBody::Info::CollisionShapeType::CONVEX_HULL_COMPOUND;
+            rigidBodyInfo->collisionShapeType = Physics::CollisionShapeType::CONVEX_HULL_COMPOUND;
             rigidBodyInfo->mass = 5.0f;
             /*
             // Create Pusher rocket motor force
@@ -305,8 +304,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         }
         else if (mesh->modelAsset == platform.assets.asset("Assets/Sphere.obj"))
         {
-            rigidBodyInfo->collisionShapeType =
-                Physics::RigidBody::Info::CollisionShapeType::BOUNDING_SPHERE;
+            rigidBodyInfo->collisionShapeType = Physics::CollisionShapeType::BOUNDING_SPHERE;
             addBuoyancyAffector(platform, glm::fvec3(0.0, 0.0, 0.0), rigidBodyHandle);
         }
         else
