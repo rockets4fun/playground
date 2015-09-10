@@ -49,6 +49,7 @@ h1. Guidelines
 
 h2. Coding Guidelines
 
+* Member-vars of structs/classes with non-static methods other than c'tor/d'tor have 'm_' prefix
 * Make implicit callback-funciton invocations more explicit
 ** E.g. by passing potential CBs as paraeters to invoking update function
 * Avoid inheritance (try to use virtual, abstract interfaces only)
