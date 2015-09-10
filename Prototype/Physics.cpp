@@ -306,15 +306,18 @@ Physics::PrivateState::PrivateState(Platform &platformInit) :
 // -------------------------------------------------------------------------------------------------
 void Physics::PrivateState::preTick(btScalar timeStep)
 {
-    for (auto &privateRigidBody : privateRigidBodies)
+    for (const std::shared_ptr< PrivateRigidBody > &privateRigidBody : privateRigidBodies)
     {
         btRigidBody *bulletRigidBody = privateRigidBody->bulletRigidBody.get();
         bulletRigidBody->clearForces();
         bulletRigidBody->applyGravity();
         for (const Affector::Info *affector : privateRigidBody->affectors)
         {
+            glm::fquat rotation = fromBulletQuat(
+                bulletRigidBody->getCenterOfMassTransform().getRotation());
+            glm::fvec3 forcePositionGlobal = rotation * affector->forcePosition;
             bulletRigidBody->applyForce(
-                toBulletVec(affector->force), toBulletVec(affector->forcePosition));
+                toBulletVec(affector->force), toBulletVec(forcePositionGlobal));
             bulletRigidBody->applyTorque(toBulletVec(affector->torque));
         }
     }

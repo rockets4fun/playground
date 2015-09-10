@@ -87,8 +87,8 @@ bool RocketScience::initialize(Platform &platform)
                     -0.5f * platformSize + double(col)
                             / double(PLATFORM_SPHERE_COUNT - 1) * platformSize,
                     -0.5f * platformSize + double(row)
-                            / double(PLATFORM_SPHERE_COUNT - 1) * platformSize, -1.0);
-                addBuoyancySphere(platform, translation, platformRigidBodyHandle);
+                            / double(PLATFORM_SPHERE_COUNT - 1) * platformSize, 0.0);
+                addBuoyancyAffector(platform, translation, platformRigidBodyHandle);
             }
         }
     }
@@ -294,6 +294,12 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
                 m_pusherAffectorHandle = platform.stateDb.createObjectAndRefState(&affector);
                 affector->rigidBodyHandle = rigidBodyHandle;
                 affector->enabled = 1;
+                // Top wing position
+                //affector->forcePosition = glm::fvec3(0.00f, -2.64, 2.75f);
+                // Head position
+                //affector->forcePosition = glm::fvec3(0.00f,  3.61, 0.00f);
+                // Tail/main engine position
+                affector->forcePosition = glm::fvec3(0.00f, -2.14, 0.00f);
             }
             */
         }
@@ -301,19 +307,14 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         {
             rigidBodyInfo->collisionShapeType =
                 Physics::RigidBody::Info::CollisionShapeType::BOUNDING_SPHERE;
-            // Create sphere buoyancy force
-            Physics::Affector::Info *affector = nullptr;
-            u64 buoyancyAffectorHandle =
-                platform.stateDb.createObjectAndRefState(&affector);
-            affector->rigidBodyHandle = rigidBodyHandle;
-            m_buoyancyAffectorHandles.push_back(buoyancyAffectorHandle);
+            addBuoyancyAffector(platform, glm::fvec3(0.0, 0.0, 0.0), rigidBodyHandle);
         }
         else
         {
-            addBuoyancySphere(platform, glm::fvec3(-0.5, -0.5, 0.0), rigidBodyHandle);
-            addBuoyancySphere(platform, glm::fvec3(+0.5, -0.5, 0.0), rigidBodyHandle);
-            addBuoyancySphere(platform, glm::fvec3(+0.5, +0.5, 0.0), rigidBodyHandle);
-            addBuoyancySphere(platform, glm::fvec3(-0.5, +0.5, 0.0), rigidBodyHandle);
+            addBuoyancyAffector(platform, glm::fvec3(-0.5, -0.5, 0.0), rigidBodyHandle);
+            addBuoyancyAffector(platform, glm::fvec3(+0.5, -0.5, 0.0), rigidBodyHandle);
+            addBuoyancyAffector(platform, glm::fvec3(+0.5, +0.5, 0.0), rigidBodyHandle);
+            addBuoyancyAffector(platform, glm::fvec3(-0.5, +0.5, 0.0), rigidBodyHandle);
         }
     }
 
@@ -330,18 +331,8 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         glm::fmat3 meshRot = glm::mat3_cast(mesh->rotation);
 
         /*
-        // Top wing position
-        forceInfo->forcePosition = meshRot * glm::fvec3(0.00f, -2.64, 2.75f);
-        // Head position
-        forceInfo->forcePosition = meshRot * glm::fvec3(0.00f,  3.61, 0.00f);
-        */
-
-        // Tail/main engine position
-        affector->forcePosition = meshRot * glm::fvec3(0.00f, -2.14, 0.00f);
-
-        /*
         // This force applied to top wing makes rocket spin clockwise
-        forceInfo->force = modelRot * glm::fvec3(10.0f, 0.0f, 0.0f);
+        affector->force = modelRot * glm::fvec3(10.0f, 0.0f, 0.0f);
         */
 
         // Main engine force to keep height of 10 m
@@ -374,7 +365,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 
         // Use arrow mesh to display thrust vector
         auto arrowMesh = platform.stateDb.refState< Renderer::Mesh::Info >(m_arrowMeshHandle);
-        arrowMesh->translation = mesh->translation + affector->forcePosition;
+        arrowMesh->translation = mesh->translation + mesh->rotation * affector->forcePosition;
         arrowMesh->rotation = Math::rotateFromTo(
             glm::fvec3(0.0f, 1.0f, 0.0f), -affector->force);
 
@@ -391,55 +382,8 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 
     // Update buoyancy forces
     {
-        for (auto buoyancyAffectorHandle : m_buoyancyAffectorHandles)
-        {
-            updateBuoyancyAffector(platform.stateDb, m_timeInS, buoyancyAffectorHandle);
-        }
+        updateBuoyancyAffectors(platform.stateDb, m_timeInS);
     }
-}
-
-// -------------------------------------------------------------------------------------------------
-void RocketScience::addBuoyancySphere(Platform &platform,
-    const glm::fvec3 &translation, u64 parentRigidBodyHandle)
-{
-    auto parentRigidBody = platform.stateDb.refState<
-            Physics::RigidBody::Info >(parentRigidBodyHandle);
-    auto parentMesh = platform.stateDb.refState<
-            Renderer::Mesh::Info >(parentRigidBody->meshHandle);
-
-    // Create sphere mesh
-    Renderer::Mesh::Info *sphereMesh = nullptr;
-    u64 sphereMeshHandle = platform.stateDb.createObjectAndRefState(&sphereMesh);
-    sphereMesh->translation = /*parentMesh->translation + */translation;
-    sphereMesh->modelAsset = platform.assets.asset("Assets/Sphere.obj");
-    //sphereMesh->flags |= Renderer::Mesh::Flag::HIDDEN;
-
-    // Create sphere rigid body
-    Physics::RigidBody::Info *sphereRigidBody = nullptr;
-    u64 sphereRigidBodyHandle =
-        platform.stateDb.createObjectAndRefState(&sphereRigidBody);
-    sphereRigidBody->meshHandle = sphereMeshHandle;
-    sphereRigidBody->collisionGroup = 0;
-    sphereRigidBody->collisionMask  = 0;
-    sphereRigidBody->mass = 0.1;
-    sphereRigidBody->collisionShapeType =
-        Physics::RigidBody::Info::CollisionShapeType::BOUNDING_SPHERE;
-
-    // Buoyancy affectors
-    Physics::Affector::Info *buoyancyAffector = nullptr;
-    u64 buoyancyAffectorHandle =
-        platform.stateDb.createObjectAndRefState(&buoyancyAffector);
-    buoyancyAffector->rigidBodyHandle = sphereRigidBodyHandle;
-    m_buoyancyAffectorHandles.push_back(buoyancyAffectorHandle);
-
-    // Constrain buoyancy sphere to platform
-    Physics::Constraint::Info *constraint = nullptr;
-    platform.stateDb.createObjectAndRefState(&constraint);
-    constraint->rigidBodyAHandle = parentRigidBodyHandle;
-    constraint->rigidBodyBHandle = sphereRigidBodyHandle;
-    constraint->paramQuatA = glm::fquat(1.0f, 0.0f, 0.0f, 0.0f);
-    constraint->paramQuatB = glm::fquat(1.0f, 0.0f, 0.0f, 0.0f);
-    constraint->paramVecA = sphereMesh->translation;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -455,8 +399,18 @@ float RocketScience::oceanEquation(const glm::fvec2 &position, double timeInS)
 }
 
 // -------------------------------------------------------------------------------------------------
-void RocketScience::updateBuoyancyAffector(
-    StateDb &stateDb, double timeInS, u64 affectorHandle)
+void RocketScience::addBuoyancyAffector(Platform &platform,
+    const glm::fvec3 &translation, u64 parentRigidBodyHandle)
+{
+    Physics::Affector::Info *buoyancyAffector = nullptr;
+    u64 buoyancyAffectorHandle = platform.stateDb.createObjectAndRefState(&buoyancyAffector);
+    buoyancyAffector->rigidBodyHandle = parentRigidBodyHandle;
+    buoyancyAffector->forcePosition = translation;
+    m_buoyancyAffectorHandles.push_back(buoyancyAffectorHandle);
+}
+
+// -------------------------------------------------------------------------------------------------
+void RocketScience::updateBuoyancyAffectors(StateDb &stateDb, double timeInS)
 {
     // TODO(martinmo): Get rid of multi-level indirection by
     // TODO(martinmo): - Storing buoyancy type hint in force info
@@ -465,63 +419,92 @@ void RocketScience::updateBuoyancyAffector(
     // TODO(martinmo): ==> Less efficient in space but more efficent in time
     // TODO(martinmo): ==> Flatten only if time-efficiency really is an issue
 
-    auto affector  = stateDb.refState< Physics::Affector::Info  >(affectorHandle);
-    auto rigidBody = stateDb.refState< Physics::RigidBody::Info >(affector->rigidBodyHandle);
-    auto mesh      = stateDb.refState< Renderer::Mesh::Info     >(rigidBody->meshHandle);
-
-    glm::fvec2 pos2 = mesh->translation.xy();
-    glm::fvec3 oceanPt     (pos2 + glm::fvec2( 0.0f,  0.0f), 0.0f);
-    glm::fvec3 oceanPtLeft (pos2 + glm::fvec2(-1.0f,  0.0f), 0.0f);
-    glm::fvec3 oceanPtRight(pos2 + glm::fvec2(+1.0f,  0.0f), 0.0f);
-    glm::fvec3 oceanPtAbove(pos2 + glm::fvec2( 0.0f, +1.0f), 0.0f);
-    glm::fvec3 oceanPtBelow(pos2 + glm::fvec2( 0.0f, -1.0f), 0.0f);
-
-    oceanPt.z      = oceanEquation(oceanPt.xy(),      m_timeInS);
-    oceanPtLeft.z  = oceanEquation(oceanPtLeft.xy(),  m_timeInS);
-    oceanPtRight.z = oceanEquation(oceanPtRight.xy(), m_timeInS);
-    oceanPtAbove.z = oceanEquation(oceanPtAbove.xy(), m_timeInS);
-    oceanPtBelow.z = oceanEquation(oceanPtBelow.xy(), m_timeInS);
-
-    glm::fvec3 normal = glm::normalize(
-        glm::cross(oceanPtRight - oceanPtLeft, oceanPtAbove - oceanPtBelow));
-
-    double sphereRadius = 0.5;
-    double sphereDepth = double(oceanPt.z - mesh->translation.z) + sphereRadius;
-    double spherePenetrationDepth = glm::clamp(sphereDepth, 0.0, 2.0 * sphereRadius);
-    double spherePenetrationVolume = 0.0;
-    if (spherePenetrationDepth > 0.0)
+    for (auto buoyancyAffectorHandle : m_buoyancyAffectorHandles)
     {
-        spherePenetrationVolume = (1.0 / 3.0) * glm::pi< double >()
-            * glm::pow(spherePenetrationDepth, 2.0)
-            * (3.0 * sphereRadius - spherePenetrationDepth);
+        auto affector  = stateDb.refState< Physics::Affector::Info  >(buoyancyAffectorHandle);
+        auto rigidBody = stateDb.refState< Physics::RigidBody::Info >(affector->rigidBodyHandle);
+
+        // Reset affector
+        affector->enabled = 0;
+        affector->force  = glm::fvec3(0.0f, 0.0f, 0.0f);
+        affector->torque = glm::fvec3(0.0f, 0.0f, 0.0f);
+
+        // Reset RB linear velocity limit
+        rigidBody->linearVelocityLimit.z = 0.0;
     }
-    // Density of water at 22 degrees is 997.7735 kg/m^3
-    // (https://en.wikipedia.org/wiki/Density#Water)
-    double waterDensity = 50.0;
-    double buoyancy = spherePenetrationVolume * waterDensity;
 
-    if (buoyancy > 0.0)
+    for (auto buoyancyAffectorHandle : m_buoyancyAffectorHandles)
     {
-        rigidBody->linearVelocityLimit.z = 0.8f;
+        auto affector  = stateDb.refState< Physics::Affector::Info  >(buoyancyAffectorHandle);
+        auto rigidBody = stateDb.refState< Physics::RigidBody::Info >(affector->rigidBodyHandle);
+        auto mesh      = stateDb.refState< Renderer::Mesh::Info     >(rigidBody->meshHandle);
+
+        glm::fvec3 affectorPosGlobal =
+            mesh->translation + mesh->rotation * affector->forcePosition;
+
+        glm::fvec2 pos2 = affectorPosGlobal.xy();
+        glm::fvec3 oceanPt(pos2 + glm::fvec2(0.0f, 0.0f), 0.0f);
+        oceanPt.z = oceanEquation(oceanPt.xy(), m_timeInS);
+
+        double sphereRadius = 0.5;
+        double sphereDepth = double(oceanPt.z - affectorPosGlobal.z) + sphereRadius;
+        double spherePenetrationDepth = glm::clamp(sphereDepth, 0.0, 2.0 * sphereRadius);
+        double spherePenetrationVolume = 0.0;
+        if (spherePenetrationDepth > 0.0)
+        {
+            spherePenetrationVolume = (1.0 / 3.0) * glm::pi< double >()
+                * glm::pow(spherePenetrationDepth, 2.0)
+                * (3.0 * sphereRadius - spherePenetrationDepth);
+        }
+
+        if (spherePenetrationVolume <= 0.0)
+        {
+            continue;
+        }
+
+        glm::fvec3 oceanPtLeft (pos2 + glm::fvec2(-1.0f,  0.0f), 0.0f);
+        oceanPtLeft.z  = oceanEquation(oceanPtLeft.xy(),  m_timeInS);
+        glm::fvec3 oceanPtRight(pos2 + glm::fvec2(+1.0f,  0.0f), 0.0f);
+        oceanPtRight.z = oceanEquation(oceanPtRight.xy(), m_timeInS);
+        glm::fvec3 oceanPtAbove(pos2 + glm::fvec2( 0.0f, +1.0f), 0.0f);
+        oceanPtAbove.z = oceanEquation(oceanPtAbove.xy(), m_timeInS);
+        glm::fvec3 oceanPtBelow(pos2 + glm::fvec2( 0.0f, -1.0f), 0.0f);
+        oceanPtBelow.z = oceanEquation(oceanPtBelow.xy(), m_timeInS);
+
+        glm::fvec3 normal = glm::normalize(
+            glm::cross(oceanPtRight - oceanPtLeft, oceanPtAbove - oceanPtBelow));
 
         // Force from buoyancy
-        affector->force = normal * float(buoyancy);
-        // Force from friction between moving sphere and water
-        affector->force += -8.0f * glm::fvec3(rigidBody->linearVelocity.xy(), 0.0f);
-        // Force from friction between spinning sphere and water
-        glm::fvec3 avFriction = rigidBody->angularVelocity;
-        avFriction.z = 0.0f;
-        std::swap(avFriction.x, avFriction.y);
-        avFriction.y = -avFriction.y;
-        affector->force += 0.5f * avFriction;
-        // Torque from friction between spinning sphere and water
-        affector->torque = -0.03f * rigidBody->angularVelocity;
+        {
+            // FIXME: Hard-coded factor should be derived from density of water
+            affector->force += normal * float(spherePenetrationVolume * 50.0);
+            affector->enabled = 1;
+        }
+        // Force from friction between moving RB and water
+        {
+            glm::fvec3 velocityAtAffector = rigidBody->linearVelocity
+                + glm::cross(rigidBody->angularVelocity,
+                    mesh->rotation * affector->forcePosition);
+            affector->force += -5.0f * velocityAtAffector;
+        }
+        // Torque from friction between spinning RB and water
+        {
+            affector->torque += -0.05f * rigidBody->angularVelocity;
+        }
 
-        affector->enabled = 1;
-    }
-    else
-    {
-        rigidBody->linearVelocityLimit.z = 0.0f;
-        affector->enabled = 0;
+        /*
+        // Force from friction between spinning RB and water
+        {
+            glm::fvec3 avFriction = rigidBody->angularVelocity;
+            avFriction.z = 0.0f;
+            std::swap(avFriction.x, avFriction.y);
+            avFriction.y = -avFriction.y;
+            affector->force += 0.5f * avFriction;
+        }
+        */
+
+        // FIXME(martinmo): Find better way of simulating effects of water-surface penetration
+        // FIXME(martinmo): than the current hack using linear velocity limits (impulse-based?)
+        rigidBody->linearVelocityLimit.z = 0.8f;
     }
 }

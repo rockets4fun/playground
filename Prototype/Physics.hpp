@@ -90,9 +90,11 @@ struct Physics : ModuleIf
             u64 rigidBodyHandle = 0;
             u32 enabled = 0;
 
+            // in global coordinate frame
             glm::fvec3 force;
+            // in affected RBs local coordinate frame
             glm::fvec3 forcePosition;
-
+            // in affected RBs local coordinate frame
             glm::fvec3 torque;
         };
     };

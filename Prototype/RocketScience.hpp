@@ -49,11 +49,11 @@ private:
 
     double m_timeInS = 0.0;
 
-    void addBuoyancySphere(Platform &platform,
-        const glm::fvec3 &translation, u64 parentRigidBody);
-
     float oceanEquation(const glm::fvec2 &position, double timeInS);
-    void updateBuoyancyAffector(StateDb &stateDb, double timeInS, u64 affectorHandle);
+
+    void addBuoyancyAffector(Platform &platform,
+        const glm::fvec3 &translation, u64 parentRigidBody);
+    void updateBuoyancyAffectors(StateDb &stateDb, double timeInS);
 
 private:
     COMMON_DISABLE_COPY(RocketScience);
