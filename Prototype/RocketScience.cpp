@@ -11,8 +11,10 @@
 
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/random.hpp>
+#include <glm/gtc/noise.hpp>
 
 #include "Math.hpp"
+#include "Logging.hpp"
 
 #include "Platform.hpp"
 #include "StateDb.hpp"
@@ -180,8 +182,8 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
                     glm::fvec3 normal(0.0f, 0.0f, 1.0f);
                     for (int vIdx = 0; vIdx < 6; ++vIdx) model->normals.push_back(normal);
                     // Triangle colors
-                    float value = glm::linearRand(0.5f, 1.0f);
-                    glm::fvec3 color(value, value, value);
+                    float rand = glm::linearRand(0.0, +0.2);
+                    glm::fvec3 color(0.4f + rand, 0.4f + rand, 0.4f + rand);
                     for (int vIdx = 0; vIdx < 6; ++vIdx) model->colors.push_back(color);
                 }
             }
@@ -200,22 +202,24 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
                 }
             }
         }
-        // Update positions according to ocean equation
-        for (glm::fvec3 &position : model->positions)
+
+        // Update positions and normals according to ocean equation
+        vertexCount = int(model->positions.size());
+        for (int vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
         {
-            // Update Z and normal depending on X and Y
-            position.z = oceanEquation(position.xy(), m_timeInS);
-        }
-        // Update normals and colors according to ocean equation
-        const int triCount = int(model->normals.size()) / 3;
-        for (int triIdx = 0; triIdx < triCount; ++triIdx)
-        {
-            glm::fvec3 normal = glm::normalize(glm::cross(
-                model->positions[triIdx * 3 + 1] - model->positions[triIdx * 3 + 0],
-                model->positions[triIdx * 3 + 2] - model->positions[triIdx * 3 + 0]));
-            model->normals[triIdx * 3 + 0] = normal;
-            model->normals[triIdx * 3 + 1] = normal;
-            model->normals[triIdx * 3 + 2] = normal;
+            glm::fvec3 &position = model->positions[vertexIdx];
+            glm::fvec2 pos2 = position.xy();
+            position.z = oceanEquation(pos2, m_timeInS);
+            glm::fvec3 oceanPtLeft (pos2 + glm::fvec2(-1.0f,  0.0f), 0.0f);
+            oceanPtLeft.z  = oceanEquation(oceanPtLeft.xy(),  m_timeInS);
+            glm::fvec3 oceanPtRight(pos2 + glm::fvec2(+1.0f,  0.0f), 0.0f);
+            oceanPtRight.z = oceanEquation(oceanPtRight.xy(), m_timeInS);
+            glm::fvec3 oceanPtAbove(pos2 + glm::fvec2( 0.0f, +1.0f), 0.0f);
+            oceanPtAbove.z = oceanEquation(oceanPtAbove.xy(), m_timeInS);
+            glm::fvec3 oceanPtBelow(pos2 + glm::fvec2( 0.0f, -1.0f), 0.0f);
+            oceanPtBelow.z = oceanEquation(oceanPtBelow.xy(), m_timeInS);
+            model->normals[vertexIdx] = glm::normalize(
+                glm::cross(oceanPtRight - oceanPtLeft, oceanPtAbove - oceanPtBelow));
         }
     }
 
@@ -309,10 +313,9 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         }
         else
         {
-            addBuoyancyAffector(platform, glm::fvec3(-0.5, -0.5, 0.0), rigidBodyHandle);
-            addBuoyancyAffector(platform, glm::fvec3(+0.5, -0.5, 0.0), rigidBodyHandle);
-            addBuoyancyAffector(platform, glm::fvec3(+0.5, +0.5, 0.0), rigidBodyHandle);
-            addBuoyancyAffector(platform, glm::fvec3(-0.5, +0.5, 0.0), rigidBodyHandle);
+            addBuoyancyAffector(platform, glm::fvec3(+0.5, -0.5, +0.0), rigidBodyHandle);
+            addBuoyancyAffector(platform, glm::fvec3(+0.5, +0.5, +0.0), rigidBodyHandle);
+            addBuoyancyAffector(platform, glm::fvec3(-0.5, +0.0, +0.0), rigidBodyHandle);
         }
     }
 
@@ -483,7 +486,8 @@ void RocketScience::updateBuoyancyAffectors(StateDb &stateDb, double timeInS)
             glm::fvec3 velocityAtAffector = rigidBody->linearVelocity
                 + glm::cross(rigidBody->angularVelocity,
                     mesh->rotation * affector->forcePosition);
-            affector->force += -5.0f * velocityAtAffector;
+            affector->force += -8.0f * glm::fvec3(velocityAtAffector.xy(), 0.0);
+            affector->force += -4.0f * glm::fvec3(0.0, 0.0, velocityAtAffector.z);
         }
         // Torque from friction between spinning RB and water
         {

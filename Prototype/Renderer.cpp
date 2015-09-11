@@ -82,8 +82,10 @@ struct Renderer::PrivateState
     GLuint defFs = 0;
     GLuint defProg = 0;
 
+    GLint defProgUniformModelWorldMatrix;
     GLint defProgUniformModelViewMatrix;
     GLint defProgUniformProjectionMatrix;
+    GLint defProgUniformDebugNormals;
 
     GLint defProgAttribPosition;
     GLint defProgAttribNormal;
@@ -288,33 +290,50 @@ bool Renderer::initialize(Platform &platform)
     std::string defVsSrc =
         "#version 150\n"
         "\n"
+        "uniform mat4 ModelWorldMatrix;\n"
         "uniform mat4 ModelViewMatrix;\n"
         "uniform mat4 ProjectionMatrix;\n"
+        "\n"
+        "uniform vec4 DebugNormals;\n"
         "\n"
         "in vec3 Position;\n"
         "in vec3 Normal;\n"
         "in vec3 Color;\n"
         "\n"
-        "out vec4 vertexColor;\n"
+        "out vec3 vertexNormalWorld;\n"
+        "out vec3 vertexColor;\n"
+        "\n"
+        "out float debugNormals;\n"
         "\n"
         "void main()\n"
         "{\n"
-        "   vertexColor = vec4(abs(Normal) * Color, 1.0);\n"
-        "   gl_Position = ProjectionMatrix * ModelViewMatrix * vec4(Position.xyz, 1.0);\n"
+        "    debugNormals = DebugNormals.x;\n"
+        "    vertexNormalWorld = normalize((ModelWorldMatrix * vec4(Normal, 0.0)).xyz);\n"
+        "    if (DebugNormals.x > 0.5)\n"
+        "        vertexColor = abs(Normal) * Color;\n"
+        "    else\n"
+        "        vertexColor = Color;\n"
+        "    gl_Position = ProjectionMatrix * ModelViewMatrix * vec4(Position, 1.0);\n"
         "}\n";
     helpers->createAndCompileShader(state->defVs, GL_VERTEX_SHADER, defVsSrc);
 
     std::string defFsSrc =
         "#version 150\n"
         "\n"
-        "in vec4 vertexColor;\n"
+        "in float debugNormals;\n"
+        "in vec3 vertexNormalWorld;\n"
+        "in vec3 vertexColor;\n"
         "\n"
         "out vec4 fragmentColor;\n"
         "\n"
         "void main()\n"
         "{\n"
-        "    float scale = 1;//gl_FrontFacing ? 1.0 : 0.5;\n"
-        "    fragmentColor = vec4(vertexColor.rgb * scale, 1.0);\n"
+        "    vec3 lightDir = normalize(vec3(0.0, -1.0, -1.0));\n"
+        "    float lambert = max(0.0, dot(vertexNormalWorld, -lightDir));\n"
+        "    if (debugNormals > 0.5)\n"
+        "        fragmentColor = vec4(vertexColor, 1.0);\n"
+        "    else\n"
+        "        fragmentColor = vec4(vertexColor * max(0.2, lambert), 1.0);\n"
         "}\n";
     helpers->createAndCompileShader(state->defFs, GL_FRAGMENT_SHADER, defFsSrc);
 
@@ -322,10 +341,14 @@ bool Renderer::initialize(Platform &platform)
 
     // TODO(martinmo): Use Uniform Buffer Objects to pass uniforms to shaders
 
+    state->defProgUniformModelWorldMatrix =
+        funcs->glGetUniformLocation(state->defProg, "ModelWorldMatrix");
     state->defProgUniformModelViewMatrix =
         funcs->glGetUniformLocation(state->defProg, "ModelViewMatrix");
     state->defProgUniformProjectionMatrix =
         funcs->glGetUniformLocation(state->defProg, "ProjectionMatrix");
+    state->defProgUniformDebugNormals =
+        funcs->glGetUniformLocation(state->defProg, "DebugNormals");
 
     // TODO(martinmo): Use 'glBindAttribLocation()' before linking the program to force
     // TODO(martinmo): assignment of attributes to specific fixed locations
@@ -434,16 +457,19 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
 
     funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    float aspect = 16.0f / 9.0f;
-    glm::fmat4 projection = glm::perspective(glm::radians(30.0f * aspect), aspect, 0.1f, 200.0f);
-    funcs->glUniformMatrix4fv(
-        state->defProgUniformProjectionMatrix, 1, GL_FALSE, glm::value_ptr(projection));
+    funcs->glUniform4fv(state->defProgUniformDebugNormals,
+                1, glm::value_ptr(glm::fvec4(0.0, 0.0, 0.0, 0.0)));
 
-    glm::fmat4 view;
+    float aspect = 16.0f / 9.0f;
+    glm::fmat4 projection = glm::perspective(glm::radians(30.0f * aspect), aspect, 0.5f, 100.0f);
+    funcs->glUniformMatrix4fv(state->defProgUniformProjectionMatrix,
+                1, GL_FALSE, glm::value_ptr(projection));
+
+    glm::fmat4 worldToView;
     if (activeCameraHandle)
     {
         auto camera = platform.stateDb.refState< Camera::Info >(activeCameraHandle);
-        view = glm::lookAt(camera->position.xyz(),
+        worldToView = glm::lookAt(camera->position.xyz(),
             camera->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
     }
 
@@ -552,12 +578,15 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
             funcs->glEnableVertexAttribArray(state->defProgAttribColor);
         }
 
-        glm::fmat4 worldToModel;
-        worldToModel = glm::translate(glm::fmat4(), mesh->translation);
-        worldToModel = worldToModel * glm::mat4_cast(mesh->rotation);
-        glm::fmat4 modelView = view * worldToModel;
+        glm::fmat4 modelToWorld;
+        modelToWorld = glm::translate(glm::fmat4(), mesh->translation);
+        modelToWorld = modelToWorld * glm::mat4_cast(mesh->rotation);
         funcs->glUniformMatrix4fv(
-            state->defProgUniformModelViewMatrix, 1, GL_FALSE, glm::value_ptr(modelView));
+            state->defProgUniformModelWorldMatrix, 1, GL_FALSE, glm::value_ptr(modelToWorld));
+
+        glm::fmat4 modelToView = worldToView * modelToWorld;
+        funcs->glUniformMatrix4fv(
+            state->defProgUniformModelViewMatrix, 1, GL_FALSE, glm::value_ptr(modelToView));
 
         funcs->glDrawArrays(GL_TRIANGLES, 0, privateMesh->vertexCount);
     }
