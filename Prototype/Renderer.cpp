@@ -141,6 +141,7 @@ u64 Renderer::Mesh::Info::STATE = 0;
 struct Renderer::Mesh::PrivateInfo
 {
     static u64 STATE;
+    // Store 1:n relation between mesh data from model ('PrivateMesh') and mesh instance
     PrivateMesh *privateMesh = nullptr;
 };
 u64 Renderer::Mesh::PrivateInfo::STATE = 0;
@@ -214,7 +215,8 @@ bool Renderer::PrivateHelpers::createAndLinkSimpleProgram(
 }
 
 // -------------------------------------------------------------------------------------------------
-void Renderer::PrivateHelpers::printInfoLog(GLuint object, GetProc getProc, InfoLogProc infoLogProc)
+void Renderer::PrivateHelpers::printInfoLog(
+        GLuint object, GetProc getProc, InfoLogProc infoLogProc)
 {
     // TODO(martinmo): Refactor into 'getInfoLog' and separate print
     GLint infoLogLength = 0;
@@ -458,7 +460,7 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     funcs->glUniform4fv(state->defProgUniformDebugNormals,
-                1, glm::value_ptr(glm::fvec4(0.0, 0.0, 0.0, 0.0)));
+        1, glm::value_ptr(glm::fvec4(debugNormals ? 1.0f : 0.0f, 0.0, 0.0, 0.0)));
 
     float aspect = 16.0f / 9.0f;
     glm::fmat4 projection = glm::perspective(glm::radians(30.0f * aspect), aspect, 0.5f, 100.0f);
@@ -497,27 +499,26 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     meshPrivate = meshPrivateBegin;
     for (auto mesh = meshBegin; mesh != meshEnd; ++mesh, ++meshPrivate)
     {
-        // FIXME(martinmo): We need to re-introduce GL state map for storing per-model state
-        PrivateMesh *privateMesh = meshPrivate->privateMesh;
         if (mesh->flags & MeshFlag::HIDDEN)
         {
             continue;
         }
+        PrivateMesh *privateMesh = meshPrivate->privateMesh;
         if (!privateMesh->positionsVbo)
         {
             // TODO(martinmo): Add way of getting asset and flags in one call/lookup
             privateMesh->model = platform.assets.refModel(mesh->modelAsset);
-            int dynamic = platform.assets.assetFlags(mesh->modelAsset) & Assets::Flag::DYNAMIC;
             COMMON_ASSERT(privateMesh->model);
 
             GLenum usage = GL_STATIC_DRAW;
-            if (dynamic)
+            if (platform.assets.assetFlags(mesh->modelAsset) & Assets::Flag::DYNAMIC)
             {
                 privateMesh->flags |= PrivateMesh::Flag::DYNAMIC;
                 usage = GL_DYNAMIC_DRAW;
             }
 
             privateMesh->vertexCount = GLsizei(privateMesh->model->positions.size());
+
             funcs->glGenBuffers(1, &privateMesh->positionsVbo);
             funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->positionsVbo);
             funcs->glBufferData(GL_ARRAY_BUFFER,
@@ -550,7 +551,6 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
                 privateMesh->vertexCount * sizeof(glm::fvec3),
                 &privateMesh->model->normals[0].x);
 
-            // FIXME(martinmo): Should we really update colors?
             funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->colorsVbo);
             funcs->glBufferSubData(GL_ARRAY_BUFFER, 0,
                 privateMesh->vertexCount * sizeof(glm::fvec3),

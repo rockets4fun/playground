@@ -182,7 +182,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
                     glm::fvec3 normal(0.0f, 0.0f, 1.0f);
                     for (int vIdx = 0; vIdx < 6; ++vIdx) model->normals.push_back(normal);
                     // Triangle colors
-                    float rand = glm::linearRand(0.0, +0.2);
+                    float rand = glm::linearRand(0.0, +0.3);
                     glm::fvec3 color(0.4f + rand, 0.4f + rand, 0.4f + rand);
                     for (int vIdx = 0; vIdx < 6; ++vIdx) model->colors.push_back(color);
                 }
@@ -225,6 +225,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 
     // FIXME(martinmo): Add keyboard input to platform abstraction (remove dependency to SDL)
     const Uint8 *state = SDL_GetKeyboardState(NULL);
+    platform.renderer.debugNormals = state[SDL_SCANCODE_N];
 
     // Update camera
     {
@@ -290,21 +291,16 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         {
             rigidBodyInfo->collisionShapeType = Physics::CollisionShapeType::CONVEX_HULL_COMPOUND;
             rigidBodyInfo->mass = 5.0f;
-            /*
             // Create Pusher rocket motor force
             {
                 Physics::Affector::Info *affector = nullptr;
                 m_pusherAffectorHandle = platform.stateDb.createObjectAndRefState(&affector);
                 affector->rigidBodyHandle = rigidBodyHandle;
                 affector->enabled = 1;
-                // Top wing position
-                //affector->forcePosition = glm::fvec3(0.00f, -2.64, 2.75f);
-                // Head position
-                //affector->forcePosition = glm::fvec3(0.00f,  3.61, 0.00f);
-                // Tail/main engine position
-                affector->forcePosition = glm::fvec3(0.00f, -2.14, 0.00f);
+                //affector->forcePosition = glm::fvec3(0.00f, -2.64, 2.75f);   // Top wing
+                //affector->forcePosition = glm::fvec3(0.00f,  3.61, 0.00f);   // Head
+                affector->forcePosition = glm::fvec3(0.00f, -2.14, 0.00f);   // Main engine
             }
-            */
         }
         else if (mesh->modelAsset == platform.assets.asset("Assets/Sphere.obj"))
         {

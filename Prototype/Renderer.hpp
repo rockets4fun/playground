@@ -64,6 +64,7 @@ struct Renderer : public ModuleIf
     };
 
     u64 activeCameraHandle = 0;
+    bool debugNormals = false;
 
     Renderer();
     virtual ~Renderer();
