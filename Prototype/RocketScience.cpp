@@ -182,7 +182,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
                     glm::fvec3 normal(0.0f, 0.0f, 1.0f);
                     for (int vIdx = 0; vIdx < 6; ++vIdx) model->normals.push_back(normal);
                     // Triangle colors
-                    float rand = glm::linearRand(0.0, +0.3);
+                    float rand = glm::linearRand(0.0f, +0.3f);
                     glm::fvec3 color(0.4f + rand, 0.4f + rand, 0.4f + rand);
                     for (int vIdx = 0; vIdx < 6; ++vIdx) model->colors.push_back(color);
                 }
@@ -336,7 +336,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         float mainEngineForce = 0.0f;
         if (mesh->translation.z < 10.0)
         {
-            mainEngineForce = 10.0 * rigidBody->mass;
+            mainEngineForce = 10.0f * rigidBody->mass;
         }
         else
         {
