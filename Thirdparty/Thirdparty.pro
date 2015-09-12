@@ -35,8 +35,8 @@ message(CMAKEFULL(assimp)=$${CMAKEFULL})
 system($${CMAKEFULL} -DCMAKE_BUILD_TYPE=Debug)
 system(cd assimp && $${MAKECMD})
 
-#system($${CMAKEFULL} -DCMAKE_BUILD_TYPE=Release)
-#system(cd assimp && $${MAKECMD})
+system($${CMAKEFULL} -DCMAKE_BUILD_TYPE=Release)
+system(cd assimp && $${MAKECMD})
 
 # =====  Bullet Physics Library = http://bulletphysics.org  =======================================
 
@@ -59,5 +59,5 @@ message(CMAKEFULL(bullet)=$${CMAKEFULL})
 system($${CMAKEFULL} -DCMAKE_BUILD_TYPE=Debug)
 system(cd bullet && $${MAKECMD})
 
-#system($${CMAKEFULL} -DCMAKE_BUILD_TYPE=Release)
-#system(cd bullet && $${MAKECMD})
+system($${CMAKEFULL} -DCMAKE_BUILD_TYPE=Release)
+system(cd bullet && $${MAKECMD})
