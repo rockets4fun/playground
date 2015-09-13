@@ -109,10 +109,13 @@ struct Renderer::PrivateMesh
     };
 
     Assets::Model *model = nullptr;
+
     GLuint positionsVbo = 0;
     GLuint normalsVbo = 0;
     GLuint colorsVbo = 0;
-    GLsizei vertexCount = 0;
+    GLenum usage = GL_STATIC_DRAW;
+
+    int vertexCount = 0;
     u32 flags = 0;
 };
 
@@ -128,7 +131,11 @@ struct Renderer::PrivateHelpers
 
     bool createAndCompileShader(GLuint &shader, GLenum type, const std::string &source);
     bool createAndLinkSimpleProgram(GLuint &program, GLuint vertexShader, GLuint fragmentShader);
+
     void printInfoLog(GLuint object, GetProc getProc, InfoLogProc infoLogProc);
+
+    void updateVertexBufferData(GLuint vbo,
+            const std::vector< glm::fvec3 > &data, GLenum usage, int prevVertexCount = 0);
 
 private:
     PrivateFuncs *funcs = nullptr;
@@ -228,6 +235,22 @@ void Renderer::PrivateHelpers::printInfoLog(
         Logging::debug("----------------------------------------");
         Logging::debug("%s", infoLog.c_str());
         Logging::debug("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+void Renderer::PrivateHelpers::updateVertexBufferData(GLuint vbo,
+        const std::vector< glm::fvec3 > &data, GLenum usage, int prevVertexCount)
+{
+    int vertexCount = data.size();
+    funcs->glBindBuffer(GL_ARRAY_BUFFER, vbo);
+    if (vertexCount != prevVertexCount)
+    {
+        funcs->glBufferData(GL_ARRAY_BUFFER, vertexCount * sizeof(glm::fvec3), &data[0].x, usage);
+    }
+    else
+    {
+        funcs->glBufferSubData(GL_ARRAY_BUFFER, 0, vertexCount * sizeof(glm::fvec3), &data[0].x);
     }
 }
 
@@ -503,59 +526,33 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
         {
             continue;
         }
+
         PrivateMesh *privateMesh = meshPrivate->privateMesh;
-        if (!privateMesh->positionsVbo)
+        if (!privateMesh->model)
         {
             // TODO(martinmo): Add way of getting asset and flags in one call/lookup
             privateMesh->model = platform.assets.refModel(mesh->modelAsset);
             COMMON_ASSERT(privateMesh->model);
-
-            GLenum usage = GL_STATIC_DRAW;
             if (platform.assets.assetFlags(mesh->modelAsset) & Assets::Flag::DYNAMIC)
             {
                 privateMesh->flags |= PrivateMesh::Flag::DYNAMIC;
-                usage = GL_DYNAMIC_DRAW;
+                privateMesh->usage = GL_DYNAMIC_DRAW;
             }
-
-            privateMesh->vertexCount = GLsizei(privateMesh->model->positions.size());
-
             funcs->glGenBuffers(1, &privateMesh->positionsVbo);
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->positionsVbo);
-            funcs->glBufferData(GL_ARRAY_BUFFER,
-                privateMesh->vertexCount * sizeof(glm::fvec3),
-                &privateMesh->model->positions[0].x, usage);
-
             funcs->glGenBuffers(1, &privateMesh->normalsVbo);
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->normalsVbo);
-            funcs->glBufferData(GL_ARRAY_BUFFER,
-                privateMesh->vertexCount * sizeof(glm::fvec3),
-                &privateMesh->model->normals[0].x, usage);
-
             funcs->glGenBuffers(1, &privateMesh->colorsVbo);
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->colorsVbo);
-            funcs->glBufferData(GL_ARRAY_BUFFER,
-                privateMesh->vertexCount * sizeof(glm::fvec3),
-                &privateMesh->model->colors[0].r, usage);
-
-            privateMesh->flags &= ~PrivateMesh::Flag::DIRTY;
+            privateMesh->flags |= PrivateMesh::Flag::DIRTY;
         }
-        else if (privateMesh->flags & PrivateMesh::Flag::DIRTY)
+
+        if (privateMesh->flags & PrivateMesh::Flag::DIRTY)
         {
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->positionsVbo);
-            funcs->glBufferSubData(GL_ARRAY_BUFFER, 0,
-                privateMesh->vertexCount * sizeof(glm::fvec3),
-                &privateMesh->model->positions[0].x);
-
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->normalsVbo);
-            funcs->glBufferSubData(GL_ARRAY_BUFFER, 0,
-                privateMesh->vertexCount * sizeof(glm::fvec3),
-                &privateMesh->model->normals[0].x);
-
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->colorsVbo);
-            funcs->glBufferSubData(GL_ARRAY_BUFFER, 0,
-                privateMesh->vertexCount * sizeof(glm::fvec3),
-                &privateMesh->model->colors[0].r);
-
+            helpers->updateVertexBufferData(privateMesh->positionsVbo,
+                privateMesh->model->positions, privateMesh->usage, privateMesh->vertexCount);
+            helpers->updateVertexBufferData(privateMesh->normalsVbo,
+                privateMesh->model->normals, privateMesh->usage, privateMesh->vertexCount);
+            helpers->updateVertexBufferData(privateMesh->colorsVbo,
+                privateMesh->model->colors, privateMesh->usage, privateMesh->vertexCount);
+            privateMesh->vertexCount = privateMesh->model->positions.size();
             privateMesh->flags &= ~PrivateMesh::Flag::DIRTY;
         }
 
