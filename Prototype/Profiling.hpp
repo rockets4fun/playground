@@ -18,36 +18,49 @@
 /// @brief Profiling module
 struct Profiling
 {
+    struct Section;
+
+    struct SectionSample
+    {
+        u64 ticksEnter = 0;
+        u64 ticksExit = 0;
+        const Section *section = nullptr;
+        u32 callDepth = 0;
+    };
+
+    struct Thread
+    {
+        u64 id = 0;
+        std::string name = "unknown";
+        u32 callDepth = 0;
+        std::vector< SectionSample > samples;
+    };
+
+public:
     Profiling();
     virtual ~Profiling();
 
     static Profiling *instance();
 
-public:
-    struct Section;
-    struct SectionSample
-    {
-        u64 timeInUs;
-        u64 ticksEnter = 0;
-        u64 ticksExit = 0;
-        const Section *section;
-        u32 callDepth = 0;
-    };
+    Thread *mainThreadPrevFrame();
+    void frameReset();
 
-    struct Thread;
+    double ticksToMs(u64 ticks) const;
+
+public:
     struct Section
     {
         Section(const std::string &name, const glm::fvec3 &color);
+
+        std::string name = "unknown";
+        glm::fvec3 color;
 
         void enter();
         void exit();
 
     private:
-        Profiling *m_profiling = nullptr;
         Thread *m_thread = nullptr;
-        std::string m_name = "unknown";
-        glm::fvec3 m_color;
-
+        Profiling *m_profiling = nullptr;
         std::vector< SectionSample > m_frames;
     };
 
@@ -62,22 +75,15 @@ public:
         Section &m_section;
     };
 
-    struct Thread
-    {
-        u64 id = 0;
-        std::string name = "unknown";
-        u32 callDepth = 0;
-        std::vector< SectionSample > samples;
-    };
-
 private:
     std::map< u64, Thread > m_threads;
+    std::map< u64, Thread > m_threadsPrevFrame;
 
-    double m_ticksPerUs = 0;
-    u64 m_ticksAtStartup = 0;
+    u64 m_ticksPerS = 0;
+    double m_ticksPerMs = 0.0;
+    u64 m_ticksFrameStart = 0;
 
-    u64 ticksSinceStartup() const;
-    u64 ticksDiffToTimeInUs(u64 ticksA, u64 ticksB) const;
+    u64 ticksSinceFrameStart() const;
 
 private:
     COMMON_DISABLE_COPY(Profiling);

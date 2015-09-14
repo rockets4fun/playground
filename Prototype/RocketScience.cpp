@@ -51,6 +51,23 @@ void RocketScience::registerTypesAndStates(StateDb &stateDb)
 }
 
 // -------------------------------------------------------------------------------------------------
+void pushRect2d(Assets::Model *model,
+        const glm::fvec2 &ll, const glm::fvec2 &ur, const glm::fvec3 &color, float z = 0.0f)
+{
+    // World coordinate system: +X=E, +Y=N and +Z=up (front facing is CCW towards negative axis)
+    // Lower left triangle
+    model->positions.push_back(glm::fvec3(ll.x, ll.y, z)); model->colors.push_back(color);
+    model->positions.push_back(glm::fvec3(ur.x, ur.y, z)); model->colors.push_back(color);
+    model->positions.push_back(glm::fvec3(ll.x, ur.y, z)); model->colors.push_back(color);
+    // Upper right triangle
+    model->positions.push_back(glm::fvec3(ur.x, ur.y, z)); model->colors.push_back(color);
+    model->positions.push_back(glm::fvec3(ll.x, ll.y, z)); model->colors.push_back(color);
+    model->positions.push_back(glm::fvec3(ur.x, ll.y, z)); model->colors.push_back(color);
+    // Normals...
+    for (int nIdx = 0; nIdx < 6; ++nIdx) model->normals.push_back(glm::fvec3(0.0f, 0.0f, 1.0f));
+}
+
+// -------------------------------------------------------------------------------------------------
 bool RocketScience::initialize(Platform &platform)
 {
     Renderer::Camera::Info *camera = nullptr;
@@ -60,16 +77,22 @@ bool RocketScience::initialize(Platform &platform)
 
     platform.renderer.activeCameraHandle = m_cameraHandle;
 
+    m_oceanModelAsset = platform.assets.asset(
+        "procedural/ocean", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
+    m_uiModelAsset = platform.assets.asset(
+        "procedural/ui", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
+
     {
         Renderer::Mesh::Info *mesh = nullptr;
         m_arrowMeshHandle = platform.stateDb.createObjectAndRefState(&mesh);
         mesh->modelAsset = platform.assets.asset("Assets/Arrow.obj");
     }
-
-    m_oceanModelAsset = platform.assets.asset(
-        "procedural/ocean", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
-    m_uiModelAsset = platform.assets.asset(
-        "procedural/ui", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
+    {
+        Renderer::Mesh::Info *mesh = nullptr;
+        m_uiMeshHandle = platform.stateDb.createObjectAndRefState(&mesh);
+        mesh->modelAsset = m_uiModelAsset;
+        mesh->rotation = glm::angleAxis(glm::radians(90.0f), glm::fvec3(1.0f, 0.0f, 0.0f));
+    }
 
     // Create floating platform
     {
@@ -130,9 +153,8 @@ bool RocketScience::initialize(Platform &platform)
             mesh->modelAsset = platform.assets.asset("Assets/Torus.obj");
         }
 
-        m_meshHandles.push_back(meshHandle);
+        m_sleepingMeshHandles.push_back(meshHandle);
     }
-
     return true;
 }
 
@@ -140,18 +162,6 @@ bool RocketScience::initialize(Platform &platform)
 void RocketScience::shutdown(Platform &platform)
 {
     platform.stateDb.destroyObject(m_arrowMeshHandle);
-    for (auto meshHandle : m_oceanMeshHandles)
-    {
-        platform.stateDb.destroyObject(meshHandle);
-    }
-    for (auto rigidBodyIter : m_rigidBodyByMeshHandle)
-    {
-        platform.stateDb.destroyObject(rigidBodyIter.second);
-    }
-    for (auto meshHandle : m_meshHandles)
-    {
-        platform.stateDb.destroyObject(meshHandle);
-    }
     platform.stateDb.destroyObject(m_cameraHandle);
 }
 
@@ -170,7 +180,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 //#ifdef COMMON_WINDOWS
 //        BROFILER_CATEGORY("UpdateOcean", Profiler::Color::Gray)
 //#endif
-        PROFILING_SECTION(UpdateOcean, glm::fvec3(0.5f, 0.5f, 0.5f))
+        PROFILING_SECTION(UpdateOcean, glm::fvec3(0.0f, 1.0f, 1.0f))
 
         glm::fvec2 unitSize = OCEAN_TILE_UNIT_SIZE;
         int vertexCount = OCEAN_TILE_VERTEX_COUNT;
@@ -215,7 +225,6 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
                     mesh->modelAsset = m_oceanModelAsset;
                     mesh->translation = glm::fvec3(glm::fvec2(float(x), float(y))
                         * unitSize - 0.5f * float(tileCount) * unitSize, 0.0f);
-                    m_oceanMeshHandles.push_back(oceanMeshHandle);
                 }
             }
         }
@@ -289,9 +298,10 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
     }
 
     // Turn meshes into rigid bodies
-    if (state[SDL_SCANCODE_P] && m_rigidBodyByMeshHandle.size() < m_meshHandles.size())
+    if (state[SDL_SCANCODE_P] && !m_sleepingMeshHandles.empty())
     {
-        u64 meshHandle = m_meshHandles[m_rigidBodyByMeshHandle.size()];
+        u64 meshHandle = m_sleepingMeshHandles.front();
+        m_sleepingMeshHandles.pop_front();
 
         Physics::RigidBody::Info *rigidBodyInfo = nullptr;
         u64 rigidBodyHandle = platform.stateDb.createObjectAndRefState(&rigidBodyInfo);
@@ -299,8 +309,6 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         rigidBodyInfo->meshHandle = meshHandle;
         rigidBodyInfo->collisionGroup = 1;
         rigidBodyInfo->collisionMask  = 1;
-
-        m_rigidBodyByMeshHandle[meshHandle] = rigidBodyHandle;
 
         auto mesh = platform.stateDb.refState< Renderer::Mesh::Info >(meshHandle);
 
@@ -399,9 +407,28 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 //#ifdef COMMON_WINDOWS
 //        BROFILER_CATEGORY("UpdateBuoyancy", Profiler::Color::Gray)
 //#endif
-        PROFILING_SECTION(UpdateBuoyancy, glm::fvec3(0.5f, 0.5f, 0.5f))
+//        PROFILING_SECTION(UpdateBuoyancy, glm::fvec3(0.5f, 0.5f, 0.5f))
 
         updateBuoyancyAffectors(platform.stateDb, m_timeInS);
+    }
+
+    // Update profiling UI
+    {
+        auto uiMesh = platform.stateDb.refState< Renderer::Mesh::Info >(m_uiMeshHandle);
+        auto uiModel = platform.assets.refModel(uiMesh->modelAsset);
+        uiModel->positions.clear(); uiModel->normals.clear(); uiModel->colors.clear();
+
+        Profiling *profiling = Profiling::instance();
+        Profiling::Thread *mainThread = profiling->mainThreadPrevFrame();
+        for (Profiling::SectionSample &sample : mainThread->samples)
+        {
+            float enterMs = 2.0f * profiling->ticksToMs(sample.ticksEnter);
+            float exitMs  = 2.0f * profiling->ticksToMs(sample.ticksExit);
+            float bottom  = sample.callDepth * 2.0f;
+            pushRect2d(uiModel,
+               glm::fvec2(enterMs, bottom),
+               glm::fvec2(exitMs, bottom + 1.5f), sample.section->color, 0.0f);
+        }
     }
 }
 

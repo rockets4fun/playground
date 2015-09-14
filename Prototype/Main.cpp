@@ -103,6 +103,7 @@ int main(int argc, char *argv[])
 //#ifdef COMMON_WINDOWS
 //            BROFILER_FRAME("Main")
 //#endif
+            Profiling::instance()->frameReset();
             PROFILING_SECTION(Main, glm::fvec3(1.0f, 1.0f, 0.0f))
 
             while (SDL_PollEvent(&event))

@@ -10,8 +10,8 @@
 // -------------------------------------------------------------------------------------------------
 Profiling::Profiling()
 {
-    m_ticksPerUs = double(SDL_GetPerformanceFrequency()) / (1000.0 * 1000.0);
-    m_ticksAtStartup = SDL_GetPerformanceCounter();
+    m_ticksPerS = SDL_GetPerformanceFrequency();
+    m_ticksPerMs = double(m_ticksPerS) / 1000.0;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -27,8 +27,35 @@ Profiling *Profiling::instance()
 }
 
 // -------------------------------------------------------------------------------------------------
-Profiling::Section::Section(const std::string &name, const glm::fvec3 &color) :
-    m_name(name), m_color(color)
+Profiling::Thread *Profiling::mainThreadPrevFrame()
+{
+    return &m_threadsPrevFrame.begin()->second;
+}
+
+// -------------------------------------------------------------------------------------------------
+void Profiling::frameReset()
+{
+    m_threadsPrevFrame = m_threads;
+    for (auto &threadMapIter : m_threads)
+    {
+        COMMON_ASSERT(threadMapIter.second.callDepth == 0);
+        threadMapIter.second.samples.clear();
+    }
+    m_ticksFrameStart = SDL_GetPerformanceCounter();
+}
+
+// -------------------------------------------------------------------------------------------------
+double Profiling::ticksToMs(u64 ticks) const
+{
+    u64 seconds = ticks / m_ticksPerS;
+    u64 ticksRemaining = ticks % m_ticksPerS;
+    double milliseconds = double(seconds) * 1000.0 + double(ticksRemaining) / m_ticksPerMs;
+    return milliseconds;
+}
+
+// -------------------------------------------------------------------------------------------------
+Profiling::Section::Section(const std::string &nameInit, const glm::fvec3 &colorInit) :
+    name(nameInit), color(colorInit)
 {
     m_profiling = Profiling::instance();
     u64 currentThreadId = u64(SDL_ThreadID());
@@ -43,7 +70,7 @@ Profiling::Section::Section(const std::string &name, const glm::fvec3 &color) :
 // -------------------------------------------------------------------------------------------------
 void Profiling::Section::enter()
 {
-    u64 ticksEnter = m_profiling->ticksSinceStartup();
+    u64 ticksEnter = m_profiling->ticksSinceFrameStart();
 
     ++m_thread->callDepth;
     m_frames.push_back(SectionSample());
@@ -57,11 +84,10 @@ void Profiling::Section::enter()
 // -------------------------------------------------------------------------------------------------
 void Profiling::Section::exit()
 {
-    u64 ticksExit = m_profiling->ticksSinceStartup();
+    u64 ticksExit = m_profiling->ticksSinceFrameStart();
 
     SectionSample &sample = m_frames.back();
-    sample.ticksExit = m_profiling->ticksSinceStartup();
-    sample.timeInUs = m_profiling->ticksDiffToTimeInUs(sample.ticksEnter, sample.ticksExit);
+    sample.ticksExit = ticksExit;
     m_thread->samples.push_back(sample);
 
     COMMON_ASSERT(sample.callDepth == m_thread->callDepth);
@@ -83,15 +109,8 @@ Profiling::SectionGuard::~SectionGuard()
 }
 
 // -------------------------------------------------------------------------------------------------
-u64 Profiling::ticksSinceStartup() const
+u64 Profiling::ticksSinceFrameStart() const
 {
-    u64 ticksPassed = SDL_GetPerformanceCounter() - m_ticksAtStartup;
+    u64 ticksPassed = SDL_GetPerformanceCounter() - m_ticksFrameStart;
     return ticksPassed;
-}
-
-// -------------------------------------------------------------------------------------------------
-u64 Profiling::ticksDiffToTimeInUs(u64 ticksA, u64 ticksB) const
-{
-    u64 ticksPassed = ticksB - ticksA;
-    return u64(glm::round(double(ticksPassed) / m_ticksPerUs));
 }

@@ -443,14 +443,15 @@ bool Renderer::initialize(Platform &platform)
     };
 
     // Create cube VBOs and define data
+    {
+        funcs->glGenBuffers(1, &state->cubePositionsVbo);
+        funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubePositionsVbo);
+        funcs->glBufferData(GL_ARRAY_BUFFER, sizeof(cubePositions), cubePositions, GL_STATIC_DRAW);
 
-    funcs->glGenBuffers(1, &state->cubePositionsVbo);
-    funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubePositionsVbo);
-    funcs->glBufferData(GL_ARRAY_BUFFER, sizeof(cubePositions), cubePositions, GL_STATIC_DRAW);
-
-    funcs->glGenBuffers(1, &state->cubeNormalsVbo);
-    funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubeNormalsVbo);
-    funcs->glBufferData(GL_ARRAY_BUFFER, sizeof(cubeNormals), cubeNormals, GL_STATIC_DRAW);
+        funcs->glGenBuffers(1, &state->cubeNormalsVbo);
+        funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubeNormalsVbo);
+        funcs->glBufferData(GL_ARRAY_BUFFER, sizeof(cubeNormals), cubeNormals, GL_STATIC_DRAW);
+    }
 
     funcs->glClearColor(0.15f, 0.15f, 0.15f, 1.0);
     funcs->glEnable(GL_DEPTH_TEST);

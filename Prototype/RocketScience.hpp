@@ -8,8 +8,7 @@
 
 #include "Common.hpp"
 
-#include <vector>
-#include <map>
+#include <list>
 
 #include <glm/glm.hpp>
 
@@ -36,18 +35,16 @@ private:
     static const int PLATFORM_SPHERE_COUNT;
 
     u64 m_cameraHandle = 0;
-    u64 m_arrowMeshHandle = 0;
-    u64 m_pusherAffectorHandle = 0;
 
     u32 m_oceanModelAsset = 0;
     u32 m_uiModelAsset = 0;
+    u64 m_arrowMeshHandle = 0;
+    u64 m_uiMeshHandle = 0;
 
-    std::vector< u64 > m_oceanMeshHandles;
+    u64 m_pusherAffectorHandle = 0;
 
-    std::vector< u64 > m_meshHandles;
-    std::map< u64, u64 > m_rigidBodyByMeshHandle;
-
-    std::vector< u64 > m_buoyancyAffectorHandles;
+    std::list< u64 > m_sleepingMeshHandles;
+    std::list< u64 > m_buoyancyAffectorHandles;
 
     double m_timeInS = 0.0;
 
