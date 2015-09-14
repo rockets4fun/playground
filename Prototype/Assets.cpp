@@ -111,9 +111,9 @@ bool Assets::loadModel(PrivateState &privateState, Model &model, Info &info)
 {
     model.positions.clear();
     model.normals.clear();
+    model.colors.clear();
 
     const aiScene *scene = privateState.importer.ReadFile(info.name, aiProcess_Triangulate);
-
     if (!scene)
     {
         // FIXME(martinmo): Proper error message through platform abstraction

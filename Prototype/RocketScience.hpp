@@ -40,6 +40,8 @@ private:
     u64 m_pusherAffectorHandle = 0;
 
     u32 m_oceanModelAsset = 0;
+    u32 m_uiModelAsset = 0;
+
     std::vector< u64 > m_oceanMeshHandles;
 
     std::vector< u64 > m_meshHandles;

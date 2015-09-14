@@ -61,8 +61,10 @@ bool RocketScience::initialize(Platform &platform)
         mesh->modelAsset = platform.assets.asset("Assets/Arrow.obj");
     }
 
-    m_oceanModelAsset = platform.assets.asset("procedural/ocean",
-        Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
+    m_oceanModelAsset = platform.assets.asset(
+        "procedural/ocean", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
+    m_uiModelAsset = platform.assets.asset(
+        "procedural/ui", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
 
     // Create floating platform
     {
@@ -377,7 +379,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
         }
     }
 
-    // Update buoyancy forces
+    // Update buoyancy affectors
     {
         updateBuoyancyAffectors(platform.stateDb, m_timeInS);
     }
