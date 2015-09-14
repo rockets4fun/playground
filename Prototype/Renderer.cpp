@@ -26,6 +26,10 @@
 // ==> This will never be included outside of this class
 #include "CoreGl/glcorearb.h"
 
+#ifdef COMMON_WINDOWS
+#   include <Brofiler.h>
+#endif
+
 // Declared here because we do not want to expose OpenGL implementation details in header
 struct Renderer::PrivateFuncs
 {
@@ -242,7 +246,7 @@ void Renderer::PrivateHelpers::printInfoLog(
 void Renderer::PrivateHelpers::updateVertexBufferData(GLuint vbo,
         const std::vector< glm::fvec3 > &data, GLenum usage, int prevVertexCount)
 {
-    int vertexCount = data.size();
+    int vertexCount = int(data.size());
     funcs->glBindBuffer(GL_ARRAY_BUFFER, vbo);
     if (vertexCount != prevVertexCount)
     {
@@ -478,6 +482,10 @@ void Renderer::shutdown(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void Renderer::update(Platform &platform, double deltaTimeInS)
 {
+#ifdef COMMON_WINDOWS
+    BROFILER_CATEGORY("Renderer", Profiler::Color::Blue)
+#endif
+
     updateTransforms(platform);
 
     funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -552,7 +560,7 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
                 privateMesh->model->normals, privateMesh->usage, privateMesh->vertexCount);
             helpers->updateVertexBufferData(privateMesh->colorsVbo,
                 privateMesh->model->colors, privateMesh->usage, privateMesh->vertexCount);
-            privateMesh->vertexCount = privateMesh->model->positions.size();
+            privateMesh->vertexCount = int(privateMesh->model->positions.size());
             privateMesh->flags &= ~PrivateMesh::Flag::DIRTY;
         }
 

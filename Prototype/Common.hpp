@@ -15,7 +15,13 @@ typedef signed   long int s32;
 typedef unsigned long long int u64;
 typedef signed   long long int s64;
 
-#define COMMON_DEBUG
+#ifndef NDEBUG
+#   define COMMON_DEBUG
+#endif
+
+#ifdef _WIN32
+#   define COMMON_WINDOWS
+#endif
 
 #define COMMON_DISABLE_COPY(Class) \
 private: \

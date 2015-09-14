@@ -23,6 +23,10 @@
 #include "Renderer.hpp"
 #include "Physics.hpp"
 
+#ifdef COMMON_WINDOWS
+#   include <Brofiler.h>
+#endif
+
 const int RocketScience::OCEAN_TILE_VERTEX_COUNT = 32;
 const glm::fvec2 RocketScience::OCEAN_TILE_UNIT_SIZE =
     glm::fvec2((OCEAN_TILE_VERTEX_COUNT - 1) * OCEAN_TILE_VERTEX_DIST);
@@ -153,10 +157,15 @@ void RocketScience::shutdown(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void RocketScience::update(Platform &platform, double deltaTimeInS)
 {
+#ifdef COMMON_WINDOWS
+    BROFILER_CATEGORY("RocketScience", Profiler::Color::Green)
+#endif
+
     m_timeInS += deltaTimeInS;
 
     // Update tileable dynamic ocean model
     {
+        BROFILER_CATEGORY("Ocean", Profiler::Color::Gray)
         glm::fvec2 unitSize = OCEAN_TILE_UNIT_SIZE;
         int vertexCount = OCEAN_TILE_VERTEX_COUNT;
         float vertexDist = OCEAN_TILE_VERTEX_DIST;
@@ -227,7 +236,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 
     // FIXME(martinmo): Add keyboard input to platform abstraction (remove dependency to SDL)
     const Uint8 *state = SDL_GetKeyboardState(NULL);
-    platform.renderer.debugNormals = state[SDL_SCANCODE_N];
+    platform.renderer.debugNormals = state[SDL_SCANCODE_N] != 0;
 
     // Update camera
     {
@@ -381,6 +390,7 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 
     // Update buoyancy affectors
     {
+        BROFILER_CATEGORY("Buoyancy", Profiler::Color::Gray)
         updateBuoyancyAffectors(platform.stateDb, m_timeInS);
     }
 }
@@ -391,9 +401,12 @@ float RocketScience::oceanEquation(const glm::fvec2 &position, double timeInS)
     glm::fvec2 unitSize = OCEAN_TILE_UNIT_SIZE;
     float twoPi = 2.0f * glm::pi< float >();
     float result = 0.0f;
-    result += 0.50f * sinf((twoPi / (0.500f * unitSize.x)) * (position.x + position.y + timeInS));
-    result += 0.50f * sinf((twoPi / (1.000f * unitSize.x)) * (position.x - position.y + timeInS));
-    result += 0.10f * sinf((twoPi / (0.250f * unitSize.x)) * (position.x + position.y - timeInS * 0.5f));
+    result += 0.50f * sinf((twoPi / (0.500f * unitSize.x))
+        * float(position.x + position.y + timeInS));
+    result += 0.50f * sinf((twoPi / (1.000f * unitSize.x))
+        * float(position.x - position.y + timeInS));
+    result += 0.10f * sinf((twoPi / (0.250f * unitSize.x))
+        * float(position.x + position.y - timeInS * 0.5f));
     return result;
 }
 

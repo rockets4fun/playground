@@ -19,6 +19,10 @@
 #include "Platform.hpp"
 #include "Renderer.hpp"
 
+#ifdef COMMON_WINDOWS
+#   include <Brofiler.h>
+#endif
+
 struct Physics::PrivateRigidBody
 {
     PrivateState &state;
@@ -490,6 +494,10 @@ void trackDestructions(StateDb &stateDb,
 // -------------------------------------------------------------------------------------------------
 void Physics::update(Platform &platform, double deltaTimeInS)
 {
+#ifdef COMMON_WINDOWS
+    BROFILER_CATEGORY("Physics", Profiler::Color::Red)
+#endif
+
     RigidBody::Info *rigidBody = nullptr, *rigidBodyBegin = nullptr, *rigidBodyEnd = nullptr;
     platform.stateDb.refStateAll(&rigidBodyBegin, &rigidBodyEnd);
     RigidBody::PrivateInfo *rigidBodyPrivate = nullptr, *rigidBodyPrivateBegin = nullptr;
@@ -523,7 +531,7 @@ void Physics::update(Platform &platform, double deltaTimeInS)
 
     // TODO(martinmo): Use 'CProfileIterator' to present profiling data in meaningful way
     /*
-#ifndef NDEBUG
+#ifdef COMMON_DEBUG
     if (m_nextPrintProfilingEventInS > 0.0)
     {
         m_nextPrintProfilingEventInS -= deltaTimeInS;

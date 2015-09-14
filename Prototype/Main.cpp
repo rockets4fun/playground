@@ -20,6 +20,10 @@
 #include "Physics.hpp"
 #include "RocketScience.hpp"
 
+#ifdef COMMON_WINDOWS
+#   include <Brofiler.h>
+#endif
+
 // -------------------------------------------------------------------------------------------------
 int main(int argc, char *argv[])
 {
@@ -39,7 +43,7 @@ int main(int argc, char *argv[])
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLEBUFFERS, 1);
     SDL_GL_SetAttribute(SDL_GL_MULTISAMPLESAMPLES, 4);
 
-#ifndef NDEBUG
+#ifdef COMMON_DEBUG
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, SDL_GL_CONTEXT_DEBUG_FLAG);
 #endif
 
@@ -70,15 +74,17 @@ int main(int argc, char *argv[])
 
         Platform platform(stateDb, assets, renderer);
 
-        std::vector< ModuleIf * > modules = { &renderer, &physics, &rocketScience };
-        std::vector< ModuleIf * > reverseModules = modules;
-        std::reverse(reverseModules.begin(), reverseModules.end());
+        std::vector< ModuleIf * > modulesInit   = { &physics, &renderer, &rocketScience };
+        std::vector< ModuleIf * > modulesUpdate = { &physics, &rocketScience, &renderer };
 
-        for (auto &module : modules)
+        std::vector< ModuleIf * > modulesInitReversed = modulesInit;
+        std::reverse(modulesInitReversed.begin(), modulesInitReversed.end());
+
+        for (auto &module : modulesInit)
         {
             module->registerTypesAndStates(stateDb);
         }
-        for (auto &module : modules)
+        for (auto &module : modulesInit)
         {
             if (!module->initialize(platform))
             {
@@ -92,6 +98,10 @@ int main(int argc, char *argv[])
         SDL_Event event;
         while (running)
         {
+#ifdef COMMON_WINDOWS
+            BROFILER_FRAME("Main")
+#endif
+
             while (SDL_PollEvent(&event))
             {
                 if (event.type == SDL_QUIT)
@@ -101,7 +111,7 @@ int main(int argc, char *argv[])
             }
 
             double deltaTimeInS = 1.0 / 60.0;
-            for (auto &module : modules)
+            for (auto &module : modulesUpdate)
             {
                 module->update(platform, deltaTimeInS);
             }
@@ -109,7 +119,7 @@ int main(int argc, char *argv[])
             SDL_GL_SwapWindow(window);
         }
 
-        for (auto &module : reverseModules)
+        for (auto &module : modulesInitReversed)
         {
             module->shutdown(platform);
         }
