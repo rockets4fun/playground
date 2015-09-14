@@ -12,6 +12,7 @@
 #include <btBulletDynamicsCommon.h>
 
 #include "Logging.hpp"
+#include "Profiling.hpp"
 
 #include "StateDb.hpp"
 #include "Assets.hpp"
@@ -494,9 +495,10 @@ void trackDestructions(StateDb &stateDb,
 // -------------------------------------------------------------------------------------------------
 void Physics::update(Platform &platform, double deltaTimeInS)
 {
-#ifdef COMMON_WINDOWS
-    BROFILER_CATEGORY("Physics", Profiler::Color::Red)
-#endif
+//#ifdef COMMON_WINDOWS
+//    BROFILER_CATEGORY("Physics", Profiler::Color::Red)
+//#endif
+    PROFILING_SECTION(Physics, glm::fvec3(1.0f, 0.0f, 0.0f))
 
     RigidBody::Info *rigidBody = nullptr, *rigidBodyBegin = nullptr, *rigidBodyEnd = nullptr;
     platform.stateDb.refStateAll(&rigidBodyBegin, &rigidBodyEnd);

@@ -17,6 +17,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "Logging.hpp"
+#include "Profiling.hpp"
 
 #include "Platform.hpp"
 #include "StateDb.hpp"
@@ -482,9 +483,10 @@ void Renderer::shutdown(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void Renderer::update(Platform &platform, double deltaTimeInS)
 {
-#ifdef COMMON_WINDOWS
-    BROFILER_CATEGORY("Renderer", Profiler::Color::Blue)
-#endif
+//#ifdef COMMON_WINDOWS
+//    BROFILER_CATEGORY("Renderer", Profiler::Color::Blue)
+//#endif
+    PROFILING_SECTION(Renderer, glm::fvec3(0.0f, 0.0f, 1.0f))
 
     updateTransforms(platform);
 

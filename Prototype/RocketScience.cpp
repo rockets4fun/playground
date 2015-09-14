@@ -15,6 +15,7 @@
 
 #include "Math.hpp"
 #include "Logging.hpp"
+#include "Profiling.hpp"
 
 #include "Platform.hpp"
 #include "StateDb.hpp"
@@ -157,15 +158,20 @@ void RocketScience::shutdown(Platform &platform)
 // -------------------------------------------------------------------------------------------------
 void RocketScience::update(Platform &platform, double deltaTimeInS)
 {
-#ifdef COMMON_WINDOWS
-    BROFILER_CATEGORY("RocketScience", Profiler::Color::Green)
-#endif
+//#ifdef COMMON_WINDOWS
+//    BROFILER_CATEGORY("RocketScience", Profiler::Color::Green)
+//#endif
+    PROFILING_SECTION(RocketScience, glm::fvec3(0.0f, 1.0f, 0.0f))
 
     m_timeInS += deltaTimeInS;
 
     // Update tileable dynamic ocean model
     {
-        BROFILER_CATEGORY("Ocean", Profiler::Color::Gray)
+//#ifdef COMMON_WINDOWS
+//        BROFILER_CATEGORY("UpdateOcean", Profiler::Color::Gray)
+//#endif
+        PROFILING_SECTION(UpdateOcean, glm::fvec3(0.5f, 0.5f, 0.5f))
+
         glm::fvec2 unitSize = OCEAN_TILE_UNIT_SIZE;
         int vertexCount = OCEAN_TILE_VERTEX_COUNT;
         float vertexDist = OCEAN_TILE_VERTEX_DIST;
@@ -390,7 +396,11 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 
     // Update buoyancy affectors
     {
-        BROFILER_CATEGORY("Buoyancy", Profiler::Color::Gray)
+//#ifdef COMMON_WINDOWS
+//        BROFILER_CATEGORY("UpdateBuoyancy", Profiler::Color::Gray)
+//#endif
+        PROFILING_SECTION(UpdateBuoyancy, glm::fvec3(0.5f, 0.5f, 0.5f))
+
         updateBuoyancyAffectors(platform.stateDb, m_timeInS);
     }
 }

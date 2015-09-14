@@ -144,6 +144,7 @@ HEADERS += \
     Assets.hpp \
     Physics.hpp \
     Platform.hpp \
+    Profiling.hpp \
     Logging.hpp \
     Math.hpp \
     Renderer.hpp \
@@ -154,6 +155,7 @@ SOURCES += \
     Assets.cpp \
     Physics.cpp \
     Platform.cpp \
+    Profiling.cpp \
     Logging.cpp \
     Math.cpp \
     Renderer.cpp \
