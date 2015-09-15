@@ -145,7 +145,7 @@ u64 StateDb::registerState(u64 typeId, const std::string &name, u64 elemSize)
 }
 
 // -------------------------------------------------------------------------------------------------
-bool StateDb::isObjectHandleValid(u64 objectHandle)
+bool StateDb::isHandleValid(u64 objectHandle)
 {
     u16 typeId = objectHandleTypeId(objectHandle);
     if (!isTypeIdValid(typeId))
@@ -167,16 +167,16 @@ bool StateDb::isObjectHandleValid(u64 objectHandle)
 }
 
 // -------------------------------------------------------------------------------------------------
-std::string StateDb::objectHandleTypeName(u64 objectHandle)
+std::string StateDb::handleTypeName(u64 objectHandle)
 {
-    COMMON_ASSERT(isObjectHandleValid(objectHandle));
+    COMMON_ASSERT(isHandleValid(objectHandle));
     return m_types[objectHandleTypeId(objectHandle)].name;
 }
 
 // -------------------------------------------------------------------------------------------------
-void StateDb::destroyObject(u64 objectHandle)
+void StateDb::destroy(u64 objectHandle)
 {
-    COMMON_ASSERT(isObjectHandleValid(objectHandle));
+    COMMON_ASSERT(isHandleValid(objectHandle));
 
     Type &type = m_types[objectHandleTypeId(objectHandle)];
     u32 objectId = objectHandleObjectId(objectHandle);
@@ -209,7 +209,7 @@ void StateDb::destroyObject(u64 objectHandle)
 }
 
 // -------------------------------------------------------------------------------------------------
-int StateDb::objectCount(u64 typeId)
+int StateDb::count(u64 typeId)
 {
     COMMON_ASSERT(isTypeIdValid(typeId));
     return int(m_types[typeId].objectCount);

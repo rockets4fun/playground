@@ -503,15 +503,15 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
     glm::fmat4 worldToView;
     if (activeCameraHandle)
     {
-        auto camera = sdb.refState< Camera::Info >(activeCameraHandle);
+        auto camera = sdb.state< Camera::Info >(activeCameraHandle);
         worldToView = glm::lookAt(camera->position.xyz(),
             camera->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
     }
 
     Mesh::Info *meshBegin = nullptr, *meshEnd = nullptr;
-    sdb.refStateAll(&meshBegin, &meshEnd);
+    sdb.stateAll(&meshBegin, &meshEnd);
     Mesh::PrivateInfo *meshPrivateBegin = nullptr, *meshPrivateEnd = nullptr;
-    sdb.refStateAll(&meshPrivateBegin, &meshPrivateEnd);
+    sdb.stateAll(&meshPrivateBegin, &meshPrivateEnd);
     Mesh::PrivateInfo *meshPrivate = nullptr;
 
     // Set dirty flags for all dynamic meshes
@@ -608,7 +608,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
 void Renderer::updateTransforms(StateDb &sdb)
 {
     Transform::Info *transformBegin = nullptr, *transformEnd = nullptr;
-    sdb.refStateAll(&transformBegin, &transformEnd);
+    sdb.stateAll(&transformBegin, &transformEnd);
     for (Transform::Info *transform = transformBegin;
                           transform != transformEnd; ++transform)
     {

@@ -69,7 +69,7 @@ void pushRect2d(Assets::Model *model,
 // -------------------------------------------------------------------------------------------------
 bool RocketScience::initialize(StateDb &sdb, Assets &assets)
 {
-    auto camera = sdb.createObject< Renderer::Camera::Info >(m_cameraHandle);
+    auto camera = sdb.create< Renderer::Camera::Info >(m_cameraHandle);
     camera->position = glm::fvec3(-10.0f, -20.0f, 20.0f);
     camera->target   = glm::fvec3(  0.0f,   0.0f,  0.0f);
 
@@ -79,12 +79,12 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
         "procedural/ui", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
 
     {
-        auto mesh = sdb.createObject< Renderer::Mesh::Info >(m_arrowMeshHandle);
+        auto mesh = sdb.create< Renderer::Mesh::Info >(m_arrowMeshHandle);
         mesh->modelAsset = assets.asset("Assets/Arrow.obj");
     }
 
     {
-        auto mesh = sdb.createObject< Renderer::Mesh::Info >(m_uiMeshHandle);
+        auto mesh = sdb.create< Renderer::Mesh::Info >(m_uiMeshHandle);
         mesh->modelAsset = m_uiModelAsset;
         mesh->rotation = glm::angleAxis(glm::radians(90.0f), glm::fvec3(1.0f, 0.0f, 0.0f));
     }
@@ -93,13 +93,13 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
     {
         // Create platform mesh
         u64 platformMeshHandle = 0;
-        auto platformMesh = sdb.createObject< Renderer::Mesh::Info >(platformMeshHandle);
+        auto platformMesh = sdb.create< Renderer::Mesh::Info >(platformMeshHandle);
         platformMesh->translation = glm::fvec3(0.0f, 0.0f, 5.0f);
         platformMesh->rotation = glm::dquat(1.0f, 0.0f, 0.0f, 0.0f);
         platformMesh->modelAsset = assets.asset("Assets/Platform.obj");
         // Create platform rigid body
         u64 platformRigidBodyHandle = 0;
-        auto platformRigidBody = sdb.createObject< Physics::RigidBody::Info >(platformRigidBodyHandle);
+        auto platformRigidBody = sdb.create< Physics::RigidBody::Info >(platformRigidBodyHandle);
         platformRigidBody->mass = 10.0f;
         platformRigidBody->meshHandle = platformMeshHandle;
         platformRigidBody->collisionShapeType = Physics::CollisionShapeType::CONVEX_HULL_COMPOUND;
@@ -125,7 +125,7 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
     for (int meshIdx = 0; meshIdx < 128; ++meshIdx)
     {
         u64 meshHandle = 0;
-        auto mesh = sdb.createObject< Renderer::Mesh::Info >(meshHandle);
+        auto mesh = sdb.create< Renderer::Mesh::Info >(meshHandle);
         mesh->translation = glm::linearRand(
             glm::fvec3(-10.0f, -10.0f, +20.0f), glm::fvec3(+10.0f, +10.0f, +40.0f));
 
@@ -156,8 +156,8 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
 // -------------------------------------------------------------------------------------------------
 void RocketScience::shutdown(StateDb &sdb)
 {
-    sdb.destroyObject(m_arrowMeshHandle);
-    sdb.destroyObject(m_cameraHandle);
+    sdb.destroy(m_arrowMeshHandle);
+    sdb.destroy(m_cameraHandle);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -215,7 +215,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             {
                 for (int x = 0; x < tileCount; ++x)
                 {
-                    auto mesh = sdb.createObject< Renderer::Mesh::Info >();
+                    auto mesh = sdb.create< Renderer::Mesh::Info >();
                     mesh->modelAsset = m_oceanModelAsset;
                     mesh->translation = glm::fvec3(glm::fvec2(float(x), float(y))
                         * unitSize - 0.5f * float(tileCount) * unitSize, 0.0f);
@@ -259,7 +259,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         if (state[SDL_SCANCODE_W]) translationInM += deltaTimeInS * 20.0;
         if (state[SDL_SCANCODE_S]) translationInM -= deltaTimeInS * 20.0;
 
-        auto camera = sdb.refState< Renderer::Camera::Info >(m_cameraHandle);
+        auto camera = sdb.state< Renderer::Camera::Info >(m_cameraHandle);
 
         glm::fvec3 cameraDir = (camera->target - camera->position).xyz();
 
@@ -299,13 +299,13 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         m_sleepingMeshHandles.pop_front();
 
         u64 rigidBodyHandle = 0;
-        auto rigidBody = sdb.createObject< Physics::RigidBody::Info >(rigidBodyHandle);
+        auto rigidBody = sdb.create< Physics::RigidBody::Info >(rigidBodyHandle);
         rigidBody->mass = 1.0f;
         rigidBody->meshHandle = meshHandle;
         rigidBody->collisionGroup = 1;
         rigidBody->collisionMask  = 1;
 
-        auto mesh = sdb.refState< Renderer::Mesh::Info >(meshHandle);
+        auto mesh = sdb.state< Renderer::Mesh::Info >(meshHandle);
 
         if (mesh->modelAsset == assets.asset("Assets/Pusher.obj"))
         {
@@ -313,7 +313,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             rigidBody->mass = 5.0f;
             // Create Pusher rocket motor force
             {
-                auto affector = sdb.createObject< Physics::Affector::Info >(m_pusherAffectorHandle);
+                auto affector = sdb.create< Physics::Affector::Info >(m_pusherAffectorHandle);
                 affector->rigidBodyHandle = rigidBodyHandle;
                 affector->enabled = 1;
                 //affector->forcePosition = glm::fvec3(0.00f, -2.64, 2.75f);   // Top wing
@@ -337,11 +337,11 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
     // Update rocket force control logic
     if (m_pusherAffectorHandle)
     {
-        auto affector = sdb.refState<
+        auto affector = sdb.state<
                 Physics::Affector::Info >(m_pusherAffectorHandle);
-        auto rigidBody = sdb.refState<
+        auto rigidBody = sdb.state<
                 Physics::RigidBody::Info >(affector->rigidBodyHandle);
-        auto mesh = sdb.refState<
+        auto mesh = sdb.state<
                 Renderer::Mesh::Info >(rigidBody->meshHandle);
 
         glm::fmat3 meshRot = glm::mat3_cast(mesh->rotation);
@@ -380,7 +380,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         affector->force = thrustVector * mainEngineForce;
 
         // Use arrow mesh to display thrust vector
-        auto arrowMesh = sdb.refState< Renderer::Mesh::Info >(m_arrowMeshHandle);
+        auto arrowMesh = sdb.state< Renderer::Mesh::Info >(m_arrowMeshHandle);
         arrowMesh->translation = mesh->translation + mesh->rotation * affector->forcePosition;
         arrowMesh->rotation = Math::rotateFromTo(
             glm::fvec3(0.0f, 1.0f, 0.0f), -affector->force);
@@ -391,7 +391,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         //Logging::debug("errorAngleInDeg: %5.2f", errorAngleInDeg);
         if (glm::abs(errorAngleInDeg) > 20.0f)
         {
-            sdb.destroyObject(m_pusherAffectorHandle);
+            sdb.destroy(m_pusherAffectorHandle);
             m_pusherAffectorHandle = 0;
         }
     }
@@ -408,7 +408,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 
     // Update profiling UI
     {
-        auto uiMesh = sdb.refState< Renderer::Mesh::Info >(m_uiMeshHandle);
+        auto uiMesh = sdb.state< Renderer::Mesh::Info >(m_uiMeshHandle);
         auto uiModel = assets.refModel(uiMesh->modelAsset);
         uiModel->positions.clear(); uiModel->normals.clear(); uiModel->colors.clear();
 
@@ -449,7 +449,7 @@ void RocketScience::addBuoyancyAffector(StateDb &sdb,
     const glm::fvec3 &translation, u64 parentRigidBodyHandle)
 {
     u64 buoyancyAffectorHandle = 0;
-    auto buoyancyAffector = sdb.createObject< Physics::Affector::Info >(buoyancyAffectorHandle);
+    auto buoyancyAffector = sdb.create< Physics::Affector::Info >(buoyancyAffectorHandle);
     buoyancyAffector->rigidBodyHandle = parentRigidBodyHandle;
     buoyancyAffector->forcePosition = translation;
     m_buoyancyAffectorHandles.push_back(buoyancyAffectorHandle);
@@ -467,8 +467,8 @@ void RocketScience::updateBuoyancyAffectors(StateDb &stateDb, double timeInS)
 
     for (auto buoyancyAffectorHandle : m_buoyancyAffectorHandles)
     {
-        auto affector  = stateDb.refState< Physics::Affector::Info  >(buoyancyAffectorHandle);
-        auto rigidBody = stateDb.refState< Physics::RigidBody::Info >(affector->rigidBodyHandle);
+        auto affector  = stateDb.state< Physics::Affector::Info  >(buoyancyAffectorHandle);
+        auto rigidBody = stateDb.state< Physics::RigidBody::Info >(affector->rigidBodyHandle);
 
         // Reset affector
         affector->enabled = 0;
@@ -481,9 +481,9 @@ void RocketScience::updateBuoyancyAffectors(StateDb &stateDb, double timeInS)
 
     for (auto buoyancyAffectorHandle : m_buoyancyAffectorHandles)
     {
-        auto affector  = stateDb.refState< Physics::Affector::Info  >(buoyancyAffectorHandle);
-        auto rigidBody = stateDb.refState< Physics::RigidBody::Info >(affector->rigidBodyHandle);
-        auto mesh      = stateDb.refState< Renderer::Mesh::Info     >(rigidBody->meshHandle);
+        auto affector  = stateDb.state< Physics::Affector::Info  >(buoyancyAffectorHandle);
+        auto rigidBody = stateDb.state< Physics::RigidBody::Info >(affector->rigidBodyHandle);
+        auto mesh      = stateDb.state< Renderer::Mesh::Info     >(rigidBody->meshHandle);
 
         glm::fvec3 affectorPosGlobal =
             mesh->translation + mesh->rotation * affector->forcePosition;

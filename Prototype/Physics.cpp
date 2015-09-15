@@ -128,7 +128,7 @@ Physics::PrivateRigidBody::PrivateRigidBody(
     : state(stateInit)
 {
     btCollisionShape *collisionShape = nullptr;
-    auto mesh = state.sdb.refState< Renderer::Mesh::Info >(rigidBody->meshHandle);
+    auto mesh = state.sdb.state< Renderer::Mesh::Info >(rigidBody->meshHandle);
     u64 collisionShapeKey = u64(rigidBody->collisionShapeType) << 32 | u64(mesh->modelAsset);
 
     // TODO(martinmo): Find way to get rid of map lookup
@@ -264,9 +264,9 @@ Physics::PrivateConstraint::PrivateConstraint(
     PrivateState &stateInit, Constraint::Info *constraint)
     : state(stateInit)
 {
-    btRigidBody *rbA = state.sdb.refState< RigidBody::PrivateInfo >(
+    btRigidBody *rbA = state.sdb.state< RigidBody::PrivateInfo >(
         constraint->rigidBodyAHandle)->state->bulletRigidBody.get();
-    btRigidBody *rbB = state.sdb.refState< RigidBody::PrivateInfo >(
+    btRigidBody *rbB = state.sdb.state< RigidBody::PrivateInfo >(
         constraint->rigidBodyBHandle)->state->bulletRigidBody.get();
 
     btTransform frameInA = btTransform(
@@ -328,9 +328,9 @@ void Physics::PrivateState::preTick(btScalar timeStep)
 
     // Apply linear velocity limits to all RBs
     RigidBody::Info *rigidBody = nullptr, *rigidBodyBegin = nullptr, *rigidBodyEnd = nullptr;
-    sdb.refStateAll(&rigidBodyBegin, &rigidBodyEnd);
+    sdb.stateAll(&rigidBodyBegin, &rigidBodyEnd);
     RigidBody::PrivateInfo *rigidBodyPrivate = nullptr, *rigidBodyPrivateBegin = nullptr;
-    sdb.refStateAll(&rigidBodyPrivateBegin);
+    sdb.stateAll(&rigidBodyPrivateBegin);
     for (rigidBody  = rigidBodyBegin, rigidBodyPrivate = rigidBodyPrivateBegin;
          rigidBody != rigidBodyEnd; ++rigidBody, ++rigidBodyPrivate)
     {
@@ -450,9 +450,9 @@ void trackCreations(StateDb &stateDb,
     std::list< std::shared_ptr< DstType > > &dstStorage, UserData &userData)
 {
     typename SrcType::Info *srcBegin = nullptr, *srcEnd = nullptr, *src = nullptr;
-    stateDb.refStateAll(&srcBegin, &srcEnd);
+    stateDb.stateAll(&srcBegin, &srcEnd);
     typename SrcType::PrivateInfo *srcPrivateBegin = nullptr, *srcPrivate = nullptr;
-    stateDb.refStateAll(&srcPrivateBegin);
+    stateDb.stateAll(&srcPrivateBegin);
     for (src  = srcBegin, srcPrivate = srcPrivateBegin;
          src != srcEnd; ++src, ++srcPrivate)
     {
@@ -460,9 +460,9 @@ void trackCreations(StateDb &stateDb,
         {
             dstStorage.push_back(std::make_shared< DstType >(userData, src));
             srcPrivate->state = dstStorage.back().get();
-            srcPrivate->state->handle = stateDb.objectHandleFromElem(src);
+            srcPrivate->state->handle = stateDb.handleFromState(src);
             Logging::debug("Creation of \"%s\" (%d instances tracked)",
-                stateDb.objectHandleTypeName(srcPrivate->state->handle).c_str(),
+                stateDb.handleTypeName(srcPrivate->state->handle).c_str(),
                 int(dstStorage.size()));
         }
     }
@@ -478,7 +478,7 @@ void trackDestructions(StateDb &stateDb,
     for (dstStorageIter  = dstStorage.begin();
          dstStorageIter != dstStorage.end(); ++dstStorageIter)
     {
-        if (!stateDb.isObjectHandleValid(dstStorageIter->get()->handle))
+        if (!stateDb.isHandleValid(dstStorageIter->get()->handle))
         {
             deletions.push_back(dstStorageIter);
         }
@@ -488,7 +488,7 @@ void trackDestructions(StateDb &stateDb,
         dstStorage.erase(deletions.back());
         deletions.pop_back();
         Logging::debug("Destruction of \"%s\" (%d instances tracked)",
-            stateDb.objectHandleTypeName(dstStorageIter->get()->handle).c_str(),
+            stateDb.handleTypeName(dstStorageIter->get()->handle).c_str(),
             int(dstStorage.size()));
     }
 }
@@ -502,9 +502,9 @@ void Physics::update(StateDb &sdb, Assets &assets, Renderer &renderer, double de
     PROFILING_SECTION(Physics, glm::fvec3(1.0f, 0.0f, 0.0f))
 
     RigidBody::Info *rigidBody = nullptr, *rigidBodyBegin = nullptr, *rigidBodyEnd = nullptr;
-    sdb.refStateAll(&rigidBodyBegin, &rigidBodyEnd);
+    sdb.stateAll(&rigidBodyBegin, &rigidBodyEnd);
     RigidBody::PrivateInfo *rigidBodyPrivate = nullptr, *rigidBodyPrivateBegin = nullptr;
-    sdb.refStateAll(&rigidBodyPrivateBegin);
+    sdb.stateAll(&rigidBodyPrivateBegin);
 
     // Check for newly created rigid bodies
     trackCreations< RigidBody >(sdb, state->privateRigidBodies, *state.get());
@@ -518,12 +518,12 @@ void Physics::update(StateDb &sdb, Assets &assets, Renderer &renderer, double de
         rigidBodyPrivate->state->affectors.clear();
     }
     Affector::Info *affector = nullptr, *affectorBegin = nullptr, *affectorEnd = nullptr;
-    sdb.refStateAll(&affectorBegin, &affectorEnd);
+    sdb.stateAll(&affectorBegin, &affectorEnd);
     for (affector = affectorBegin; affector != affectorEnd; ++affector)
     {
         if (affector->enabled)
         {
-            rigidBodyPrivate = sdb.refState< RigidBody::PrivateInfo >(affector->rigidBodyHandle);
+            rigidBodyPrivate = sdb.state< RigidBody::PrivateInfo >(affector->rigidBodyHandle);
             rigidBodyPrivate->state->affectors.push_back(affector);
         }
     }
@@ -552,7 +552,7 @@ void Physics::update(StateDb &sdb, Assets &assets, Renderer &renderer, double de
     {
         // TODO(martinmo): Delete rigid bodies with bad mesh references?
         // TODO(martinmo): (e.g. mesh has been destroyed but rigid body still alive)
-        if (!sdb.isObjectHandleValid(rigidBody->meshHandle))
+        if (!sdb.isHandleValid(rigidBody->meshHandle))
         {
             continue;
         }
@@ -563,7 +563,7 @@ void Physics::update(StateDb &sdb, Assets &assets, Renderer &renderer, double de
         rigidBody->linearVelocity  = fromBulletVec(bulletRigidBody->getLinearVelocity());
         rigidBody->angularVelocity = fromBulletVec(bulletRigidBody->getAngularVelocity());
 
-        auto mesh = sdb.refState< Renderer::Mesh::Info >(rigidBody->meshHandle);
+        auto mesh = sdb.state< Renderer::Mesh::Info >(rigidBody->meshHandle);
 
         mesh->translation = fromBulletVec(worldTrans.getOrigin());
         mesh->rotation    = fromBulletQuat(worldTrans.getRotation());

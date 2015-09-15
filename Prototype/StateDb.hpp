@@ -39,11 +39,11 @@ struct StateDb
     std::string stateNameById(u64 stateId);
     u64 registerState(u64 typeId, const std::string &name, u64 elemSize);
 
-    bool isObjectHandleValid(u64 objectHandle);
-    std::string objectHandleTypeName(u64 objectHandle);
+    bool isHandleValid(u64 objectHandle);
+    std::string handleTypeName(u64 objectHandle);
 
     template< class ElementType >
-    u64 objectHandleFromElem(ElementType *elem)
+    u64 handleFromState(ElementType *elem)
     {
         COMMON_ASSERT(isStateIdValid(ElementType::STATE));
 
@@ -65,17 +65,16 @@ struct StateDb
             u16(type.lifecycleByObjectId[objectId]), u32(objectId));
     }
 
-    void destroyObject(u64 objectHandle);
-    int objectCount(u64 typeId);
+    void destroy(u64 objectHandle);
+    int count(u64 typeId);
 
     template< class ElementType >
-    ElementType *createObject(u64 &createdObjectHandle)
+    ElementType *create(u64 &createdObjectHandle)
     {
         COMMON_ASSERT(isStateIdValid(ElementType::STATE));
         // TODO(martinmo): Encode type ID into the state ID (==> state handle)
         // TODO(martinmo): ==> This way we can avoid lookup in 'm_states'
-        const State &state = m_states[ElementType::STATE];
-        u64 typeId = state.typeId;
+        u64 typeId = m_states[ElementType::STATE].typeId;
 
         COMMON_ASSERT(isTypeIdValid(typeId));
 
@@ -92,25 +91,25 @@ struct StateDb
         ++lifecycle;
 
         createdObjectHandle = composeObjectHandle(u16(typeId), u16(lifecycle), u32(objectId));
-        return refState< ElementType >(createdObjectHandle);
+        return state< ElementType >(createdObjectHandle);
     }
 
     template< class ElementType >
-    ElementType *createObject()
+    ElementType *create()
     {
         u64 ignoreObjectHandle = 0;
-        return createObject< ElementType >(ignoreObjectHandle);
+        return create< ElementType >(ignoreObjectHandle);
     }
 
     template< class ElementType >
-    ElementType *refState(u64 objectHandle)
+    ElementType *state(u64 objectHandle)
     {
         COMMON_ASSERT(isStateIdValid(ElementType::STATE));
         COMMON_ASSERT(m_states[ElementType::STATE].elemSize == sizeof(ElementType));
 
         u64 typeIdFromHandle = objectHandleTypeId(objectHandle);
 
-        COMMON_ASSERT(isObjectHandleValid(objectHandle));
+        COMMON_ASSERT(isHandleValid(objectHandle));
         COMMON_ASSERT(typeIdFromHandle == m_states[ElementType::STATE].typeId);
 
         // Type lookup needed here for object ID to index translation
@@ -120,7 +119,7 @@ struct StateDb
     }
 
     template< class ElementType >
-    void refStateAll(ElementType **begin, ElementType **end = nullptr)
+    void stateAll(ElementType **begin, ElementType **end = nullptr)
     {
         COMMON_ASSERT(isStateIdValid(ElementType::STATE));
         COMMON_ASSERT(m_states[ElementType::STATE].elemSize == sizeof(ElementType));
