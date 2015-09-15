@@ -27,7 +27,7 @@ public:
     static void debug(const char *format, ...);
 
 private:
-    COMMON_DISABLE_COPY(Logging);
+    COMMON_DISABLE_COPY(Logging)
 };
 
 #endif

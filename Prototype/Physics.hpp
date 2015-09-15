@@ -119,7 +119,7 @@ private:
     */
 
 private:
-    COMMON_DISABLE_COPY(Physics);
+    COMMON_DISABLE_COPY(Physics)
 };
 
 #endif

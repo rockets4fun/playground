@@ -204,7 +204,7 @@ Physics::PrivateRigidBody::PrivateRigidBody(
         }
         else
         {
-            // TODO(martinmo): Collision shape fallback warning?
+            Logging::debug("WARNING: Debug collision shape fallback");
             collisionShape = state.cubeShape.get();
         }
         if (collisionShape != state.cubeShape.get())

@@ -17,7 +17,7 @@ struct Math
     static glm::fquat rotateFromTo(const glm::fvec3 &from, const glm::fvec3 &to);
 
 private:
-    COMMON_DISABLE_COPY(Math);
+    COMMON_DISABLE_COPY(Math)
 };
 
 #endif

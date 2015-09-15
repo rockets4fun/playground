@@ -18,7 +18,7 @@ struct Platform
 public:
 
 private:
-    COMMON_DISABLE_COPY(Platform);
+    COMMON_DISABLE_COPY(Platform)
 };
 
 #endif

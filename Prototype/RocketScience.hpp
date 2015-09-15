@@ -55,7 +55,7 @@ private:
     void updateBuoyancyAffectors(StateDb &stateDb, double timeInS);
 
 private:
-    COMMON_DISABLE_COPY(RocketScience);
+    COMMON_DISABLE_COPY(RocketScience)
 };
 
 #endif

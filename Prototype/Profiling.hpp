@@ -70,7 +70,7 @@ public:
         ~SectionGuard();
 
     private:
-        COMMON_DISABLE_COPY(SectionGuard);
+        COMMON_DISABLE_COPY(SectionGuard)
 
         Section &m_section;
     };
@@ -86,7 +86,7 @@ private:
     u64 ticksSinceFrameStart() const;
 
 private:
-    COMMON_DISABLE_COPY(Profiling);
+    COMMON_DISABLE_COPY(Profiling)
 };
 
 #define PROFILING_SECTION(name, color) \

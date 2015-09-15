@@ -89,7 +89,7 @@ struct Renderer::PrivateState
     GLint defProgUniformModelWorldMatrix;
     GLint defProgUniformModelViewMatrix;
     GLint defProgUniformProjectionMatrix;
-    GLint defProgUniformDebugNormals;
+    GLint defProgUniformRenderParams;
 
     GLint defProgAttribPosition;
     GLint defProgAttribNormal;
@@ -108,8 +108,8 @@ struct Renderer::PrivateMesh
 {
     enum Flag
     {
-        DIRTY = 0x1,
-        DYNAMIC = 0x2
+        DYNAMIC = 0x1,
+        DIRTY   = 0x2
     };
 
     Assets::Model *model = nullptr;
@@ -323,25 +323,23 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
         "uniform mat4 ModelViewMatrix;\n"
         "uniform mat4 ProjectionMatrix;\n"
         "\n"
-        "uniform vec4 DebugNormals;\n"
+        "uniform vec4 RenderParams;\n"
         "\n"
         "in vec3 Position;\n"
         "in vec3 Normal;\n"
         "in vec3 Color;\n"
         "\n"
+        "out vec4 renderParams;\n"
+        "out vec3 vertexNormal;\n"
         "out vec3 vertexNormalWorld;\n"
         "out vec3 vertexColor;\n"
         "\n"
-        "out float debugNormals;\n"
-        "\n"
         "void main()\n"
         "{\n"
-        "    debugNormals = DebugNormals.x;\n"
+        "    renderParams = RenderParams;\n"
+        "    vertexNormal = normalize(Normal).xyz;\n"
         "    vertexNormalWorld = normalize((ModelWorldMatrix * vec4(Normal, 0.0)).xyz);\n"
-        "    if (DebugNormals.x > 0.5)\n"
-        "        vertexColor = abs(Normal) * Color;\n"
-        "    else\n"
-        "        vertexColor = Color;\n"
+        "    vertexColor = Color;\n"
         "    gl_Position = ProjectionMatrix * ModelViewMatrix * vec4(Position, 1.0);\n"
         "}\n";
     helpers->createAndCompileShader(state->defVs, GL_VERTEX_SHADER, defVsSrc);
@@ -349,7 +347,8 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
     std::string defFsSrc =
         "#version 150\n"
         "\n"
-        "in float debugNormals;\n"
+        "in vec4 renderParams;\n"
+        "in vec3 vertexNormal;\n"
         "in vec3 vertexNormalWorld;\n"
         "in vec3 vertexColor;\n"
         "\n"
@@ -357,12 +356,20 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
         "\n"
         "void main()\n"
         "{\n"
-        "    vec3 lightDir = normalize(vec3(0.0, 1.0, -1.0));\n"
-        "    float lambert = max(0.0, dot(vertexNormalWorld, -lightDir));\n"
-        "    if (debugNormals > 0.5)\n"
+        "    if (renderParams.x > 0.5)\n"
+        "    {\n"
+        "        fragmentColor = vec4(abs(vertexNormal) * vertexColor, 1.0);\n"
+        "    }\n"
+        "    else if (renderParams.y > 0.5)\n"
+        "    {\n"
         "        fragmentColor = vec4(vertexColor, 1.0);\n"
+        "    }\n"
         "    else\n"
+        "    {\n"
+        "        vec3 lightDir = normalize(vec3(0.0, 1.0, -1.0));\n"
+        "        float lambert = max(0.0, dot(vertexNormalWorld, -lightDir));\n"
         "        fragmentColor = vec4(vertexColor * max(0.2, lambert), 1.0);\n"
+        "    }\n"
         "}\n";
     helpers->createAndCompileShader(state->defFs, GL_FRAGMENT_SHADER, defFsSrc);
 
@@ -376,8 +383,8 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
         funcs->glGetUniformLocation(state->defProg, "ModelViewMatrix");
     state->defProgUniformProjectionMatrix =
         funcs->glGetUniformLocation(state->defProg, "ProjectionMatrix");
-    state->defProgUniformDebugNormals =
-        funcs->glGetUniformLocation(state->defProg, "DebugNormals");
+    state->defProgUniformRenderParams =
+        funcs->glGetUniformLocation(state->defProg, "RenderParams");
 
     // TODO(martinmo): Use 'glBindAttribLocation()' before linking the program to force
     // TODO(martinmo): assignment of attributes to specific fixed locations
@@ -488,58 +495,32 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
 //#endif
     PROFILING_SECTION(Renderer, glm::fvec3(0.0f, 0.0f, 1.0f))
 
-    updateTransforms(sdb);
-
     funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    funcs->glUniform4fv(state->defProgUniformDebugNormals,
-        1, glm::value_ptr(glm::fvec4(debugNormals ? 1.0f : 0.0f, 0.0, 0.0, 0.0)));
-
-    float aspect = 16.0f / 9.0f;
-    glm::fmat4 projection = glm::perspective(glm::radians(30.0f * aspect), aspect, 0.5f, 100.0f);
-    funcs->glUniformMatrix4fv(state->defProgUniformProjectionMatrix,
-                1, GL_FALSE, glm::value_ptr(projection));
-
-    glm::fmat4 worldToView;
-    if (activeCameraHandle)
-    {
-        auto camera = sdb.state< Camera::Info >(activeCameraHandle);
-        worldToView = glm::lookAt(camera->position.xyz(),
-            camera->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
-    }
-
+    // Prepare references to per-model private data
     auto meshes = sdb.stateAll< Mesh::Info >();
     auto meshesPrivate = sdb.stateAll< Mesh::PrivateInfo >();
-
-    // Set dirty flags for all dynamic meshes
-    for (auto mesh : meshes)
+    for (auto meshPrivate : meshesPrivate)
     {
-        auto meshPrivate = meshesPrivate.rel(meshes, mesh);
         if (!meshPrivate->privateMesh)
         {
+            auto mesh = meshes.rel(meshesPrivate, meshPrivate);
             meshPrivate->privateMesh = &state->meshes[mesh->modelAsset];
         }
-        if (meshPrivate->privateMesh->flags & PrivateMesh::Flag::DYNAMIC)
-        {
-            meshPrivate->privateMesh->flags |= PrivateMesh::Flag::DIRTY;
-        }
     }
-
-    // Pseudo-instanced rendering of meshes
-    for (auto mesh : meshes)
+    // Prepare per-model private data
+    for (auto &meshMapEntry : state->meshes)
     {
-        if (mesh->flags & MeshFlag::HIDDEN)
-        {
-            continue;
-        }
-        auto meshPrivate = meshesPrivate.rel(meshes, mesh);
-        PrivateMesh *privateMesh = meshPrivate->privateMesh;
+        u32 modelAsset = meshMapEntry.first;
+        PrivateMesh *privateMesh = &meshMapEntry.second;
+        // TODO(martinmo): Delay loading the model further until we actually render?
+        // TODO(martinmo): ==> Practical applications might even prefetch on init...
         if (!privateMesh->model)
         {
-            // TODO(martinmo): Add way of getting asset and flags in one call/lookup
-            privateMesh->model = assets.refModel(mesh->modelAsset);
+            privateMesh->model = assets.refModel(modelAsset);
             COMMON_ASSERT(privateMesh->model);
-            if (assets.assetFlags(mesh->modelAsset) & Assets::Flag::DYNAMIC)
+            // TODO(martinmo): Add way of getting asset and flags in one call/lookup
+            if (assets.assetFlags(modelAsset) & Assets::Flag::DYNAMIC)
             {
                 privateMesh->flags |= PrivateMesh::Flag::DYNAMIC;
                 privateMesh->usage = GL_DYNAMIC_DRAW;
@@ -549,7 +530,63 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
             funcs->glGenBuffers(1, &privateMesh->colorsVbo);
             privateMesh->flags |= PrivateMesh::Flag::DIRTY;
         }
+        else if (privateMesh->flags & PrivateMesh::Flag::DYNAMIC)
+        {
+            privateMesh->flags |= PrivateMesh::Flag::DIRTY;
+        }
+    }
 
+    {
+        const float aspect = 16.0f / 9.0f;
+        glm::fmat4 projection = glm::perspective(
+                        glm::radians(30.0f * aspect), aspect, 0.5f, 100.0f);
+        glm::fmat4 worldToView;
+        if (activeCameraHandle)
+        {
+            auto camera = sdb.state< Camera::Info >(activeCameraHandle);
+            worldToView = glm::lookAt(camera->position.xyz(),
+                camera->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
+        }
+        funcs->glUniform4fv(state->defProgUniformRenderParams, 1,
+            glm::value_ptr(glm::fvec4(debugNormals ? 1.0f : 0.0f, 0.0, 0.0, 0.0)));
+        renderPass(sdb, Group::DEFAULT, projection, worldToView);
+    }
+
+    {
+        glm::fmat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 450.0f, -10.0f, 10.0f);
+        glm::fmat4 worldToView;
+        funcs->glUniform4fv(state->defProgUniformRenderParams, 1,
+            glm::value_ptr(glm::fvec4(debugNormals ? 1.0f : 0.0f, 1.0, 0.0, 0.0)));
+        renderPass(sdb, Group::DEFAULT_UI, projection, worldToView);
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+void Renderer::renderPass(StateDb &sdb, u32 renderMask,
+        const glm::fmat4 &projection, const glm::fmat4 &worldToView)
+{
+    funcs->glUniformMatrix4fv(state->defProgUniformProjectionMatrix,
+                1, GL_FALSE, glm::value_ptr(projection));
+
+    auto meshes = sdb.stateAll< Mesh::Info >();
+    auto meshesPrivate = sdb.stateAll< Mesh::PrivateInfo >();
+
+    // Pseudo-instanced rendering of meshes
+    for (auto mesh : meshes)
+    {
+        if (mesh->flags & MeshFlag::HIDDEN)
+        {
+            continue;
+        }
+        if (!(mesh->groups & renderMask))
+        {
+            continue;
+        }
+
+        auto meshPrivate = meshesPrivate.rel(meshes, mesh);
+        PrivateMesh *privateMesh = meshPrivate->privateMesh;
+
+        // Update define verstex buffer data
         int oldVertexCount = privateMesh->vertexCount;
         privateMesh->vertexCount = int(privateMesh->model->positions.size());
         if (privateMesh->flags & PrivateMesh::Flag::DIRTY && privateMesh->vertexCount)
@@ -600,6 +637,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
     }
 }
 
+/*
 // -------------------------------------------------------------------------------------------------
 void Renderer::updateTransforms(StateDb &sdb)
 {
@@ -609,6 +647,7 @@ void Renderer::updateTransforms(StateDb &sdb)
         // ...
     }
 }
+*/
 
 // -------------------------------------------------------------------------------------------------
 #define RENDERER_GL_FUNC(Name) \

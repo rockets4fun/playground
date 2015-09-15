@@ -105,7 +105,7 @@ private:
     u32 krHash(const char *data, size_t size);
 
 private:
-    COMMON_DISABLE_COPY(Assets);
+    COMMON_DISABLE_COPY(Assets)
 };
 
 #endif

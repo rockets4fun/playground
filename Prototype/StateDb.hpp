@@ -112,7 +112,7 @@ struct StateDb
         Type &type = m_types[typeId];
         if (type.objectCount >= type.maxObjectCount)
         {
-            Logging::debug("Out of memory for type \"%s\"", type.name.c_str());
+            Logging::debug("WARNING: Out of memory for type \"%s\"", type.name.c_str());
             createdObjectHandle = 0;
             return nullptr;
         }
@@ -210,7 +210,7 @@ private:
     static u32 objectHandleObjectId(u64 objectHandle);
 
 private:
-    COMMON_DISABLE_COPY(StateDb);
+    COMMON_DISABLE_COPY(StateDb)
 };
 
 #endif

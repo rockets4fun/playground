@@ -16,7 +16,7 @@ struct Template : public TemplateIf
     virtual ~Template();
 
 private:
-    COMMON_DISABLE_COPY(Template);
+    COMMON_DISABLE_COPY(Template)
 };
 
 #endif

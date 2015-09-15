@@ -81,12 +81,14 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
     {
         auto mesh = sdb.create< Renderer::Mesh::Info >(m_arrowMeshHandle);
         mesh->modelAsset = assets.asset("Assets/Arrow.obj");
+        mesh->groups = Renderer::Group::DEFAULT;
     }
 
     {
         auto mesh = sdb.create< Renderer::Mesh::Info >(m_uiMeshHandle);
         mesh->modelAsset = m_uiModelAsset;
-        mesh->rotation = glm::angleAxis(glm::radians(90.0f), glm::fvec3(1.0f, 0.0f, 0.0f));
+        //mesh->rotation = glm::angleAxis(glm::radians(90.0f), glm::fvec3(1.0f, 0.0f, 0.0f));
+        mesh->groups = Renderer::Group::DEFAULT_UI;
     }
 
     // Create floating platform
@@ -97,6 +99,7 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
         platformMesh->translation = glm::fvec3(0.0f, 0.0f, 5.0f);
         platformMesh->rotation = glm::dquat(1.0f, 0.0f, 0.0f, 0.0f);
         platformMesh->modelAsset = assets.asset("Assets/Platform.obj");
+        platformMesh->groups = Renderer::Group::DEFAULT;
         // Create platform rigid body
         u64 platformRigidBodyHandle = 0;
         auto platformRigidBody = sdb.create< Physics::RigidBody::Info >(platformRigidBodyHandle);
@@ -128,6 +131,7 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
         auto mesh = sdb.create< Renderer::Mesh::Info >(meshHandle);
         mesh->translation = glm::linearRand(
             glm::fvec3(-10.0f, -10.0f, +20.0f), glm::fvec3(+10.0f, +10.0f, +40.0f));
+        mesh->groups = Renderer::Group::DEFAULT;
 
         if (enableRocket && meshIdx == 0)
         {
@@ -219,6 +223,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
                     mesh->modelAsset = m_oceanModelAsset;
                     mesh->translation = glm::fvec3(glm::fvec2(float(x), float(y))
                         * unitSize - 0.5f * float(tileCount) * unitSize, 0.0f);
+                    mesh->groups = Renderer::Group::DEFAULT;
                 }
             }
         }
@@ -337,12 +342,9 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
     // Update rocket force control logic
     if (m_pusherAffectorHandle)
     {
-        auto affector = sdb.state<
-                Physics::Affector::Info >(m_pusherAffectorHandle);
-        auto rigidBody = sdb.state<
-                Physics::RigidBody::Info >(affector->rigidBodyHandle);
-        auto mesh = sdb.state<
-                Renderer::Mesh::Info >(rigidBody->meshHandle);
+        auto affector = sdb.state< Physics::Affector::Info >(m_pusherAffectorHandle);
+        auto rigidBody = sdb.state< Physics::RigidBody::Info >(affector->rigidBodyHandle);
+        auto mesh = sdb.state< Renderer::Mesh::Info >(rigidBody->meshHandle);
 
         glm::fmat3 meshRot = glm::mat3_cast(mesh->rotation);
 
@@ -420,12 +422,13 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         {
             for (Profiling::SectionSample &sample : mainThread->samples)
             {
-                float enterMs = float(2.0 * profiling->ticksToMs(sample.ticksEnter));
-                float exitMs  = float(2.0 * profiling->ticksToMs(sample.ticksExit));
-                float bottom  = sample.callDepth * 2.0f;
+                float enterMs   = float(profiling->ticksToMs(sample.ticksEnter));
+                float exitMs    = float(profiling->ticksToMs(sample.ticksExit));
+                float callDepth = float(sample.callDepth);
                 pushRect2d(uiModel,
-                   glm::fvec2(enterMs, bottom),
-                   glm::fvec2(exitMs, bottom + 1.5f), sample.section->color, 0.0f);
+                    glm::fvec2(15.0f + 30.0f * enterMs, 15.0f * callDepth),
+                    glm::fvec2(15.0f + 30.0f * exitMs,  15.0f * callDepth + 10.0f),
+                    sample.section->color, 0.0f);
             }
         }
     }
@@ -474,8 +477,8 @@ void RocketScience::updateBuoyancyAffectors(StateDb &stateDb, double timeInS)
 
         // Reset affector
         affector->enabled = 0;
-        affector->force  = glm::fvec3(0.0f, 0.0f, 0.0f);
-        affector->torque = glm::fvec3(0.0f, 0.0f, 0.0f);
+        affector->force   = glm::fvec3(0.0f, 0.0f, 0.0f);
+        affector->torque  = glm::fvec3(0.0f, 0.0f, 0.0f);
 
         // Reset RB linear velocity limit
         rigidBody->linearVelocityLimit.z = 0.0;

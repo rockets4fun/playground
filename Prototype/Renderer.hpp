@@ -19,6 +19,12 @@
 /// @brief Renderer module
 struct Renderer : public ModuleIf
 {
+    enum Group
+    {
+        DEFAULT    = 0x1,
+        DEFAULT_UI = 0x2
+    };
+
     enum MeshFlag
     {
         HIDDEN = 0x1
@@ -34,6 +40,7 @@ struct Renderer : public ModuleIf
             glm::fquat rotation;
             u32 modelAsset = 0;
             u32 flags = 0;
+            u32 groups = 0;
         };
         struct PrivateInfo;
     };
@@ -85,11 +92,13 @@ private:
     std::shared_ptr< PrivateState > state;
     std::shared_ptr< PrivateHelpers > helpers;
 
-    void updateTransforms(StateDb &sdb);
+    void renderPass(StateDb &sdb, u32 renderMask,
+        const glm::fmat4 &projection, const glm::fmat4 &worldToView);
+
     bool initializeGl();
 
 private:
-    COMMON_DISABLE_COPY(Renderer);
+    COMMON_DISABLE_COPY(Renderer)
 };
 
 #endif
