@@ -12,6 +12,8 @@
 #include <map>
 #include <string>
 
+#include "Logging.hpp"
+
 // -------------------------------------------------------------------------------------------------
 /// @brief State database implementation
 ///

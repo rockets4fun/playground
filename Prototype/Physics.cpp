@@ -448,8 +448,8 @@ template< class SrcType, class DstType, class UserData >
 void trackCreations(StateDb &sdb,
     std::list< std::shared_ptr< DstType > > &dstStorage, UserData &userData)
 {
-    auto srcRange = sdb.stateAll< SrcType::Info >();
-    auto srcPrivateRange = sdb.stateAll< SrcType::PrivateInfo >();
+    auto srcRange = sdb.stateAll< typename SrcType::Info >();
+    auto srcPrivateRange = sdb.stateAll< typename SrcType::PrivateInfo >();
     for (auto srcPrivate : srcPrivateRange)
     {
         if (!srcPrivate->state)
