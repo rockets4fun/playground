@@ -101,7 +101,7 @@ int main(int argc, char *argv[])
 //            BROFILER_FRAME("Main")
 //#endif
             Profiling::instance()->frameReset();
-            PROFILING_SECTION(Main, glm::fvec3(1.0f, 1.0f, 0.0f))
+            PROFILING_SECTION(Main, glm::fvec3(0.5f, 0.5f, 0.5f))
 
             while (SDL_PollEvent(&event))
             {

@@ -67,6 +67,24 @@ void pushRect2d(Assets::Model *model,
 }
 
 // -------------------------------------------------------------------------------------------------
+void pushRectOutline2d(Assets::Model *model, double t,
+        const glm::fvec2 &ll, const glm::fvec2 &ur, const glm::fvec3 &color, float z = 0.0f)
+{
+    glm::fvec2 lr(ur.x, ll.y);
+    glm::fvec2 ul(ll.x, ur.y);
+    // Four edges
+    pushRect2d(model, ll + glm::fvec2(-t, -t), ll + glm::fvec2( 0,  0), color, z); // LL
+    pushRect2d(model, lr + glm::fvec2( 0, -t), lr + glm::fvec2(+t,  0), color, z); // LR
+    pushRect2d(model, ul + glm::fvec2(-t,  0), ul + glm::fvec2( 0, +t), color, z); // UL
+    pushRect2d(model, ur + glm::fvec2( 0,  0), ur + glm::fvec2(+t, +t), color, z); // UR
+    // Four sides
+    pushRect2d(model, ll + glm::fvec2( 0, -t), lr + glm::fvec2(+t,  0), color, z); // Bottom
+    pushRect2d(model, ul + glm::fvec2( 0,  0), ur + glm::fvec2(+t, +t), color, z); // Top
+    pushRect2d(model, ll + glm::fvec2(-t,  0), ul + glm::fvec2( 0,  0), color, z); // Left
+    pushRect2d(model, lr + glm::fvec2( 0,  0), ur + glm::fvec2(+t,  0), color, z); // Right
+}
+
+// -------------------------------------------------------------------------------------------------
 bool RocketScience::initialize(StateDb &sdb, Assets &assets)
 {
     auto camera = sdb.create< Renderer::Camera::Info >(m_cameraHandle);
@@ -426,10 +444,17 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
                 float exitMs    = float(profiling->ticksToMs(sample.ticksExit));
                 float callDepth = float(sample.callDepth);
                 pushRect2d(uiModel,
-                    glm::fvec2(15.0f + 30.0f * enterMs, 15.0f * callDepth),
-                    glm::fvec2(15.0f + 30.0f * exitMs,  15.0f * callDepth + 10.0f),
+                    glm::fvec2(15.0f + 30.0f * enterMs, 15.0f * (callDepth + 0.0f) + 0.0f),
+                    glm::fvec2(15.0f + 30.0f * exitMs , 15.0f * (callDepth + 1.0f) - 0.0f),
                     sample.section->color, 0.0f);
             }
+        }
+        for (int msIdx = 0; msIdx < 16; ++msIdx)
+        {
+            pushRectOutline2d(uiModel, 2.0f,
+                glm::fvec2(15.0f + 30.0f * (msIdx + 0)       , 15.0f),
+                glm::fvec2(15.0f + 30.0f * (msIdx + 1) - 2.0f, 15.0f + 1.0f * 15.0),
+                glm::fvec3(0.0f, 0.0f, 0.0f), 1.0f);
         }
     }
 }

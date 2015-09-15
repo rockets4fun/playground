@@ -495,8 +495,6 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
 //#endif
     PROFILING_SECTION(Renderer, glm::fvec3(0.0f, 0.0f, 1.0f))
 
-    funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     // Prepare references to per-model private data
     auto meshes = sdb.stateAll< Mesh::Info >();
     auto meshesPrivate = sdb.stateAll< Mesh::PrivateInfo >();
@@ -536,10 +534,11 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         }
     }
 
+    // Default render pass
     {
         const float aspect = 16.0f / 9.0f;
         glm::fmat4 projection = glm::perspective(
-                        glm::radians(30.0f * aspect), aspect, 0.5f, 100.0f);
+                    glm::radians(30.0f * aspect), aspect, 0.5f, 100.0f);
         glm::fmat4 worldToView;
         if (activeCameraHandle)
         {
@@ -547,14 +546,17 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
             worldToView = glm::lookAt(camera->position.xyz(),
                 camera->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
         }
+        funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         funcs->glUniform4fv(state->defProgUniformRenderParams, 1,
             glm::value_ptr(glm::fvec4(debugNormals ? 1.0f : 0.0f, 0.0, 0.0, 0.0)));
         renderPass(sdb, Group::DEFAULT, projection, worldToView);
     }
 
+    // UI render pass
     {
         glm::fmat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 450.0f, -10.0f, 10.0f);
         glm::fmat4 worldToView;
+        funcs->glClear(GL_DEPTH_BUFFER_BIT);
         funcs->glUniform4fv(state->defProgUniformRenderParams, 1,
             glm::value_ptr(glm::fvec4(debugNormals ? 1.0f : 0.0f, 1.0, 0.0, 0.0)));
         renderPass(sdb, Group::DEFAULT_UI, projection, worldToView);
@@ -586,7 +588,7 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask,
         auto meshPrivate = meshesPrivate.rel(meshes, mesh);
         PrivateMesh *privateMesh = meshPrivate->privateMesh;
 
-        // Update define verstex buffer data
+        // Update/define vertex buffer data
         int oldVertexCount = privateMesh->vertexCount;
         privateMesh->vertexCount = int(privateMesh->model->positions.size());
         if (privateMesh->flags & PrivateMesh::Flag::DIRTY && privateMesh->vertexCount)
