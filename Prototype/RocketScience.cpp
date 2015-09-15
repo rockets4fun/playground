@@ -414,6 +414,8 @@ void RocketScience::update(Platform &platform, double deltaTimeInS)
 
     // Update profiling UI
     {
+        PROFILING_SECTION(UpdateUi, glm::fvec3(1.0f, 0.0f, 1.0f))
+
         auto uiMesh = platform.stateDb.refState< Renderer::Mesh::Info >(m_uiMeshHandle);
         auto uiModel = platform.assets.refModel(uiMesh->modelAsset);
         uiModel->positions.clear(); uiModel->normals.clear(); uiModel->colors.clear();
