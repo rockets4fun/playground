@@ -14,7 +14,6 @@
 
 #include "StateDb.hpp"
 #include "Assets.hpp"
-#include "Platform.hpp"
 
 #include "Renderer.hpp"
 #include "Physics.hpp"
@@ -74,8 +73,6 @@ int main(int argc, char *argv[])
         StateDb stateDb;
         Assets assets;
 
-        Platform platform(stateDb, assets, renderer);
-
         std::vector< ModuleIf * > modulesInit   = { &physics, &renderer, &rocketScience };
         std::vector< ModuleIf * > modulesUpdate = { &physics, &rocketScience, &renderer };
 
@@ -88,7 +85,7 @@ int main(int argc, char *argv[])
         }
         for (auto &module : modulesInit)
         {
-            if (!module->initialize(platform))
+            if (!module->initialize(stateDb, assets))
             {
                 Logging::debug("ERROR: Failed to initialize module");
                 // FIXME(martinmo): Shutdown modules already initilized
@@ -117,7 +114,7 @@ int main(int argc, char *argv[])
             double deltaTimeInS = 1.0 / 60.0;
             for (auto &module : modulesUpdate)
             {
-                module->update(platform, deltaTimeInS);
+                module->update(stateDb, assets, renderer, deltaTimeInS);
             }
 
             SDL_GL_SwapWindow(window);
@@ -125,7 +122,7 @@ int main(int argc, char *argv[])
 
         for (auto &module : modulesInitReversed)
         {
-            module->shutdown(platform);
+            module->shutdown(stateDb);
         }
     }
 

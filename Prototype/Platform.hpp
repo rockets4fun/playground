@@ -8,24 +8,14 @@
 
 #include "Common.hpp"
 
-struct StateDb;
-struct Renderer;
-struct Assets;
-
 // -------------------------------------------------------------------------------------------------
 /// @brief Platform abstraction
 struct Platform
 {
-    Platform(
-        StateDb &stateDbInit,
-        Assets &assetsInit,
-        Renderer &rendererInit);
+    Platform();
     virtual ~Platform();
 
 public:
-    StateDb &stateDb;
-    Assets &assets;
-    Renderer &renderer;
 
 private:
     COMMON_DISABLE_COPY(Platform);

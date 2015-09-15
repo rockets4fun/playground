@@ -23,9 +23,9 @@ struct RocketScience : public ModuleIf
 
 public: // Implementation of module interface
     virtual void registerTypesAndStates(StateDb &stateDb);
-    virtual bool initialize(Platform &platform);
-    virtual void shutdown(Platform &platform);
-    virtual void update(Platform &platform, double deltaTimeInS);
+    virtual bool initialize(StateDb &sdb, Assets &assets);
+    virtual void shutdown(StateDb &sdb);
+    virtual void update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS);
 
 private:
     static const int OCEAN_TILE_VERTEX_COUNT;
@@ -50,7 +50,7 @@ private:
 
     float oceanEquation(const glm::fvec2 &position, double timeInS);
 
-    void addBuoyancyAffector(Platform &platform,
+    void addBuoyancyAffector(StateDb &sdb,
         const glm::fvec3 &translation, u64 parentRigidBody);
     void updateBuoyancyAffectors(StateDb &stateDb, double timeInS);
 

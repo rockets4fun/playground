@@ -29,6 +29,10 @@ Profiling *Profiling::instance()
 // -------------------------------------------------------------------------------------------------
 Profiling::Thread *Profiling::mainThreadPrevFrame()
 {
+    if (m_threadsPrevFrame.empty())
+    {
+        return nullptr;
+    }
     return &m_threadsPrevFrame.begin()->second;
 }
 

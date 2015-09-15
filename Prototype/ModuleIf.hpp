@@ -9,16 +9,17 @@
 #include "Common.hpp"
 
 struct StateDb;
-struct Platform;
+struct Assets;
+struct Renderer;
 
 // -------------------------------------------------------------------------------------------------
 /// @brief Application module interface
 struct ModuleIf
 {
     virtual void registerTypesAndStates(StateDb &stateDb) = 0;
-    virtual bool initialize(Platform &platform) = 0;
-    virtual void shutdown(Platform &platform) = 0;
-    virtual void update(Platform &platform, double deltaTimeInS) = 0;
+    virtual bool initialize(StateDb &sdb, Assets &assets) = 0;
+    virtual void shutdown(StateDb &sdb) = 0;
+    virtual void update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS) = 0;
 };
 
 #endif

@@ -71,9 +71,9 @@ struct Renderer : public ModuleIf
 
 public: // Implementation of module interface
     virtual void registerTypesAndStates(StateDb &stateDb);
-    virtual bool initialize(Platform &platform);
-    virtual void shutdown(Platform &platform);
-    virtual void update(Platform &platform, double deltaTimeInS);
+    virtual bool initialize(StateDb &sdb, Assets &assets);
+    virtual void shutdown(StateDb &sdb);
+    virtual void update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS);
 
 private:
     struct PrivateFuncs;
@@ -85,7 +85,7 @@ private:
     std::shared_ptr< PrivateState > state;
     std::shared_ptr< PrivateHelpers > helpers;
 
-    void updateTransforms(Platform &platform);
+    void updateTransforms(StateDb &sdb);
     bool initializeGl();
 
 private:

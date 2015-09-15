@@ -145,7 +145,7 @@ u64 StateDb::registerState(u64 typeId, const std::string &name, u64 elemSize)
 }
 
 // -------------------------------------------------------------------------------------------------
-bool StateDb::isObjectHandleValid(u64 objectHandle)
+bool StateDb::isHandleValid(u64 objectHandle)
 {
     u16 typeId = objectHandleTypeId(objectHandle);
     if (!isTypeIdValid(typeId))
@@ -167,32 +167,16 @@ bool StateDb::isObjectHandleValid(u64 objectHandle)
 }
 
 // -------------------------------------------------------------------------------------------------
-std::string StateDb::objectHandleTypeName(u64 objectHandle)
+std::string StateDb::handleTypeName(u64 objectHandle)
 {
-    COMMON_ASSERT(isObjectHandleValid(objectHandle));
+    COMMON_ASSERT(isHandleValid(objectHandle));
     return m_types[objectHandleTypeId(objectHandle)].name;
 }
 
 // -------------------------------------------------------------------------------------------------
-u64 StateDb::createObject(u64 typeId)
+void StateDb::destroy(u64 objectHandle)
 {
-    COMMON_ASSERT(isTypeIdValid(typeId));
-    Type &type = m_types[typeId];
-    if (type.objectCount >= type.maxObjectCount)
-    {
-        // TODO(martinmo): Out of type memory error through platform abstraction
-        return u64();
-    }
-    u64 objectId = type.idxToObjectId[++type.objectCount];
-    ++type.lifecycleByObjectId[objectId];
-    return composeObjectHandle(
-        u16(typeId), u16(type.lifecycleByObjectId[objectId]), u32(objectId));
-}
-
-// -------------------------------------------------------------------------------------------------
-void StateDb::destroyObject(u64 objectHandle)
-{
-    COMMON_ASSERT(isObjectHandleValid(objectHandle));
+    COMMON_ASSERT(isHandleValid(objectHandle));
 
     Type &type = m_types[objectHandleTypeId(objectHandle)];
     u32 objectId = objectHandleObjectId(objectHandle);
@@ -225,7 +209,7 @@ void StateDb::destroyObject(u64 objectHandle)
 }
 
 // -------------------------------------------------------------------------------------------------
-int StateDb::objectCount(u64 typeId)
+int StateDb::count(u64 typeId)
 {
     COMMON_ASSERT(isTypeIdValid(typeId));
     return int(m_types[typeId].objectCount);
