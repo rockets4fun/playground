@@ -216,22 +216,6 @@ int StateDb::objectCount(u64 typeId)
 }
 
 // -------------------------------------------------------------------------------------------------
-u64 StateDb::createObjectInternal(u64 typeId)
-{
-    COMMON_ASSERT(isTypeIdValid(typeId));
-    Type &type = m_types[typeId];
-    if (type.objectCount >= type.maxObjectCount)
-    {
-        // TODO(martinmo): Out of type memory error through platform abstraction
-        return u64();
-    }
-    u64 objectId = type.idxToObjectId[++type.objectCount];
-    ++type.lifecycleByObjectId[objectId];
-    return composeObjectHandle(
-        u16(typeId), u16(type.lifecycleByObjectId[objectId]), u32(objectId));
-}
-
-// -------------------------------------------------------------------------------------------------
 u64 StateDb::composeObjectHandle(u16 typeId, u16 lifecycle, u32 objectId)
 {
     return u64(typeId) << 48 | u64(lifecycle) << 32 | objectId;
