@@ -508,16 +508,13 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
             camera->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
     }
 
-    Mesh::Info *meshBegin = nullptr, *meshEnd = nullptr;
-    sdb.stateAll(&meshBegin, &meshEnd);
-    Mesh::PrivateInfo *meshPrivateBegin = nullptr, *meshPrivateEnd = nullptr;
-    sdb.stateAll(&meshPrivateBegin, &meshPrivateEnd);
-    Mesh::PrivateInfo *meshPrivate = nullptr;
+    auto meshes = sdb.stateAll< Mesh::Info >();
+    auto meshesPrivate = sdb.stateAll< Mesh::PrivateInfo >();
 
     // Set dirty flags for all dynamic meshes
-    meshPrivate = meshPrivateBegin;
-    for (auto mesh = meshBegin; mesh != meshEnd; ++mesh, ++meshPrivate)
+    for (auto mesh : meshes)
     {
+        auto meshPrivate = meshesPrivate.rel(meshes, mesh);
         if (!meshPrivate->privateMesh)
         {
             meshPrivate->privateMesh = &state->meshes[mesh->modelAsset];
@@ -529,14 +526,13 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
     }
 
     // Pseudo-instanced rendering of meshes
-    meshPrivate = meshPrivateBegin;
-    for (auto mesh = meshBegin; mesh != meshEnd; ++mesh, ++meshPrivate)
+    for (auto mesh : meshes)
     {
         if (mesh->flags & MeshFlag::HIDDEN)
         {
             continue;
         }
-
+        auto meshPrivate = meshesPrivate.rel(meshes, mesh);
         PrivateMesh *privateMesh = meshPrivate->privateMesh;
         if (!privateMesh->model)
         {
@@ -607,10 +603,8 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
 // -------------------------------------------------------------------------------------------------
 void Renderer::updateTransforms(StateDb &sdb)
 {
-    Transform::Info *transformBegin = nullptr, *transformEnd = nullptr;
-    sdb.stateAll(&transformBegin, &transformEnd);
-    for (Transform::Info *transform = transformBegin;
-                          transform != transformEnd; ++transform)
+    auto transforms = sdb.stateAll< Transform::Info >();
+    for (auto transform : transforms)
     {
         // ...
     }

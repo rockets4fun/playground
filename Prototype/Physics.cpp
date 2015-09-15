@@ -326,14 +326,13 @@ void Physics::PrivateState::preTick(btScalar timeStep)
         }
     }
 
+    auto rigidBodies = sdb.stateAll< RigidBody::Info >();
+    auto rigidBodiesPrivate = sdb.stateAll< RigidBody::PrivateInfo >();
+
     // Apply linear velocity limits to all RBs
-    RigidBody::Info *rigidBody = nullptr, *rigidBodyBegin = nullptr, *rigidBodyEnd = nullptr;
-    sdb.stateAll(&rigidBodyBegin, &rigidBodyEnd);
-    RigidBody::PrivateInfo *rigidBodyPrivate = nullptr, *rigidBodyPrivateBegin = nullptr;
-    sdb.stateAll(&rigidBodyPrivateBegin);
-    for (rigidBody  = rigidBodyBegin, rigidBodyPrivate = rigidBodyPrivateBegin;
-         rigidBody != rigidBodyEnd; ++rigidBody, ++rigidBodyPrivate)
+    for (auto rigidBody : rigidBodies)
     {
+        auto rigidBodyPrivate = rigidBodiesPrivate.rel(rigidBodies, rigidBody);
         btRigidBody *bulletRigidBody = rigidBodyPrivate->state->bulletRigidBody.get();
         btVector3 linearVelocity = bulletRigidBody->getLinearVelocity();
         glm::fvec3 limit = rigidBody->linearVelocityLimit;
@@ -446,23 +445,21 @@ void Physics::shutdown(StateDb &sdb)
 
 // -------------------------------------------------------------------------------------------------
 template< class SrcType, class DstType, class UserData >
-void trackCreations(StateDb &stateDb,
+void trackCreations(StateDb &sdb,
     std::list< std::shared_ptr< DstType > > &dstStorage, UserData &userData)
 {
-    typename SrcType::Info *srcBegin = nullptr, *srcEnd = nullptr, *src = nullptr;
-    stateDb.stateAll(&srcBegin, &srcEnd);
-    typename SrcType::PrivateInfo *srcPrivateBegin = nullptr, *srcPrivate = nullptr;
-    stateDb.stateAll(&srcPrivateBegin);
-    for (src  = srcBegin, srcPrivate = srcPrivateBegin;
-         src != srcEnd; ++src, ++srcPrivate)
+    auto srcRange = sdb.stateAll< SrcType::Info >();
+    auto srcPrivateRange = sdb.stateAll< SrcType::PrivateInfo >();
+    for (auto srcPrivate : srcPrivateRange)
     {
         if (!srcPrivate->state)
         {
+            auto src = srcRange.rel(srcPrivateRange, srcPrivate);
             dstStorage.push_back(std::make_shared< DstType >(userData, src));
             srcPrivate->state = dstStorage.back().get();
-            srcPrivate->state->handle = stateDb.handleFromState(src);
+            srcPrivate->state->handle = sdb.handleFromState(src);
             Logging::debug("Creation of \"%s\" (%d instances tracked)",
-                stateDb.handleTypeName(srcPrivate->state->handle).c_str(),
+                sdb.handleTypeName(srcPrivate->state->handle).c_str(),
                 int(dstStorage.size()));
         }
     }
@@ -470,7 +467,7 @@ void trackCreations(StateDb &stateDb,
 
 // -------------------------------------------------------------------------------------------------
 template< class DstType >
-void trackDestructions(StateDb &stateDb,
+void trackDestructions(StateDb &sdb,
     std::list< std::shared_ptr< DstType > > &dstStorage)
 {
     typename std::list< std::shared_ptr< DstType > >::iterator dstStorageIter;
@@ -478,7 +475,7 @@ void trackDestructions(StateDb &stateDb,
     for (dstStorageIter  = dstStorage.begin();
          dstStorageIter != dstStorage.end(); ++dstStorageIter)
     {
-        if (!stateDb.isHandleValid(dstStorageIter->get()->handle))
+        if (!sdb.isHandleValid(dstStorageIter->get()->handle))
         {
             deletions.push_back(dstStorageIter);
         }
@@ -488,7 +485,7 @@ void trackDestructions(StateDb &stateDb,
         dstStorage.erase(deletions.back());
         deletions.pop_back();
         Logging::debug("Destruction of \"%s\" (%d instances tracked)",
-            stateDb.handleTypeName(dstStorageIter->get()->handle).c_str(),
+            sdb.handleTypeName(dstStorageIter->get()->handle).c_str(),
             int(dstStorage.size()));
     }
 }
@@ -501,29 +498,25 @@ void Physics::update(StateDb &sdb, Assets &assets, Renderer &renderer, double de
 //#endif
     PROFILING_SECTION(Physics, glm::fvec3(1.0f, 0.0f, 0.0f))
 
-    RigidBody::Info *rigidBody = nullptr, *rigidBodyBegin = nullptr, *rigidBodyEnd = nullptr;
-    sdb.stateAll(&rigidBodyBegin, &rigidBodyEnd);
-    RigidBody::PrivateInfo *rigidBodyPrivate = nullptr, *rigidBodyPrivateBegin = nullptr;
-    sdb.stateAll(&rigidBodyPrivateBegin);
-
     // Check for newly created rigid bodies
     trackCreations< RigidBody >(sdb, state->privateRigidBodies, *state.get());
     // Check for newly created constraints
     trackCreations< Constraint >(sdb, state->privateConstraints, *state.get());
 
+    auto rigidBodies = sdb.stateAll< RigidBody::Info >();
+    auto rigidBodiesPrivate = sdb.stateAll< RigidBody::PrivateInfo >();
+    auto affectors = sdb.stateAll< Affector::Info >();
+
     // Clear old and find new affectors of rigid bodies
-    for (rigidBody  = rigidBodyBegin, rigidBodyPrivate = rigidBodyPrivateBegin;
-         rigidBody != rigidBodyEnd; ++rigidBody, ++rigidBodyPrivate)
+    for (auto rigidBodyPrivate : rigidBodiesPrivate)
     {
         rigidBodyPrivate->state->affectors.clear();
     }
-    Affector::Info *affector = nullptr, *affectorBegin = nullptr, *affectorEnd = nullptr;
-    sdb.stateAll(&affectorBegin, &affectorEnd);
-    for (affector = affectorBegin; affector != affectorEnd; ++affector)
+    for (auto affector : affectors)
     {
         if (affector->enabled)
         {
-            rigidBodyPrivate = sdb.state< RigidBody::PrivateInfo >(affector->rigidBodyHandle);
+            auto rigidBodyPrivate = sdb.state< RigidBody::PrivateInfo >(affector->rigidBodyHandle);
             rigidBodyPrivate->state->affectors.push_back(affector);
         }
     }
@@ -547,8 +540,7 @@ void Physics::update(StateDb &sdb, Assets &assets, Renderer &renderer, double de
     */
 
     // Update mesh transforms according to rigid bodies
-    for (rigidBody  = rigidBodyBegin, rigidBodyPrivate = rigidBodyPrivateBegin;
-         rigidBody != rigidBodyEnd; ++rigidBody, ++rigidBodyPrivate)
+    for (auto rigidBody : rigidBodies)
     {
         // TODO(martinmo): Delete rigid bodies with bad mesh references?
         // TODO(martinmo): (e.g. mesh has been destroyed but rigid body still alive)
@@ -557,6 +549,7 @@ void Physics::update(StateDb &sdb, Assets &assets, Renderer &renderer, double de
             continue;
         }
 
+        auto rigidBodyPrivate = rigidBodiesPrivate.rel(rigidBodies, rigidBody);
         btRigidBody *bulletRigidBody = rigidBodyPrivate->state->bulletRigidBody.get();
         const btTransform &worldTrans = bulletRigidBody->getCenterOfMassTransform();
 

@@ -27,6 +27,33 @@
 /// - Object lookup through handle (ID to index traslation via per-type vector)
 struct StateDb
 {
+    template< class ElementType >
+    struct StateRange
+    {
+        // FIXME(martinmo): Define custom iterator type to work around range-based-for's
+        // FIXME(martinmo): implicit dereference semantics ==> there must be a better way...
+        struct Iter
+        {
+            Iter(ElementType *elem) : m_elem(elem) { }
+            ElementType *operator*() { return m_elem; }
+            ElementType *operator++() { return ++m_elem; }
+            bool operator!=(const Iter &other) { return m_elem != other.m_elem; }
+            private: ElementType *m_elem = nullptr;
+        };
+
+        ElementType *beginElem = nullptr;
+        ElementType *endElem   = nullptr;
+
+        Iter begin() { return Iter(beginElem); }
+        Iter end()   { return Iter(endElem);   }
+
+        template< class ElementTypeRel >
+        ElementType *rel(const StateRange< ElementTypeRel > &relRange, ElementTypeRel *relElem)
+        {
+            return beginElem + (relElem - relRange.beginElem);
+        }
+    };
+
     StateDb();
     virtual ~StateDb();
 
@@ -72,8 +99,10 @@ struct StateDb
     ElementType *create(u64 &createdObjectHandle)
     {
         COMMON_ASSERT(isStateIdValid(ElementType::STATE));
+
         // TODO(martinmo): Encode type ID into the state ID (==> state handle)
-        // TODO(martinmo): ==> This way we can avoid lookup in 'm_states'
+        // TODO(martinmo): ==> Avoid lookup in 'm_states' (see 'stateAll()' for more profiteers)
+
         u64 typeId = m_states[ElementType::STATE].typeId;
 
         COMMON_ASSERT(isTypeIdValid(typeId));
@@ -119,26 +148,28 @@ struct StateDb
     }
 
     template< class ElementType >
-    void stateAll(ElementType **begin, ElementType **end = nullptr)
+    StateRange< ElementType > stateAll()
     {
+        StateRange< ElementType > range;
+
         COMMON_ASSERT(isStateIdValid(ElementType::STATE));
         COMMON_ASSERT(m_states[ElementType::STATE].elemSize == sizeof(ElementType));
 
         // TODO(martinmo): Encode type ID into the state ID (==> state handle)
-        // TODO(martinmo): ==> This way we can avoid lookup in 'm_states'
-        // TODO(martinmo): ==> See 'createObjectAndRefState' for more profiteers
+        // TODO(martinmo): ==> Avoid lookup in 'm_states' (see 'create()' for more profiteers)
+
         // TODO(martinmo): Store object count in memory block itself
         // TODO(martinmo): ==> This way we can avoid type/implicit state lookup altogether
+
         const Type &type = m_types[m_states[ElementType::STATE].typeId];
 
         // TODO(martinmo): Pointers to first and last element never change at runtime ==> store
+
         std::vector< unsigned char > &memory = m_stateValues[ElementType::STATE];
         unsigned char *memoryBegin = &memory[sizeof(ElementType)];
-        *begin = (ElementType *)memoryBegin;
-        if (end)
-        {
-            *end = (ElementType *)(memoryBegin + sizeof(ElementType) * type.objectCount);
-        }
+        range.beginElem = (ElementType *)memoryBegin;
+        range.endElem   = (ElementType *)(memoryBegin + sizeof(ElementType) * type.objectCount);
+        return range;
     }
 
 private:
