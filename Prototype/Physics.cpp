@@ -17,7 +17,6 @@
 #include "StateDb.hpp"
 #include "Assets.hpp"
 
-#include "Platform.hpp"
 #include "Renderer.hpp"
 
 #ifdef COMMON_WINDOWS
@@ -66,11 +65,12 @@ struct Physics::PrivateState
     std::list< std::shared_ptr< PrivateRigidBody > > privateRigidBodies;
     std::list< std::shared_ptr< PrivateConstraint > > privateConstraints;
 
-    Platform &platform;
+    StateDb &sdb;
+    Assets &assets;
 
     static void preTickCallback(btDynamicsWorld *world, btScalar timeStep);
 
-    PrivateState(Platform &platformInit);
+    PrivateState(StateDb &sdbInit, Assets &assetsInit);
 
     void preTick(btScalar timeStep);
 };
@@ -128,14 +128,14 @@ Physics::PrivateRigidBody::PrivateRigidBody(
     : state(stateInit)
 {
     btCollisionShape *collisionShape = nullptr;
-    auto mesh = state.platform.stateDb.refState< Renderer::Mesh::Info >(rigidBody->meshHandle);
+    auto mesh = state.sdb.refState< Renderer::Mesh::Info >(rigidBody->meshHandle);
     u64 collisionShapeKey = u64(rigidBody->collisionShapeType) << 32 | u64(mesh->modelAsset);
 
     // TODO(martinmo): Find way to get rid of map lookup
     auto collisionShapeIter = state.collisionShapes.find(collisionShapeKey);
     if (collisionShapeIter == state.collisionShapes.end())
     {
-        const Assets::Model *model = state.platform.assets.refModel(mesh->modelAsset);
+        const Assets::Model *model = state.assets.refModel(mesh->modelAsset);
         COMMON_ASSERT(model != nullptr);
         glm::fvec3 min(
             std::numeric_limits< float >::max(),
@@ -264,9 +264,9 @@ Physics::PrivateConstraint::PrivateConstraint(
     PrivateState &stateInit, Constraint::Info *constraint)
     : state(stateInit)
 {
-    btRigidBody *rbA = state.platform.stateDb.refState< RigidBody::PrivateInfo >(
+    btRigidBody *rbA = state.sdb.refState< RigidBody::PrivateInfo >(
         constraint->rigidBodyAHandle)->state->bulletRigidBody.get();
-    btRigidBody *rbB = state.platform.stateDb.refState< RigidBody::PrivateInfo >(
+    btRigidBody *rbB = state.sdb.refState< RigidBody::PrivateInfo >(
         constraint->rigidBodyBHandle)->state->bulletRigidBody.get();
 
     btTransform frameInA = btTransform(
@@ -301,8 +301,9 @@ void Physics::PrivateState::preTickCallback(btDynamicsWorld *world, btScalar tim
 }
 
 // -------------------------------------------------------------------------------------------------
-Physics::PrivateState::PrivateState(Platform &platformInit) :
-    platform(platformInit)
+Physics::PrivateState::PrivateState(StateDb &sdbInit, Assets &assetsInit) :
+    sdb(sdbInit),
+    assets(assetsInit)
 {
 }
 
@@ -327,9 +328,9 @@ void Physics::PrivateState::preTick(btScalar timeStep)
 
     // Apply linear velocity limits to all RBs
     RigidBody::Info *rigidBody = nullptr, *rigidBodyBegin = nullptr, *rigidBodyEnd = nullptr;
-    platform.stateDb.refStateAll(&rigidBodyBegin, &rigidBodyEnd);
+    sdb.refStateAll(&rigidBodyBegin, &rigidBodyEnd);
     RigidBody::PrivateInfo *rigidBodyPrivate = nullptr, *rigidBodyPrivateBegin = nullptr;
-    platform.stateDb.refStateAll(&rigidBodyPrivateBegin);
+    sdb.refStateAll(&rigidBodyPrivateBegin);
     for (rigidBody  = rigidBodyBegin, rigidBodyPrivate = rigidBodyPrivateBegin;
          rigidBody != rigidBodyEnd; ++rigidBody, ++rigidBodyPrivate)
     {
@@ -392,9 +393,9 @@ void Physics::registerTypesAndStates(StateDb &stateDb)
 }
 
 // -------------------------------------------------------------------------------------------------
-bool Physics::initialize(Platform &platform)
+bool Physics::initialize(StateDb &sdb, Assets &assets)
 {
-    state = std::make_shared< PrivateState >(platform);
+    state = std::make_shared< PrivateState >(sdb, assets);
 
     state->collisionConfiguration = std::make_shared< btDefaultCollisionConfiguration >();
     state->dispatcher = std::make_shared< btCollisionDispatcher >(
@@ -436,7 +437,7 @@ bool Physics::initialize(Platform &platform)
 }
 
 // -------------------------------------------------------------------------------------------------
-void Physics::shutdown(Platform &platform)
+void Physics::shutdown(StateDb &sdb)
 {
     state->dynamicsWorld->setInternalTickCallback(nullptr);
     //state->dynamicsWorld->removeRigidBody(state->groundRigidBody.get());
@@ -493,7 +494,7 @@ void trackDestructions(StateDb &stateDb,
 }
 
 // -------------------------------------------------------------------------------------------------
-void Physics::update(Platform &platform, double deltaTimeInS)
+void Physics::update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS)
 {
 //#ifdef COMMON_WINDOWS
 //    BROFILER_CATEGORY("Physics", Profiler::Color::Red)
@@ -501,14 +502,14 @@ void Physics::update(Platform &platform, double deltaTimeInS)
     PROFILING_SECTION(Physics, glm::fvec3(1.0f, 0.0f, 0.0f))
 
     RigidBody::Info *rigidBody = nullptr, *rigidBodyBegin = nullptr, *rigidBodyEnd = nullptr;
-    platform.stateDb.refStateAll(&rigidBodyBegin, &rigidBodyEnd);
+    sdb.refStateAll(&rigidBodyBegin, &rigidBodyEnd);
     RigidBody::PrivateInfo *rigidBodyPrivate = nullptr, *rigidBodyPrivateBegin = nullptr;
-    platform.stateDb.refStateAll(&rigidBodyPrivateBegin);
+    sdb.refStateAll(&rigidBodyPrivateBegin);
 
     // Check for newly created rigid bodies
-    trackCreations< RigidBody >(platform.stateDb, state->privateRigidBodies, *state.get());
+    trackCreations< RigidBody >(sdb, state->privateRigidBodies, *state.get());
     // Check for newly created constraints
-    trackCreations< Constraint >(platform.stateDb, state->privateConstraints, *state.get());
+    trackCreations< Constraint >(sdb, state->privateConstraints, *state.get());
 
     // Clear old and find new affectors of rigid bodies
     for (rigidBody  = rigidBodyBegin, rigidBodyPrivate = rigidBodyPrivateBegin;
@@ -517,13 +518,12 @@ void Physics::update(Platform &platform, double deltaTimeInS)
         rigidBodyPrivate->state->affectors.clear();
     }
     Affector::Info *affector = nullptr, *affectorBegin = nullptr, *affectorEnd = nullptr;
-    platform.stateDb.refStateAll(&affectorBegin, &affectorEnd);
+    sdb.refStateAll(&affectorBegin, &affectorEnd);
     for (affector = affectorBegin; affector != affectorEnd; ++affector)
     {
         if (affector->enabled)
         {
-            rigidBodyPrivate = platform.stateDb.refState<
-                RigidBody::PrivateInfo >(affector->rigidBodyHandle);
+            rigidBodyPrivate = sdb.refState< RigidBody::PrivateInfo >(affector->rigidBodyHandle);
             rigidBodyPrivate->state->affectors.push_back(affector);
         }
     }
@@ -552,7 +552,7 @@ void Physics::update(Platform &platform, double deltaTimeInS)
     {
         // TODO(martinmo): Delete rigid bodies with bad mesh references?
         // TODO(martinmo): (e.g. mesh has been destroyed but rigid body still alive)
-        if (!platform.stateDb.isObjectHandleValid(rigidBody->meshHandle))
+        if (!sdb.isObjectHandleValid(rigidBody->meshHandle))
         {
             continue;
         }
@@ -563,14 +563,14 @@ void Physics::update(Platform &platform, double deltaTimeInS)
         rigidBody->linearVelocity  = fromBulletVec(bulletRigidBody->getLinearVelocity());
         rigidBody->angularVelocity = fromBulletVec(bulletRigidBody->getAngularVelocity());
 
-        auto mesh = platform.stateDb.refState< Renderer::Mesh::Info >(rigidBody->meshHandle);
+        auto mesh = sdb.refState< Renderer::Mesh::Info >(rigidBody->meshHandle);
 
         mesh->translation = fromBulletVec(worldTrans.getOrigin());
         mesh->rotation    = fromBulletQuat(worldTrans.getRotation());
     }
 
     // Check for destroyed rigid bodies
-    trackDestructions(platform.stateDb, state->privateRigidBodies);
+    trackDestructions(sdb, state->privateRigidBodies);
     // Check for destroyed constraints
-    trackDestructions(platform.stateDb, state->privateConstraints);
+    trackDestructions(sdb, state->privateConstraints);
 }

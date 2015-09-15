@@ -19,7 +19,6 @@
 #include "Logging.hpp"
 #include "Profiling.hpp"
 
-#include "Platform.hpp"
 #include "StateDb.hpp"
 #include "Assets.hpp"
 
@@ -295,7 +294,7 @@ void Renderer::registerTypesAndStates(StateDb &stateDb)
 }
 
 // -------------------------------------------------------------------------------------------------
-bool Renderer::initialize(Platform &platform)
+bool Renderer::initialize(StateDb &sdb, Assets &assets)
 {
     funcs = std::make_shared< PrivateFuncs >();
     state = std::make_shared< PrivateState >();
@@ -358,7 +357,7 @@ bool Renderer::initialize(Platform &platform)
         "\n"
         "void main()\n"
         "{\n"
-        "    vec3 lightDir = normalize(vec3(0.0, -1.0, -1.0));\n"
+        "    vec3 lightDir = normalize(vec3(0.0, 1.0, -1.0));\n"
         "    float lambert = max(0.0, dot(vertexNormalWorld, -lightDir));\n"
         "    if (debugNormals > 0.5)\n"
         "        fragmentColor = vec4(vertexColor, 1.0);\n"
@@ -460,7 +459,7 @@ bool Renderer::initialize(Platform &platform)
 }
 
 // -------------------------------------------------------------------------------------------------
-void Renderer::shutdown(Platform &platform)
+void Renderer::shutdown(StateDb &sdb)
 {
     if (state->cubeNormalsVbo) funcs->glDeleteBuffers(1, &state->cubeNormalsVbo);
     if (state->cubePositionsVbo) funcs->glDeleteBuffers(1, &state->cubePositionsVbo);
@@ -482,14 +481,14 @@ void Renderer::shutdown(Platform &platform)
 }
 
 // -------------------------------------------------------------------------------------------------
-void Renderer::update(Platform &platform, double deltaTimeInS)
+void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS)
 {
 //#ifdef COMMON_WINDOWS
 //    BROFILER_CATEGORY("Renderer", Profiler::Color::Blue)
 //#endif
     PROFILING_SECTION(Renderer, glm::fvec3(0.0f, 0.0f, 1.0f))
 
-    updateTransforms(platform);
+    updateTransforms(sdb);
 
     funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -504,15 +503,15 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
     glm::fmat4 worldToView;
     if (activeCameraHandle)
     {
-        auto camera = platform.stateDb.refState< Camera::Info >(activeCameraHandle);
+        auto camera = sdb.refState< Camera::Info >(activeCameraHandle);
         worldToView = glm::lookAt(camera->position.xyz(),
             camera->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
     }
 
     Mesh::Info *meshBegin = nullptr, *meshEnd = nullptr;
-    platform.stateDb.refStateAll(&meshBegin, &meshEnd);
+    sdb.refStateAll(&meshBegin, &meshEnd);
     Mesh::PrivateInfo *meshPrivateBegin = nullptr, *meshPrivateEnd = nullptr;
-    platform.stateDb.refStateAll(&meshPrivateBegin, &meshPrivateEnd);
+    sdb.refStateAll(&meshPrivateBegin, &meshPrivateEnd);
     Mesh::PrivateInfo *meshPrivate = nullptr;
 
     // Set dirty flags for all dynamic meshes
@@ -542,9 +541,9 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
         if (!privateMesh->model)
         {
             // TODO(martinmo): Add way of getting asset and flags in one call/lookup
-            privateMesh->model = platform.assets.refModel(mesh->modelAsset);
+            privateMesh->model = assets.refModel(mesh->modelAsset);
             COMMON_ASSERT(privateMesh->model);
-            if (platform.assets.assetFlags(mesh->modelAsset) & Assets::Flag::DYNAMIC)
+            if (assets.assetFlags(mesh->modelAsset) & Assets::Flag::DYNAMIC)
             {
                 privateMesh->flags |= PrivateMesh::Flag::DYNAMIC;
                 privateMesh->usage = GL_DYNAMIC_DRAW;
@@ -555,16 +554,21 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
             privateMesh->flags |= PrivateMesh::Flag::DIRTY;
         }
 
-        if (privateMesh->flags & PrivateMesh::Flag::DIRTY)
+        int oldVertexCount = privateMesh->vertexCount;
+        privateMesh->vertexCount = int(privateMesh->model->positions.size());
+        if (privateMesh->flags & PrivateMesh::Flag::DIRTY && privateMesh->vertexCount)
         {
             helpers->updateVertexBufferData(privateMesh->positionsVbo,
-                privateMesh->model->positions, privateMesh->usage, privateMesh->vertexCount);
+                privateMesh->model->positions, privateMesh->usage, oldVertexCount);
             helpers->updateVertexBufferData(privateMesh->normalsVbo,
-                privateMesh->model->normals, privateMesh->usage, privateMesh->vertexCount);
+                privateMesh->model->normals, privateMesh->usage, oldVertexCount);
             helpers->updateVertexBufferData(privateMesh->colorsVbo,
-                privateMesh->model->colors, privateMesh->usage, privateMesh->vertexCount);
-            privateMesh->vertexCount = int(privateMesh->model->positions.size());
+                privateMesh->model->colors, privateMesh->usage, oldVertexCount);
             privateMesh->flags &= ~PrivateMesh::Flag::DIRTY;
+        }
+        if (!privateMesh->vertexCount)
+        {
+            continue;
         }
 
         // Vertex attribute assignments are stored inside the bound VAO
@@ -601,10 +605,10 @@ void Renderer::update(Platform &platform, double deltaTimeInS)
 }
 
 // -------------------------------------------------------------------------------------------------
-void Renderer::updateTransforms(Platform &platform)
+void Renderer::updateTransforms(StateDb &sdb)
 {
     Transform::Info *transformBegin = nullptr, *transformEnd = nullptr;
-    platform.stateDb.refStateAll(&transformBegin, &transformEnd);
+    sdb.refStateAll(&transformBegin, &transformEnd);
     for (Transform::Info *transform = transformBegin;
                           transform != transformEnd; ++transform)
     {

@@ -42,7 +42,6 @@ struct StateDb
     bool isObjectHandleValid(u64 objectHandle);
     std::string objectHandleTypeName(u64 objectHandle);
 
-    u64 createObject(u64 typeId);
     void destroyObject(u64 objectHandle);
 
     int objectCount(u64 typeId);
@@ -71,7 +70,7 @@ struct StateDb
     }
 
     template< class ElementType >
-    u64 createObjectAndRefState(ElementType **elem)
+    ElementType *createObject(u64 &createdObjectHandle)
     {
         COMMON_ASSERT(isStateIdValid(ElementType::STATE));
 
@@ -79,9 +78,15 @@ struct StateDb
         // TODO(martinmo): ==> This way we can avoid lookup in 'm_states'
         const State &state = m_states[ElementType::STATE];
 
-        u64 objectHandle = createObject(state.typeId);
-        refStateInternal(objectHandle, elem);
-        return objectHandle;
+        createdObjectHandle = createObjectInternal(state.typeId);
+        return refState< ElementType >(createdObjectHandle);
+    }
+
+    template< class ElementType >
+    ElementType *createObject()
+    {
+        u64 ignoreObjectHandle = 0;
+        return createObject< ElementType >(ignoreObjectHandle);
     }
 
     template< class ElementType >
@@ -143,6 +148,8 @@ private:
     std::vector< State > m_states;
 
     std::vector< std::vector< unsigned char > > m_stateValues;
+
+    u64 createObjectInternal(u64 typeId);
 
     template< class ElementType >
     void refStateInternal(u64 objectHandle, ElementType **elem)

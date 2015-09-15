@@ -101,9 +101,9 @@ struct Physics : ModuleIf
 
 public: // Implementation of module interface
     virtual void registerTypesAndStates(StateDb &stateDb);
-    virtual bool initialize(Platform &platform);
-    virtual void shutdown(Platform &platform);
-    virtual void update(Platform &platform, double deltaTimeInS);
+    virtual bool initialize(StateDb &sdb, Assets &assets);
+    virtual void shutdown(StateDb &sdb);
+    virtual void update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS);
 
 private:
     struct PrivateRigidBody;

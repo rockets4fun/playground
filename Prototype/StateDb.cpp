@@ -174,22 +174,6 @@ std::string StateDb::objectHandleTypeName(u64 objectHandle)
 }
 
 // -------------------------------------------------------------------------------------------------
-u64 StateDb::createObject(u64 typeId)
-{
-    COMMON_ASSERT(isTypeIdValid(typeId));
-    Type &type = m_types[typeId];
-    if (type.objectCount >= type.maxObjectCount)
-    {
-        // TODO(martinmo): Out of type memory error through platform abstraction
-        return u64();
-    }
-    u64 objectId = type.idxToObjectId[++type.objectCount];
-    ++type.lifecycleByObjectId[objectId];
-    return composeObjectHandle(
-        u16(typeId), u16(type.lifecycleByObjectId[objectId]), u32(objectId));
-}
-
-// -------------------------------------------------------------------------------------------------
 void StateDb::destroyObject(u64 objectHandle)
 {
     COMMON_ASSERT(isObjectHandleValid(objectHandle));
@@ -229,6 +213,22 @@ int StateDb::objectCount(u64 typeId)
 {
     COMMON_ASSERT(isTypeIdValid(typeId));
     return int(m_types[typeId].objectCount);
+}
+
+// -------------------------------------------------------------------------------------------------
+u64 StateDb::createObjectInternal(u64 typeId)
+{
+    COMMON_ASSERT(isTypeIdValid(typeId));
+    Type &type = m_types[typeId];
+    if (type.objectCount >= type.maxObjectCount)
+    {
+        // TODO(martinmo): Out of type memory error through platform abstraction
+        return u64();
+    }
+    u64 objectId = type.idxToObjectId[++type.objectCount];
+    ++type.lifecycleByObjectId[objectId];
+    return composeObjectHandle(
+        u16(typeId), u16(type.lifecycleByObjectId[objectId]), u32(objectId));
 }
 
 // -------------------------------------------------------------------------------------------------
