@@ -109,6 +109,53 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
         mesh->groups = Renderer::Group::DEFAULT_UI;
     }
 
+    // Create simplistic tiled ocean
+    {
+        glm::fvec2 unitSize = OCEAN_TILE_UNIT_SIZE;
+        int   vertexCount = OCEAN_TILE_VERTEX_COUNT;
+        float vertexDist  = OCEAN_TILE_VERTEX_DIST;
+        Assets::Model *model = assets.refModel(m_oceanModelAsset);
+        // Create ocean tile model
+        for (int y = 0; y < vertexCount - 1; ++y)
+        {
+            for (int x = 0; x < vertexCount - 1; ++x)
+            {
+                // Clockwise quad starting from bottom left
+                glm::fvec3  bottomLeft((x + 0) * vertexDist, (y + 0) * vertexDist, 0.0f);
+                glm::fvec3     topLeft((x + 0) * vertexDist, (y + 1) * vertexDist, 0.0f);
+                glm::fvec3    topRight((x + 1) * vertexDist, (y + 1) * vertexDist, 0.0f);
+                glm::fvec3 bottomRight((x + 1) * vertexDist, (y + 0) * vertexDist, 0.0f);
+                // Triangles covering quad
+                model->positions.push_back(bottomLeft);
+                model->positions.push_back(topRight);
+                model->positions.push_back(topLeft);
+                model->positions.push_back(bottomLeft);
+                model->positions.push_back(bottomRight);
+                model->positions.push_back(topRight);
+                // Triangle normals
+                glm::fvec3 normal(0.0f, 0.0f, 1.0f);
+                for (int vIdx = 0; vIdx < 6; ++vIdx) model->normals.push_back(normal);
+                // Triangle colors
+                float rand = glm::linearRand(0.0f, +0.3f);
+                glm::fvec3 color(0.4f + rand, 0.4f + rand, 0.4f + rand);
+                for (int vIdx = 0; vIdx < 6; ++vIdx) model->colors.push_back(color);
+            }
+        }
+        // Instantiate ocean tiles
+        const int tileCount = 4;
+        for (int y = 0; y < tileCount; ++y)
+        {
+            for (int x = 0; x < tileCount; ++x)
+            {
+                auto mesh = sdb.create< Renderer::Mesh::Info >();
+                mesh->modelAsset = m_oceanModelAsset;
+                mesh->translation = glm::fvec3(glm::fvec2(float(x), float(y))
+                    * unitSize - 0.5f * float(tileCount) * unitSize, 0.0f);
+                mesh->groups = Renderer::Group::DEFAULT;
+            }
+        }
+    }
+
     // Create floating platform
     {
         // Create platform mesh
@@ -199,55 +246,8 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 //#endif
         PROFILING_SECTION(UpdateOcean, glm::fvec3(0.0f, 1.0f, 1.0f))
 
-        glm::fvec2 unitSize = OCEAN_TILE_UNIT_SIZE;
-        int vertexCount = OCEAN_TILE_VERTEX_COUNT;
-        float vertexDist = OCEAN_TILE_VERTEX_DIST;
         Assets::Model *model = assets.refModel(m_oceanModelAsset);
-        if (model->positions.empty())
-        {
-            // Create ocean tile geometry
-            for (int y = 0; y < vertexCount - 1; ++y)
-            {
-                for (int x = 0; x < vertexCount - 1; ++x)
-                {
-                    // Clockwise quad starting from bottom left
-                    glm::fvec3  bottomLeft((x + 0) * vertexDist, (y + 0) * vertexDist, 0.0f);
-                    glm::fvec3     topLeft((x + 0) * vertexDist, (y + 1) * vertexDist, 0.0f);
-                    glm::fvec3    topRight((x + 1) * vertexDist, (y + 1) * vertexDist, 0.0f);
-                    glm::fvec3 bottomRight((x + 1) * vertexDist, (y + 0) * vertexDist, 0.0f);
-                    // Triangles covering quad
-                    model->positions.push_back(bottomLeft);
-                    model->positions.push_back(topRight);
-                    model->positions.push_back(topLeft);
-                    model->positions.push_back(bottomLeft);
-                    model->positions.push_back(bottomRight);
-                    model->positions.push_back(topRight);
-                    // Triangle normals
-                    glm::fvec3 normal(0.0f, 0.0f, 1.0f);
-                    for (int vIdx = 0; vIdx < 6; ++vIdx) model->normals.push_back(normal);
-                    // Triangle colors
-                    float rand = glm::linearRand(0.0f, +0.3f);
-                    glm::fvec3 color(0.4f + rand, 0.4f + rand, 0.4f + rand);
-                    for (int vIdx = 0; vIdx < 6; ++vIdx) model->colors.push_back(color);
-                }
-            }
-            // Create ocean tiles
-            const int tileCount = 4;
-            for (int y = 0; y < tileCount; ++y)
-            {
-                for (int x = 0; x < tileCount; ++x)
-                {
-                    auto mesh = sdb.create< Renderer::Mesh::Info >();
-                    mesh->modelAsset = m_oceanModelAsset;
-                    mesh->translation = glm::fvec3(glm::fvec2(float(x), float(y))
-                        * unitSize - 0.5f * float(tileCount) * unitSize, 0.0f);
-                    mesh->groups = Renderer::Group::DEFAULT;
-                }
-            }
-        }
-
-        // Update positions and normals according to ocean equation
-        vertexCount = int(model->positions.size());
+        int vertexCount = int(model->positions.size());
         for (int vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
         {
             glm::fvec3 &position = model->positions[vertexIdx];
@@ -436,25 +436,39 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 
         Profiling *profiling = Profiling::instance();
         Profiling::Thread *mainThread = profiling->mainThreadPrevFrame();
+
+        float offsPx   = 15.0f;
+        float msPx     = 30.0f;
+        float barPx    = 50.0f;
+        float shrinkPx =  8.0f;
+        float outlPx   =  1.0f;
+        glm::fvec3 white(1.0f, 1.0f, 1.0f);
+        glm::fvec3 black(0.0f, 0.0f, 0.0f);
+        glm::fvec3 dgray(0.3f, 0.3f, 0.3f);
+        glm::fvec3  gray(0.5f, 0.5f, 0.5f);
         if (mainThread)
         {
             for (Profiling::SectionSample &sample : mainThread->samples)
             {
                 float enterMs   = float(profiling->ticksToMs(sample.ticksEnter));
                 float exitMs    = float(profiling->ticksToMs(sample.ticksExit));
-                float callDepth = float(sample.callDepth);
-                pushRect2d(uiModel,
-                    glm::fvec2(15.0f + 30.0f * enterMs, 15.0f * (callDepth + 0.0f) + 0.0f),
-                    glm::fvec2(15.0f + 30.0f * exitMs , 15.0f * (callDepth + 1.0f) - 0.0f),
-                    sample.section->color, 0.0f);
+                float callDepth = float(sample.callDepth - 1);
+
+                glm::fvec2 ll(offsPx + msPx * enterMs, offsPx         + shrinkPx * callDepth);
+                glm::fvec2 ur(offsPx + msPx * exitMs , offsPx + barPx - shrinkPx * callDepth);
+
+                glm::fvec2 uro(ur + glm::fvec2(-outlPx, 0.0f));
+                glm::fvec3 color = sample.section->color;
+
+                pushRect2d       (uiModel,         ll, ur , color, callDepth);
+                pushRectOutline2d(uiModel, outlPx, ll, uro, black, callDepth + 0.5f);
             }
         }
         for (int msIdx = 0; msIdx < 16; ++msIdx)
         {
-            pushRectOutline2d(uiModel, 2.0f,
-                glm::fvec2(15.0f + 30.0f * (msIdx + 0)       , 15.0f),
-                glm::fvec2(15.0f + 30.0f * (msIdx + 1) - 2.0f, 15.0f + 1.0f * 15.0),
-                glm::fvec3(0.0f, 0.0f, 0.0f), 1.0f);
+            pushRectOutline2d(uiModel, outlPx,
+                glm::fvec2(offsPx + msPx * (msIdx + 0)         , offsPx        ),
+                glm::fvec2(offsPx + msPx * (msIdx + 1) - outlPx, offsPx + barPx), black, 10.0f);
         }
     }
 }
@@ -558,6 +572,7 @@ void RocketScience::updateBuoyancyAffectors(StateDb &stateDb, double timeInS)
         }
         // Force from friction between moving RB and water
         {
+            // FIXME(martinmo): Normalize to affector count per RB
             glm::fvec3 velocityAtAffector = rigidBody->linearVelocity
                 + glm::cross(rigidBody->angularVelocity,
                     mesh->rotation * affector->forcePosition);
