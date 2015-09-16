@@ -473,9 +473,10 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
                 glm::fvec2(offsPx + msPx * (msIdx + 0) + outlPx, offsPx        ),
                 glm::fvec2(offsPx + msPx * (msIdx + 1)         , offsPx + barPx), black, 5.0f);
         }
+        const float maxFt = 1000.0f / 60.0f;
         pushRectOutline2d(uiModel, outlPx * 2.0f,
-            glm::fvec2(offsPx                     , offsPx - outlPx        ),
-            glm::fvec2(offsPx + msPx * 16 + outlPx, offsPx + outlPx + barPx), red, 10.0f);
+            glm::fvec2(offsPx                        , offsPx - outlPx        ),
+            glm::fvec2(offsPx + msPx * maxFt + outlPx, offsPx + outlPx + barPx), red, 10.0f);
     }
 }
 
