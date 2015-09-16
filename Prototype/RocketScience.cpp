@@ -439,13 +439,16 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 
         float offsPx   = 15.0f;
         float msPx     = 30.0f;
-        float barPx    = 50.0f;
-        float shrinkPx =  8.0f;
+        float barPx    = 45.0f;
+        float shrinkPx =  9.0f;
         float outlPx   =  1.0f;
+
         glm::fvec3 white(1.0f, 1.0f, 1.0f);
         glm::fvec3 black(0.0f, 0.0f, 0.0f);
         glm::fvec3 dgray(0.3f, 0.3f, 0.3f);
         glm::fvec3  gray(0.5f, 0.5f, 0.5f);
+        glm::fvec3 red  (1.0f, 0.0f, 0.0f);
+
         if (mainThread)
         {
             for (Profiling::SectionSample &sample : mainThread->samples)
@@ -457,19 +460,23 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
                 glm::fvec2 ll(offsPx + msPx * enterMs, offsPx         + shrinkPx * callDepth);
                 glm::fvec2 ur(offsPx + msPx * exitMs , offsPx + barPx - shrinkPx * callDepth);
 
-                glm::fvec2 uro(ur + glm::fvec2(-outlPx, 0.0f));
+                glm::fvec2 uro(ur + glm::fvec2(+outlPx, 0.0f));
                 glm::fvec3 color = sample.section->color;
 
-                pushRect2d       (uiModel,         ll, ur , color, callDepth);
-                pushRectOutline2d(uiModel, outlPx, ll, uro, black, callDepth + 0.5f);
+                pushRect2d       (uiModel,         ll, uro, color, callDepth);
+                pushRectOutline2d(uiModel, outlPx, ll, ur , black, callDepth + 0.5f);
             }
         }
         for (int msIdx = 0; msIdx < 16; ++msIdx)
         {
             pushRectOutline2d(uiModel, outlPx,
-                glm::fvec2(offsPx + msPx * (msIdx + 0)         , offsPx        ),
-                glm::fvec2(offsPx + msPx * (msIdx + 1) - outlPx, offsPx + barPx), black, 10.0f);
+                glm::fvec2(offsPx + msPx * (msIdx + 0) + outlPx, offsPx        ),
+                glm::fvec2(offsPx + msPx * (msIdx + 1)         , offsPx + barPx), black, 5.0f);
         }
+        outlPx = 2.0f;
+        pushRectOutline2d(uiModel, outlPx * 2.0f,
+            glm::fvec2(offsPx + outlPx   , offsPx        ),
+            glm::fvec2(offsPx + msPx * 16, offsPx + barPx), red, 10.0f);
     }
 }
 

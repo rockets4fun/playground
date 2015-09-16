@@ -36,6 +36,7 @@ struct Renderer::PrivateFuncs
     // Basic functions
     PFNGLENABLEPROC   glEnable = nullptr;
     PFNGLCULLFACEPROC glCullFace = nullptr;
+    PFNGLFINISHPROC   glFinish = nullptr;
     // Buffer clearing functions
     PFNGLCLEARCOLORPROC glClearColor = nullptr;
     PFNGLCLEARPROC      glClear = nullptr;
@@ -494,6 +495,10 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
 //    BROFILER_CATEGORY("Renderer", Profiler::Color::Blue)
 //#endif
     PROFILING_SECTION(Renderer, glm::fvec3(0.0f, 0.0f, 1.0f))
+    {
+        PROFILING_SECTION(FinishBegin, glm::fvec3(1.0f, 0.5f, 0.0f))
+        funcs->glFinish();
+    }
 
     // Prepare references to per-model private data
     auto meshes = sdb.stateAll< Mesh::Info >();
@@ -560,6 +565,11 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         funcs->glUniform4fv(state->defProgUniformRenderParams, 1,
             glm::value_ptr(glm::fvec4(debugNormals ? 1.0f : 0.0f, 1.0, 0.0, 0.0)));
         renderPass(sdb, Group::DEFAULT_UI, projection, worldToView);
+    }
+
+    {
+        PROFILING_SECTION(FinishEnd, glm::fvec3(1.0f, 0.5f, 0.0f))
+        funcs->glFinish();
     }
 }
 
@@ -665,6 +675,8 @@ bool Renderer::initializeGl()
 {
     RENDERER_GL_FUNC(glEnable);
     RENDERER_GL_FUNC(glCullFace);
+    RENDERER_GL_FUNC(glFinish);
+
     RENDERER_GL_FUNC(glClearColor);
     RENDERER_GL_FUNC(glClear);
 
