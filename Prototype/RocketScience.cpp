@@ -438,9 +438,9 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         Profiling::Thread *mainThread = profiling->mainThreadPrevFrame();
 
         float offsPx   = 15.0f;
-        float msPx     = 30.0f;
-        float barPx    = 45.0f;
-        float shrinkPx =  9.0f;
+        float msPx     = 40.0f;
+        float barPx    = 40.0f;
+        float shrinkPx =  7.0f;
         float outlPx   =  1.0f;
 
         glm::fvec3 white(1.0f, 1.0f, 1.0f);
@@ -473,10 +473,9 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
                 glm::fvec2(offsPx + msPx * (msIdx + 0) + outlPx, offsPx        ),
                 glm::fvec2(offsPx + msPx * (msIdx + 1)         , offsPx + barPx), black, 5.0f);
         }
-        outlPx = 2.0f;
         pushRectOutline2d(uiModel, outlPx * 2.0f,
-            glm::fvec2(offsPx + outlPx   , offsPx        ),
-            glm::fvec2(offsPx + msPx * 16, offsPx + barPx), red, 10.0f);
+            glm::fvec2(offsPx                     , offsPx - outlPx        ),
+            glm::fvec2(offsPx + msPx * 16 + outlPx, offsPx + outlPx + barPx), red, 10.0f);
     }
 }
 

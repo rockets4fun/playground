@@ -522,7 +522,10 @@ void Physics::update(StateDb &sdb, Assets &assets, Renderer &renderer, double de
     }
 
     // Update rigid body physics simulation
-    state->dynamicsWorld->stepSimulation(btScalar(deltaTimeInS), 5, btScalar(1.0 / 60));
+    {
+        PROFILING_SECTION(StepSim, glm::fvec3(1.0f, 0.5f, 0.0f))
+        state->dynamicsWorld->stepSimulation(btScalar(deltaTimeInS), 5, btScalar(1.0 / 60));
+    }
 
     // TODO(martinmo): Use 'CProfileIterator' to present profiling data in meaningful way
     /*
