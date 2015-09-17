@@ -19,10 +19,6 @@
 #include "Physics.hpp"
 #include "RocketScience.hpp"
 
-//#ifdef COMMON_WINDOWS
-//#   include <Brofiler.h>
-//#endif
-
 #include "Profiling.hpp"
 
 // -------------------------------------------------------------------------------------------------
@@ -97,11 +93,7 @@ int main(int argc, char *argv[])
         SDL_Event event;
         while (running)
         {
-//#ifdef COMMON_WINDOWS
-//            BROFILER_FRAME("Main")
-//#endif
-            Profiling::instance()->frameReset();
-            PROFILING_SECTION(Main, glm::fvec3(0.5f, 0.5f, 0.5f))
+            PROFILING_THREAD(Main, glm::fvec3(0.5f, 0.5f, 0.5f))
 
             while (SDL_PollEvent(&event))
             {

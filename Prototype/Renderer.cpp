@@ -26,10 +26,6 @@
 // ==> This will never be included outside of this class
 #include "CoreGl/glcorearb.h"
 
-#ifdef COMMON_WINDOWS
-#   include <Brofiler.h>
-#endif
-
 // Declared here because we do not want to expose OpenGL implementation details in header
 struct Renderer::PrivateFuncs
 {
@@ -491,9 +487,6 @@ void Renderer::shutdown(StateDb &sdb)
 // -------------------------------------------------------------------------------------------------
 void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS)
 {
-//#ifdef COMMON_WINDOWS
-//    BROFILER_CATEGORY("Renderer", Profiler::Color::Blue)
-//#endif
     PROFILING_SECTION(Renderer, glm::fvec3(0.0f, 0.0f, 1.0f))
     {
         PROFILING_SECTION(FinishBegin, glm::fvec3(1.0f, 0.5f, 0.0f))

@@ -23,10 +23,6 @@
 #include "Renderer.hpp"
 #include "Physics.hpp"
 
-#ifdef COMMON_WINDOWS
-#   include <Brofiler.h>
-#endif
-
 const int RocketScience::OCEAN_TILE_VERTEX_COUNT = 32;
 const glm::fvec2 RocketScience::OCEAN_TILE_UNIT_SIZE =
     glm::fvec2((OCEAN_TILE_VERTEX_COUNT - 1) * OCEAN_TILE_VERTEX_DIST);
@@ -232,18 +228,12 @@ void RocketScience::shutdown(StateDb &sdb)
 // -------------------------------------------------------------------------------------------------
 void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS)
 {
-//#ifdef COMMON_WINDOWS
-//    BROFILER_CATEGORY("RocketScience", Profiler::Color::Green)
-//#endif
     PROFILING_SECTION(RocketScience, glm::fvec3(0.0f, 1.0f, 0.0f))
 
     m_timeInS += deltaTimeInS;
 
     // Update tileable dynamic ocean model
     {
-//#ifdef COMMON_WINDOWS
-//        BROFILER_CATEGORY("UpdateOcean", Profiler::Color::Gray)
-//#endif
         PROFILING_SECTION(UpdateOcean, glm::fvec3(0.0f, 1.0f, 1.0f))
 
         Assets::Model *model = assets.refModel(m_oceanModelAsset);
@@ -418,11 +408,6 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 
     // Update buoyancy affectors
     {
-//#ifdef COMMON_WINDOWS
-//        BROFILER_CATEGORY("UpdateBuoyancy", Profiler::Color::Gray)
-//#endif
-//        PROFILING_SECTION(UpdateBuoyancy, glm::fvec3(0.5f, 0.5f, 0.5f))
-
         updateBuoyancyAffectors(sdb, m_timeInS);
     }
 
@@ -438,9 +423,9 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         Profiling::Thread *mainThread = profiling->mainThreadPrevFrame();
 
         float offsPx   = 15.0f;
-        float msPx     = 40.0f;
-        float barPx    = 40.0f;
-        float shrinkPx =  7.0f;
+        float msPx     = 30.0f;
+        float barPx    = 30.0f;
+        float shrinkPx =  5.0f;
         float outlPx   =  1.0f;
 
         glm::fvec3 white(1.0f, 1.0f, 1.0f);

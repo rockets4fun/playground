@@ -14,6 +14,14 @@
 
 #include <glm/glm.hpp>
 
+#ifdef COMMON_WINDOWS
+#   define PROFILING_ENABLE_BROFILER
+#endif
+
+#ifdef PROFILING_ENABLE_BROFILER
+#   include <Brofiler.h>
+#endif
+
 // -------------------------------------------------------------------------------------------------
 /// @brief Profiling module
 struct Profiling
@@ -46,6 +54,10 @@ public:
     void frameReset();
 
     double ticksToMs(u64 ticks) const;
+
+#ifdef PROFILING_ENABLE_BROFILER
+    static u32 toBrofilerColor(const glm::fvec3 &color);
+#endif
 
 public:
     struct Section
@@ -89,7 +101,28 @@ private:
     COMMON_DISABLE_COPY(Profiling)
 };
 
+#ifdef PROFILING_ENABLE_BROFILER
+#   define PROFILING_BROFILER_CATEGORY(name, color) \
+        BROFILER_CATEGORY(#name, Profiling::toBrofilerColor(color))
+#else
+#   define PROFILING_BROFILER_CATEGORY(name, color)
+#endif
+
+#ifdef PROFILING_ENABLE_BROFILER
+#   define PROFILING_BROFILER_THREAD(name, color) \
+        BROFILER_FRAME(#name)
+#else
+#   define PROFILING_BROFILER_THREAD(name, color)
+#endif
+
 #define PROFILING_SECTION(name, color) \
+    PROFILING_BROFILER_CATEGORY(name, color) \
+    static Profiling::Section __section_##name(#name, color); \
+    Profiling::SectionGuard __section_guard_##name(__section_##name);
+
+#define PROFILING_THREAD(name, color) \
+    PROFILING_BROFILER_THREAD(name, color) \
+    Profiling::instance()->frameReset(); \
     static Profiling::Section __section_##name(#name, color); \
     Profiling::SectionGuard __section_guard_##name(__section_##name);
 

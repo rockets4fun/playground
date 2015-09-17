@@ -19,10 +19,6 @@
 
 #include "Renderer.hpp"
 
-#ifdef COMMON_WINDOWS
-#   include <Brofiler.h>
-#endif
-
 struct Physics::PrivateRigidBody
 {
     PrivateState &state;
@@ -493,9 +489,6 @@ void trackDestructions(StateDb &sdb,
 // -------------------------------------------------------------------------------------------------
 void Physics::update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS)
 {
-//#ifdef COMMON_WINDOWS
-//    BROFILER_CATEGORY("Physics", Profiler::Color::Red)
-//#endif
     PROFILING_SECTION(Physics, glm::fvec3(1.0f, 0.0f, 0.0f))
 
     // Check for newly created rigid bodies

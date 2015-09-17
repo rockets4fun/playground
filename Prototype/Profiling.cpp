@@ -58,6 +58,17 @@ double Profiling::ticksToMs(u64 ticks) const
 }
 
 // -------------------------------------------------------------------------------------------------
+#ifdef PROFILING_ENABLE_BROFILER
+u32 Profiling::toBrofilerColor(const glm::fvec3 &color)
+{
+    return 0xFF000000
+        | u8(glm::round(glm::clamp(color.r, 0.0f, 1.0f) * 255.0)) << 16
+        | u8(glm::round(glm::clamp(color.g, 0.0f, 1.0f) * 255.0)) <<  8
+        | u8(glm::round(glm::clamp(color.b, 0.0f, 1.0f) * 255.0));
+}
+#endif
+
+// -------------------------------------------------------------------------------------------------
 Profiling::Section::Section(const std::string &nameInit, const glm::fvec3 &colorInit) :
     name(nameInit), color(colorInit)
 {

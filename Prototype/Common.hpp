@@ -6,6 +6,9 @@
 #ifndef COMMON_HPP
 #define COMMON_HPP
 
+typedef unsigned char u8;
+typedef signed   char s8;
+
 typedef unsigned short int u16;
 typedef signed   short int s16;
 
@@ -16,6 +19,11 @@ typedef unsigned long long int u64;
 typedef signed   long long int s64;
 
 #ifndef NDEBUG
+#   define COMMON_DEBUG
+#endif
+
+// Force-enable debugging code
+#ifndef COMMON_DEBUG
 #   define COMMON_DEBUG
 #endif
 
