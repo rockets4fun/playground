@@ -13,6 +13,8 @@
 #include <glm/gtc/random.hpp>
 #include <glm/gtc/noise.hpp>
 
+#include <glm/gtx/fast_trigonometry.hpp>
+
 #include "Math.hpp"
 #include "Logging.hpp"
 #include "Profiling.hpp"
@@ -466,19 +468,23 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 }
 
 // -------------------------------------------------------------------------------------------------
+#define __sin(arg) std::sin(arg)
+//#define __sin(arg) glm::fastSin(arg)
+//#define __sin(arg) (arg) // on-op for testing performance impact
 float RocketScience::oceanEquation(const glm::fvec2 &position, double timeInS)
 {
     glm::fvec2 unitSize = OCEAN_TILE_UNIT_SIZE;
     float twoPi = 2.0f * glm::pi< float >();
     float result = 0.0f;
-    result += 0.50f * sinf((twoPi / (0.500f * unitSize.x))
+    result += 0.50f * __sin(twoPi / (0.500f * unitSize.x)
         * float(position.x + position.y + timeInS));
-    result += 0.50f * sinf((twoPi / (1.000f * unitSize.x))
+    result += 0.50f * __sin(twoPi / (1.000f * unitSize.x)
         * float(position.x - position.y + timeInS));
-    result += 0.10f * sinf((twoPi / (0.250f * unitSize.x))
+    result += 0.10f * __sin(twoPi / (0.250f * unitSize.x)
         * float(position.x + position.y - timeInS * 0.5f));
     return result;
 }
+#undef __sin
 
 // -------------------------------------------------------------------------------------------------
 void RocketScience::addBuoyancyAffector(StateDb &sdb,
