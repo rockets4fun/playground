@@ -3,16 +3,16 @@ h1. Current Coding Roadmap
 
 * Rocket drone ship landing
 ** Basic rocket control
-*** Inner controller for stabilizing yaw=pitch=0
-*** Outer controller for changing position by adjusting yaw/pitch
+*** Inner controller for maintaining target yaw/pitch
+*** Outer controller for changing position by adjusting target yaw/pitch
 *** Consider rotational speed for dampening controller
 ** Simple infinite water/buoyancy simulation
-** Mouse-based interaction with rocket (pick and attach string)
+** Mouse-based interaction with rocket (e.g. pick and attach string)
 ** Land rocket on drone ship
-** Explore comic visual style incl. sphere-based smoke
+** Explore comic visual style incl. sphere/geometry-based smoke
 
-* Flip maneuver controlled by nose thruster
-** Wing tip thruster based control of roll for aiming nose thrusters
+* Flip maneuver controlled by top/bottom nose thruster
+** Wing-tip-thruster-based control of roll for aiming nose thrusters
 
 * Rocket payload launch abort landing
 ** Launch from drone ship
