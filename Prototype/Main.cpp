@@ -66,7 +66,7 @@ int main(int argc, char *argv[])
         Physics physics;
         RocketScience rocketScience;
 
-        StateDb stateDb;
+        StateDb sdb;
         Assets assets;
 
         std::vector< ModuleIf * > modulesInit   = { &physics, &renderer, &rocketScience };
@@ -77,11 +77,11 @@ int main(int argc, char *argv[])
 
         for (auto &module : modulesInit)
         {
-            module->registerTypesAndStates(stateDb);
+            module->registerTypesAndStates(sdb);
         }
         for (auto &module : modulesInit)
         {
-            if (!module->initialize(stateDb, assets))
+            if (!module->initialize(sdb, assets))
             {
                 Logging::debug("ERROR: Failed to initialize module");
                 // FIXME(martinmo): Shutdown modules already initilized
@@ -106,7 +106,7 @@ int main(int argc, char *argv[])
             double deltaTimeInS = 1.0 / 60.0;
             for (auto &module : modulesUpdate)
             {
-                module->update(stateDb, assets, renderer, deltaTimeInS);
+                module->update(sdb, assets, renderer, deltaTimeInS);
             }
 
             SDL_GL_SwapWindow(window);
@@ -114,7 +114,7 @@ int main(int argc, char *argv[])
 
         for (auto &module : modulesInitReversed)
         {
-            module->shutdown(stateDb);
+            module->shutdown(sdb);
         }
     }
 

@@ -43,7 +43,7 @@ RocketScience::~RocketScience()
 }
 
 // -------------------------------------------------------------------------------------------------
-void RocketScience::registerTypesAndStates(StateDb &stateDb)
+void RocketScience::registerTypesAndStates(StateDb &sdb)
 {
 }
 
@@ -343,9 +343,10 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         }
         else
         {
-            addBuoyancyAffector(sdb, glm::fvec3(+0.5, -0.5, +0.0), rigidBodyHandle);
+            addBuoyancyAffector(sdb, glm::fvec3(-0.5, -0.5, +0.0), rigidBodyHandle);
+            addBuoyancyAffector(sdb, glm::fvec3(-0.5, +0.5, +0.0), rigidBodyHandle);
             addBuoyancyAffector(sdb, glm::fvec3(+0.5, +0.5, +0.0), rigidBodyHandle);
-            addBuoyancyAffector(sdb, glm::fvec3(-0.5, +0.0, +0.0), rigidBodyHandle);
+            addBuoyancyAffector(sdb, glm::fvec3(+0.5, -0.5, +0.0), rigidBodyHandle);
         }
     }
 
@@ -498,7 +499,7 @@ void RocketScience::addBuoyancyAffector(StateDb &sdb,
 }
 
 // -------------------------------------------------------------------------------------------------
-void RocketScience::updateBuoyancyAffectors(StateDb &stateDb, double timeInS)
+void RocketScience::updateBuoyancyAffectors(StateDb &sdb, double timeInS)
 {
     // TODO(martinmo): Get rid of multi-level indirection by
     // TODO(martinmo): - Storing buoyancy type hint in force info
@@ -507,10 +508,16 @@ void RocketScience::updateBuoyancyAffectors(StateDb &stateDb, double timeInS)
     // TODO(martinmo): ==> Less efficient in space but more efficent in time
     // TODO(martinmo): ==> Flatten only if time-efficiency really is an issue
 
+    auto rigidBodies = sdb.stateAll< Physics::RigidBody::Info >();
+    std::vector< int > affectorCountByRigidBody(rigidBodies.endElem - rigidBodies.beginElem);
+
     for (auto buoyancyAffectorHandle : m_buoyancyAffectorHandles)
     {
-        auto affector  = stateDb.state< Physics::Affector::Info  >(buoyancyAffectorHandle);
-        auto rigidBody = stateDb.state< Physics::RigidBody::Info >(affector->rigidBodyHandle);
+        auto affector  = sdb.state< Physics::Affector::Info  >(buoyancyAffectorHandle);
+        auto rigidBody = sdb.state< Physics::RigidBody::Info >(affector->rigidBodyHandle);
+
+        int rigidBodyIdx = rigidBody - rigidBodies.beginElem;
+        ++affectorCountByRigidBody[rigidBodyIdx];
 
         // Reset affector
         affector->enabled = 0;
@@ -523,9 +530,12 @@ void RocketScience::updateBuoyancyAffectors(StateDb &stateDb, double timeInS)
 
     for (auto buoyancyAffectorHandle : m_buoyancyAffectorHandles)
     {
-        auto affector  = stateDb.state< Physics::Affector::Info  >(buoyancyAffectorHandle);
-        auto rigidBody = stateDb.state< Physics::RigidBody::Info >(affector->rigidBodyHandle);
-        auto mesh      = stateDb.state< Renderer::Mesh::Info     >(rigidBody->meshHandle);
+        auto affector  = sdb.state< Physics::Affector::Info  >(buoyancyAffectorHandle);
+        auto rigidBody = sdb.state< Physics::RigidBody::Info >(affector->rigidBodyHandle);
+        auto mesh      = sdb.state< Renderer::Mesh::Info     >(rigidBody->meshHandle);
+
+        int rigidBodyIdx = rigidBody - rigidBodies.beginElem;
+        int rigidBodyAffectorCount = affectorCountByRigidBody[rigidBodyIdx];
 
         glm::fvec3 affectorPosGlobal =
             mesh->translation + mesh->rotation * affector->forcePosition;
@@ -570,12 +580,16 @@ void RocketScience::updateBuoyancyAffectors(StateDb &stateDb, double timeInS)
         }
         // Force from friction between moving RB and water
         {
-            // FIXME(martinmo): Normalize to affector count per RB
             glm::fvec3 velocityAtAffector = rigidBody->linearVelocity
                 + glm::cross(rigidBody->angularVelocity,
                     mesh->rotation * affector->forcePosition);
-            affector->force += -8.0f * glm::fvec3(velocityAtAffector.xy(), 0.0);
-            affector->force += -4.0f * glm::fvec3(0.0, 0.0, velocityAtAffector.z);
+            glm::fvec3 frictionForce;
+            frictionForce += -8.0f * glm::fvec3(velocityAtAffector.xy(), 0.0);
+            frictionForce += -4.0f * glm::fvec3(0.0, 0.0, velocityAtAffector.z);
+
+            // FIXME(martinmo): Only count affectors penetrating water surface
+            //affector->force += frictionForce / float(rigidBodyAffectorCount);
+            affector->force += frictionForce;
         }
         // Torque from friction between spinning RB and water
         {

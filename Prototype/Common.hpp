@@ -18,10 +18,6 @@ typedef signed   long int s32;
 typedef unsigned long long int u64;
 typedef signed   long long int s64;
 
-#ifndef NDEBUG
-#   define COMMON_DEBUG
-#endif
-
 // Force-enable debugging code
 #ifndef COMMON_DEBUG
 #   define COMMON_DEBUG
@@ -29,6 +25,9 @@ typedef signed   long long int s64;
 
 #ifdef _WIN32
 #   define COMMON_WINDOWS
+#endif
+#ifdef __APPLE__
+#   define COMMON_OSX
 #endif
 
 #define COMMON_DISABLE_COPY(Class) \

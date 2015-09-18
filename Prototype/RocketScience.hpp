@@ -22,7 +22,7 @@ struct RocketScience : public ModuleIf
     virtual ~RocketScience();
 
 public: // Implementation of module interface
-    virtual void registerTypesAndStates(StateDb &stateDb);
+    virtual void registerTypesAndStates(StateDb &sdb);
     virtual bool initialize(StateDb &sdb, Assets &assets);
     virtual void shutdown(StateDb &sdb);
     virtual void update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS);
@@ -52,7 +52,7 @@ private:
 
     void addBuoyancyAffector(StateDb &sdb,
         const glm::fvec3 &translation, u64 parentRigidBody);
-    void updateBuoyancyAffectors(StateDb &stateDb, double timeInS);
+    void updateBuoyancyAffectors(StateDb &sdb, double timeInS);
 
 private:
     COMMON_DISABLE_COPY(RocketScience)

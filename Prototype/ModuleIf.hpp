@@ -16,7 +16,7 @@ struct Renderer;
 /// @brief Application module interface
 struct ModuleIf
 {
-    virtual void registerTypesAndStates(StateDb &stateDb) = 0;
+    virtual void registerTypesAndStates(StateDb &sdb) = 0;
     virtual bool initialize(StateDb &sdb, Assets &assets) = 0;
     virtual void shutdown(StateDb &sdb) = 0;
     virtual void update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS) = 0;

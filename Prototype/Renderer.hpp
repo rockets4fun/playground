@@ -77,7 +77,7 @@ struct Renderer : public ModuleIf
     virtual ~Renderer();
 
 public: // Implementation of module interface
-    virtual void registerTypesAndStates(StateDb &stateDb);
+    virtual void registerTypesAndStates(StateDb &sdb);
     virtual bool initialize(StateDb &sdb, Assets &assets);
     virtual void shutdown(StateDb &sdb);
     virtual void update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS);

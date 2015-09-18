@@ -368,22 +368,22 @@ Physics::~Physics()
 }
 
 // -------------------------------------------------------------------------------------------------
-void Physics::registerTypesAndStates(StateDb &stateDb)
+void Physics::registerTypesAndStates(StateDb &sdb)
 {
-    RigidBody::TYPE = stateDb.registerType("RigidBody", 4096);
-    RigidBody::Info::STATE = stateDb.registerState(
+    RigidBody::TYPE = sdb.registerType("RigidBody", 4096);
+    RigidBody::Info::STATE = sdb.registerState(
         RigidBody::TYPE, "Info", sizeof(RigidBody::Info));
-    RigidBody::PrivateInfo::STATE = stateDb.registerState(
+    RigidBody::PrivateInfo::STATE = sdb.registerState(
         RigidBody::TYPE, "PrivateInfo", sizeof(RigidBody::PrivateInfo));
 
-    Affector::TYPE = stateDb.registerType("Affector", 512);
-    Affector::Info::STATE = stateDb.registerState(
+    Affector::TYPE = sdb.registerType("Affector", 512);
+    Affector::Info::STATE = sdb.registerState(
         Affector::TYPE, "Info", sizeof(Affector::Info));
 
-    Constraint::TYPE = stateDb.registerType("Constraint", 512);
-    Constraint::Info::STATE = stateDb.registerState(
+    Constraint::TYPE = sdb.registerType("Constraint", 512);
+    Constraint::Info::STATE = sdb.registerState(
         Constraint::TYPE, "Info", sizeof(Constraint::Info));
-    Constraint::PrivateInfo::STATE = stateDb.registerState(
+    Constraint::PrivateInfo::STATE = sdb.registerState(
         Constraint::TYPE, "PrivateInfo", sizeof(Constraint::PrivateInfo));
 }
 

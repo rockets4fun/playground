@@ -273,20 +273,20 @@ Renderer::~Renderer()
 }
 
 // -------------------------------------------------------------------------------------------------
-void Renderer::registerTypesAndStates(StateDb &stateDb)
+void Renderer::registerTypesAndStates(StateDb &sdb)
 {
-    Mesh::TYPE = stateDb.registerType("Mesh", 4096);
-    Mesh::Info::STATE = stateDb.registerState(
+    Mesh::TYPE = sdb.registerType("Mesh", 4096);
+    Mesh::Info::STATE = sdb.registerState(
         Mesh::TYPE, "Info", sizeof(Mesh::Info));
-    Mesh::PrivateInfo::STATE = stateDb.registerState(
+    Mesh::PrivateInfo::STATE = sdb.registerState(
         Mesh::TYPE, "PrivateInfo", sizeof(Mesh::PrivateInfo));
 
-    Camera::TYPE = stateDb.registerType("Camera", 8);
-    Camera::Info::STATE = stateDb.registerState(
+    Camera::TYPE = sdb.registerType("Camera", 8);
+    Camera::Info::STATE = sdb.registerState(
         Camera::TYPE, "Info", sizeof(Camera::Info));
 
-    Transform::TYPE = stateDb.registerType("Transform", 4096);
-    Transform::Info::STATE = stateDb.registerState(
+    Transform::TYPE = sdb.registerType("Transform", 4096);
+    Transform::Info::STATE = sdb.registerState(
         Transform::TYPE, "Info", sizeof(Transform::Info));
 }
 
@@ -560,10 +560,13 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         renderPass(sdb, Group::DEFAULT_UI, projection, worldToView);
     }
 
+    // Seems like 'glFinish()' implicitly waits for v-sync on OS X
+#ifndef COMMON_OSX
     {
         PROFILING_SECTION(FinishEnd, glm::fvec3(1.0f, 0.5f, 0.0f))
         funcs->glFinish();
     }
+#endif
 }
 
 // -------------------------------------------------------------------------------------------------
