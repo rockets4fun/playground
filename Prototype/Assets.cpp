@@ -250,8 +250,11 @@ bool Assets::loadModel(PrivateState &privateState, Model &model, Info &info)
 // -------------------------------------------------------------------------------------------------
 bool Assets::loadProgram(PrivateState &privateState, Program &program, Info &info)
 {
+    std::string filename = info.name;
+    std::string filepath = filename.substr(0, filename.find_last_of("/") + 1);
+
     std::string source;
-    if (!loadFileIntoString(info.name.c_str(), source))
+    if (!loadFileIntoString(filename.c_str(), source))
     {
         return false;
     }
@@ -272,10 +275,19 @@ bool Assets::loadProgram(PrivateState &privateState, Program &program, Info &inf
         }
         preprocessedSource += searchResult.prefix().str();
 
+        std::string includeSource;
+        // FIXME(martinmo): Avoid direct/indirect recursive includes
         const std::string &includeFilename = searchResult.str(1);
-        Logging::debug("%s includes %s", info.name.c_str(), includeFilename.c_str());
-        std::string includedSource;
-        preprocessedSource += includedSource;
+        if (!loadFileIntoString(filepath + includeFilename, includeSource))
+        {
+            Logging::debug("WARNING: Failed to load include \"%s\"", includeFilename.c_str());
+        }
+        else
+        {
+            Logging::debug("Included \"%s\" into \"%s\" (%d B)",
+                includeFilename.c_str(), filename.c_str(), int(includeSource.length()));
+        }
+        preprocessedSource += includeSource;
 
         input = searchResult.suffix().str();
     }
@@ -293,8 +305,8 @@ bool Assets::loadProgram(PrivateState &privateState, Program &program, Info &inf
         }
         if (target) (*target) += searchResult.prefix();
         const std::string &match = searchResult.str(1);
-        if      (match == "vertex")   target = &program.sourceByType[Program::Type::VERTEX_SHADER];
-        else if (match == "fragment") target = &program.sourceByType[Program::Type::FRAGMENT_SHADER];
+        if      (match == "vertex")   target = &program.sourceByType[Program::VERTEX_SHADER];
+        else if (match == "fragment") target = &program.sourceByType[Program::FRAGMENT_SHADER];
         input = searchResult.suffix().str();
     }
 

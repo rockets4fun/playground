@@ -1,5 +1,7 @@
+// =================================================================================================
 $type(vertex-shader)
-#version 150
+$include(Common.inc)
+// =================================================================================================
 
 uniform mat4 ModelWorldMatrix;
 uniform mat4 ModelViewMatrix;
@@ -25,8 +27,10 @@ void main()
     gl_Position = ProjectionMatrix * ModelViewMatrix * vec4(Position, 1.0);
 }
 
+// =================================================================================================
 $type(fragment-shader)
-#version 150
+$include(Common.inc)
+// =================================================================================================
 
 in vec4 renderParams;
 in vec3 vertexNormal;

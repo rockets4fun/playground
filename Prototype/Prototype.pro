@@ -163,5 +163,6 @@ SOURCES += \
     StateDb.cpp
 
 OTHER_FILES += \
+    ../Assets/Programs/Default.program \
     ../Documentation/Notes.txt \
     ../Documentation/GameNotes.txt
