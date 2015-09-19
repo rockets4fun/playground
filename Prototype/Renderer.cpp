@@ -142,9 +142,18 @@ private:
     PrivateFuncs *funcs = nullptr;
 };
 
+u64 Renderer::Program::TYPE = 0;
+u64 Renderer::Program::Info::STATE = 0;
+// Declared here because we do not want to expose OpenGL implementation details in header
+struct Renderer::Program::PrivateInfo
+{
+    static u64 STATE;
+    u32 dummy;
+};
+u64 Renderer::Program::PrivateInfo::STATE = 0;
+
 u64 Renderer::Mesh::TYPE = 0;
 u64 Renderer::Mesh::Info::STATE = 0;
-
 // Declared here because we do not want to expose OpenGL implementation details in header
 struct Renderer::Mesh::PrivateInfo
 {
@@ -275,6 +284,12 @@ Renderer::~Renderer()
 // -------------------------------------------------------------------------------------------------
 void Renderer::registerTypesAndStates(StateDb &sdb)
 {
+    Program::TYPE = sdb.registerType("Program", 16);
+    Program::Info::STATE = sdb.registerState(
+        Program::TYPE, "Info", sizeof(Program::Info));
+    Program::PrivateInfo::STATE = sdb.registerState(
+        Program::TYPE, "PrivateInfo", sizeof(Program::PrivateInfo));
+
     Mesh::TYPE = sdb.registerType("Mesh", 4096);
     Mesh::Info::STATE = sdb.registerState(
         Mesh::TYPE, "Info", sizeof(Mesh::Info));

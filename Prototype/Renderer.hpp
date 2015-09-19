@@ -25,6 +25,17 @@ struct Renderer : public ModuleIf
         DEFAULT_UI = 0x2
     };
 
+    struct Program
+    {
+        static u64 TYPE;
+        struct Info
+        {
+            static u64 STATE;
+            u32 programAsset = 0;
+        };
+        struct PrivateInfo;
+    };
+
     struct Mesh
     {
         enum Flag
