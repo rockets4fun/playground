@@ -6,6 +6,8 @@
 #include "Assets.hpp"
 
 #include <list>
+#include <fstream>
+#include <regex>
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -93,8 +95,7 @@ Assets::Model *Assets::refModel(u32 hash)
         {
             ++ref.second->version;
             Logging::debug("Model \"%s\" loaded (%d triangles)",
-                ref.second->name.c_str(),
-                int(ref.first->positions.size() / 3));
+                ref.second->name.c_str(), int(ref.first->positions.size() / 3));
         }
         else
         {
@@ -104,6 +105,46 @@ Assets::Model *Assets::refModel(u32 hash)
         ref.second->type = Type::MODEL;
     }
     return ref.first;
+}
+
+// -------------------------------------------------------------------------------------------------
+Assets::Program *Assets::refProgram(u32 hash)
+{
+    auto ref = refAsset(hash, Type::PROGRAM, m_programs);
+    if (!ref.first)
+    {
+        return nullptr;
+    }
+    if (ref.second->type == Type::UNDEFINED)
+    {
+        if (loadProgram(*m_privateState.get(), *ref.first, *ref.second))
+        {
+            ++ref.second->version;
+            Logging::debug("Program \"%s\" loaded", ref.second->name.c_str());
+        }
+        else
+        {
+            Logging::debug("ERROR: Failed to load program \"%s\"", ref.second->name.c_str());
+        }
+        ref.second->type = Type::MODEL;
+    }
+    return ref.first;
+}
+
+// -------------------------------------------------------------------------------------------------
+bool Assets::loadFileIntoString(const std::string &filename, std::string &contents)
+{
+    std::ifstream in(filename.c_str(), std::ios::in | std::ios::binary);
+    if (!in)
+    {
+        return false;
+    }
+    in.seekg(0, std::ios::end);
+    contents.resize(in.tellg());
+    in.seekg(0, std::ios::beg);
+    in.read(&contents[0], contents.size());
+    in.close();
+    return true;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -190,11 +231,11 @@ bool Assets::loadModel(PrivateState &privateState, Model &model, Info &info)
             }
             u64 triangleCount = model.positions.size() / 3;
             {
-                SubMeshInfo subMesh;
-                subMesh.name = leaf->mName.C_Str();
-                subMesh.triangleOffset = prevTriangleCount;
-                subMesh.triangleCount = triangleCount - prevTriangleCount;
-                model.subMeshes.push_back(subMesh);
+                Model::Part part;
+                part.name = leaf->mName.C_Str();
+                part.triangleOffset = prevTriangleCount;
+                part.triangleCount = triangleCount - prevTriangleCount;
+                model.parts.push_back(part);
             }
             prevTriangleCount = triangleCount;
         }
@@ -202,6 +243,60 @@ bool Assets::loadModel(PrivateState &privateState, Model &model, Info &info)
 
     COMMON_ASSERT(model.normals.size() == model.positions.size());
     COMMON_ASSERT(model.positions.size() % 3 == 0);
+
+    return true;
+}
+
+// -------------------------------------------------------------------------------------------------
+bool Assets::loadProgram(PrivateState &privateState, Program &program, Info &info)
+{
+    std::string source;
+    if (!loadFileIntoString(info.name.c_str(), source))
+    {
+        return false;
+    }
+
+    std::string input;
+    std::smatch searchResult;
+
+    // Pre-process include directives
+    std::string preprocessedSource;
+    std::regex includeRegex("\\$include\\((.+)\\)");
+    input = source;
+    while (true)
+    {
+        if (!std::regex_search(input, searchResult, includeRegex))
+        {
+            preprocessedSource += input;
+            break;
+        }
+        preprocessedSource += searchResult.prefix().str();
+
+        const std::string &includeFilename = searchResult.str(1);
+        Logging::debug("%s includes %s", info.name.c_str(), includeFilename.c_str());
+        std::string includedSource;
+        preprocessedSource += includedSource;
+
+        input = searchResult.suffix().str();
+    }
+
+    // Split source according to type
+    std::string *target = nullptr;
+    std::regex targetRegex("\\$type\\((vertex|fragment)-shader\\)");
+    input = preprocessedSource;
+    while (true)
+    {
+        if (!std::regex_search(input, searchResult, targetRegex))
+        {
+            if (target) (*target) += input;
+            break;
+        }
+        if (target) (*target) += searchResult.prefix();
+        const std::string &match = searchResult.str(1);
+        if      (match == "vertex")   target = &program.sourceByType[Program::Type::VERTEX_SHADER];
+        else if (match == "fragment") target = &program.sourceByType[Program::Type::FRAGMENT_SHADER];
+        input = searchResult.suffix().str();
+    }
 
     return true;
 }

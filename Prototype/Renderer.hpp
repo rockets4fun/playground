@@ -25,13 +25,12 @@ struct Renderer : public ModuleIf
         DEFAULT_UI = 0x2
     };
 
-    enum MeshFlag
-    {
-        HIDDEN = 0x1
-    };
-
     struct Mesh
     {
+        enum Flag
+        {
+            HIDDEN = 0x1
+        };
         static u64 TYPE;
         struct Info
         {

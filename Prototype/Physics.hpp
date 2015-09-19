@@ -16,33 +16,27 @@
 #include "ModuleIf.hpp"
 
 // -------------------------------------------------------------------------------------------------
-/// @brief ...
+/// @brief Rigid body physics module
 struct Physics : ModuleIf
 {
     Physics();
     virtual ~Physics();
 
-    enum CollisionShapeType
-    {
-        BOUNDING_BOX,
-        BOUNDING_SPHERE,
-        CONVEX_HULL_COMPOUND
-    };
-
-    enum ConstraintType
-    {
-        FIXED
-    };
-
     struct RigidBody
     {
         static u64 TYPE;
+        enum CollisionShape
+        {
+            BOUNDING_BOX,
+            BOUNDING_SPHERE,
+            CONVEX_HULL_COMPOUND
+        };
         struct Info
         {
             static u64 STATE;
 
             u64 meshHandle = 0;
-            u32 collisionShapeType = 0;
+            u32 collisionShape = 0;
 
             u32 collisionGroup = 0;
             u32 collisionMask = 0;
@@ -63,11 +57,15 @@ struct Physics : ModuleIf
     struct Constraint
     {
         static u64 TYPE;
+        enum Type
+        {
+            FIXED
+        };
         struct Info
         {
             static u64 STATE;
 
-            u32 type;
+            u32 constraintType;
 
             u64 rigidBodyAHandle = 0;
             glm::fvec3 paramVecA;

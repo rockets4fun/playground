@@ -96,7 +96,7 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
 
     {
         auto mesh = sdb.create< Renderer::Mesh::Info >(m_arrowMeshHandle);
-        mesh->modelAsset = assets.asset("Assets/Arrow.obj");
+        mesh->modelAsset = assets.asset("Assets/Models/Arrow.obj");
         mesh->groups = Renderer::Group::DEFAULT;
     }
 
@@ -161,14 +161,14 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
         auto platformMesh = sdb.create< Renderer::Mesh::Info >(platformMeshHandle);
         platformMesh->translation = glm::fvec3(0.0f, 0.0f, 5.0f);
         platformMesh->rotation = glm::dquat(1.0f, 0.0f, 0.0f, 0.0f);
-        platformMesh->modelAsset = assets.asset("Assets/Platform.obj");
+        platformMesh->modelAsset = assets.asset("Assets/Models/Platform.obj");
         platformMesh->groups = Renderer::Group::DEFAULT;
         // Create platform rigid body
         u64 platformRigidBodyHandle = 0;
         auto platformRigidBody = sdb.create< Physics::RigidBody::Info >(platformRigidBodyHandle);
         platformRigidBody->mass = 10.0f;
         platformRigidBody->meshHandle = platformMeshHandle;
-        platformRigidBody->collisionShapeType = Physics::CollisionShapeType::CONVEX_HULL_COMPOUND;
+        platformRigidBody->collisionShape = Physics::RigidBody::CollisionShape::CONVEX_HULL_COMPOUND;
         platformRigidBody->collisionGroup = 1;
         platformRigidBody->collisionMask  = 1;
         // Create buoyancy spheres
@@ -200,19 +200,19 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
         {
             mesh->translation = glm::fvec3(0.0f, 0.0f, 10.0f);
             mesh->rotation = glm::angleAxis(glm::radians(90.0f), glm::fvec3(1.0f, 0.0f, 0.0f));
-            mesh->modelAsset = assets.asset("Assets/Pusher.obj");
+            mesh->modelAsset = assets.asset("Assets/Models/Pusher.obj");
         }
         else if (rand() % 9 > 5)
         {
-            mesh->modelAsset = assets.asset("Assets/MaterialCube.obj");
+            mesh->modelAsset = assets.asset("Assets/Models/MaterialCube.obj");
         }
         else if (rand() % 9 > 2)
         {
-            mesh->modelAsset = assets.asset("Assets/Sphere.obj");
+            mesh->modelAsset = assets.asset("Assets/Models/Sphere.obj");
         }
         else
         {
-            mesh->modelAsset = assets.asset("Assets/Torus.obj");
+            mesh->modelAsset = assets.asset("Assets/Models/Torus.obj");
         }
 
         m_sleepingMeshHandles.push_back(meshHandle);
@@ -322,9 +322,9 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 
         auto mesh = sdb.state< Renderer::Mesh::Info >(meshHandle);
 
-        if (mesh->modelAsset == assets.asset("Assets/Pusher.obj"))
+        if (mesh->modelAsset == assets.asset("Assets/Models/Pusher.obj"))
         {
-            rigidBody->collisionShapeType = Physics::CollisionShapeType::CONVEX_HULL_COMPOUND;
+            rigidBody->collisionShape = Physics::RigidBody::CollisionShape::CONVEX_HULL_COMPOUND;
             rigidBody->mass = 5.0f;
             // Create Pusher rocket motor force
             {
@@ -336,9 +336,9 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
                 affector->forcePosition = glm::fvec3(0.00f, -2.14, 0.00f);   // Main engine
             }
         }
-        else if (mesh->modelAsset == assets.asset("Assets/Sphere.obj"))
+        else if (mesh->modelAsset == assets.asset("Assets/Models/Sphere.obj"))
         {
-            rigidBody->collisionShapeType = Physics::CollisionShapeType::BOUNDING_SPHERE;
+            rigidBody->collisionShape = Physics::RigidBody::CollisionShape::BOUNDING_SPHERE;
             addBuoyancyAffector(sdb, glm::fvec3(0.0, 0.0, 0.0), rigidBodyHandle);
         }
         else
@@ -516,7 +516,7 @@ void RocketScience::updateBuoyancyAffectors(StateDb &sdb, double timeInS)
         auto affector  = sdb.state< Physics::Affector::Info  >(buoyancyAffectorHandle);
         auto rigidBody = sdb.state< Physics::RigidBody::Info >(affector->rigidBodyHandle);
 
-        int rigidBodyIdx = rigidBody - rigidBodies.beginElem;
+        int rigidBodyIdx = int(rigidBody - rigidBodies.beginElem);
         ++affectorCountByRigidBody[rigidBodyIdx];
 
         // Reset affector
@@ -534,7 +534,7 @@ void RocketScience::updateBuoyancyAffectors(StateDb &sdb, double timeInS)
         auto rigidBody = sdb.state< Physics::RigidBody::Info >(affector->rigidBodyHandle);
         auto mesh      = sdb.state< Renderer::Mesh::Info     >(rigidBody->meshHandle);
 
-        int rigidBodyIdx = rigidBody - rigidBodies.beginElem;
+        int rigidBodyIdx = int(rigidBody - rigidBodies.beginElem);
         int rigidBodyAffectorCount = affectorCountByRigidBody[rigidBodyIdx];
 
         glm::fvec3 affectorPosGlobal =

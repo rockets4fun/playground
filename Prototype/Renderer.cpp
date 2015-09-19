@@ -313,63 +313,12 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
     funcs->glEnable(GL_CULL_FACE);
     */
 
-    std::string defVsSrc =
-        "#version 150\n"
-        "\n"
-        "uniform mat4 ModelWorldMatrix;\n"
-        "uniform mat4 ModelViewMatrix;\n"
-        "uniform mat4 ProjectionMatrix;\n"
-        "\n"
-        "uniform vec4 RenderParams;\n"
-        "\n"
-        "in vec3 Position;\n"
-        "in vec3 Normal;\n"
-        "in vec3 Color;\n"
-        "\n"
-        "out vec4 renderParams;\n"
-        "out vec3 vertexNormal;\n"
-        "out vec3 vertexNormalWorld;\n"
-        "out vec3 vertexColor;\n"
-        "\n"
-        "void main()\n"
-        "{\n"
-        "    renderParams = RenderParams;\n"
-        "    vertexNormal = normalize(Normal).xyz;\n"
-        "    vertexNormalWorld = normalize((ModelWorldMatrix * vec4(Normal, 0.0)).xyz);\n"
-        "    vertexColor = Color;\n"
-        "    gl_Position = ProjectionMatrix * ModelViewMatrix * vec4(Position, 1.0);\n"
-        "}\n";
-    helpers->createAndCompileShader(state->defVs, GL_VERTEX_SHADER, defVsSrc);
-
-    std::string defFsSrc =
-        "#version 150\n"
-        "\n"
-        "in vec4 renderParams;\n"
-        "in vec3 vertexNormal;\n"
-        "in vec3 vertexNormalWorld;\n"
-        "in vec3 vertexColor;\n"
-        "\n"
-        "out vec4 fragmentColor;\n"
-        "\n"
-        "void main()\n"
-        "{\n"
-        "    if (renderParams.x > 0.5)\n"
-        "    {\n"
-        "        fragmentColor = vec4(abs(vertexNormal) * vertexColor, 1.0);\n"
-        "    }\n"
-        "    else if (renderParams.y > 0.5)\n"
-        "    {\n"
-        "        fragmentColor = vec4(vertexColor, 1.0);\n"
-        "    }\n"
-        "    else\n"
-        "    {\n"
-        "        vec3 lightDir = normalize(vec3(0.0, 1.0, -1.0));\n"
-        "        float lambert = max(0.0, dot(vertexNormalWorld, -lightDir));\n"
-        "        fragmentColor = vec4(vertexColor * max(0.2, lambert), 1.0);\n"
-        "    }\n"
-        "}\n";
-    helpers->createAndCompileShader(state->defFs, GL_FRAGMENT_SHADER, defFsSrc);
-
+    Assets::Program *program = assets.refProgram(
+        assets.asset("Assets/Programs/Default.program"));
+    helpers->createAndCompileShader(state->defVs, GL_VERTEX_SHADER,
+        program->sourceByType[Assets::Program::VERTEX_SHADER]);
+    helpers->createAndCompileShader(state->defFs, GL_FRAGMENT_SHADER,
+        program->sourceByType[Assets::Program::FRAGMENT_SHADER]);
     helpers->createAndLinkSimpleProgram(state->defProg, state->defVs, state->defFs);
 
     // TODO(martinmo): Use Uniform Buffer Objects to pass uniforms to shaders
@@ -582,7 +531,7 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask,
     // Pseudo-instanced rendering of meshes
     for (auto mesh : meshes)
     {
-        if (mesh->flags & MeshFlag::HIDDEN)
+        if (mesh->flags & Mesh::Flag::HIDDEN)
         {
             continue;
         }

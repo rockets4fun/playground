@@ -125,7 +125,7 @@ Physics::PrivateRigidBody::PrivateRigidBody(
 {
     btCollisionShape *collisionShape = nullptr;
     auto mesh = state.sdb.state< Renderer::Mesh::Info >(rigidBody->meshHandle);
-    u64 collisionShapeKey = u64(rigidBody->collisionShapeType) << 32 | u64(mesh->modelAsset);
+    u64 collisionShapeKey = u64(rigidBody->collisionShape) << 32 | u64(mesh->modelAsset);
 
     // TODO(martinmo): Find way to get rid of map lookup
     auto collisionShapeIter = state.collisionShapes.find(collisionShapeKey);
@@ -153,7 +153,7 @@ Physics::PrivateRigidBody::PrivateRigidBody(
             btQuaternion(0.0f, 0.0f, 0.0f, 1.0f),
             btVector3(center.x, center.y, center.z));
 
-        if (rigidBody->collisionShapeType == CollisionShapeType::BOUNDING_BOX)
+        if (rigidBody->collisionShape == RigidBody::CollisionShape::BOUNDING_BOX)
         {
             collisionShape = new btBoxShape(btVector3(halfExtent.x, halfExtent.y, halfExtent.z));
 
@@ -161,7 +161,7 @@ Physics::PrivateRigidBody::PrivateRigidBody(
             compoundShape->addChildShape(centerTransform, collisionShape);
             collisionShape = compoundShape;
         }
-        else if (rigidBody->collisionShapeType == CollisionShapeType::BOUNDING_SPHERE)
+        else if (rigidBody->collisionShape == RigidBody::CollisionShape::BOUNDING_SPHERE)
         {
             collisionShape = new btSphereShape(glm::max(
                 glm::max(halfExtent.x, halfExtent.y), halfExtent.z));
@@ -170,10 +170,10 @@ Physics::PrivateRigidBody::PrivateRigidBody(
             compoundShape->addChildShape(centerTransform, collisionShape);
             collisionShape = compoundShape;
         }
-        else if (rigidBody->collisionShapeType == CollisionShapeType::CONVEX_HULL_COMPOUND)
+        else if (rigidBody->collisionShape == RigidBody::CollisionShape::CONVEX_HULL_COMPOUND)
         {
             btCompoundShape *compoundShape = new btCompoundShape;
-            for (auto &subMesh : model->subMeshes)
+            for (const auto &part : model->parts)
             {
                 /*
                 btConvexHullShape *shape = new btConvexHullShape(
@@ -182,8 +182,8 @@ Physics::PrivateRigidBody::PrivateRigidBody(
                 */
 
                 btConvexHullShape *shape = new btConvexHullShape;
-                const glm::fvec3 *positionIter = &model->positions[subMesh.triangleOffset * 3];
-                const u64 pointCount = subMesh.triangleCount * 3;
+                const glm::fvec3 *positionIter = &model->positions[part.triangleOffset * 3];
+                const u64 pointCount = part.triangleCount * 3;
                 for (u64 pointIdx = 0; pointIdx < pointCount; ++pointIdx)
                 {
                     btVector3 point = btVector3(positionIter->x, positionIter->y, positionIter->z);

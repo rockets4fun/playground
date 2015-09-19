@@ -25,6 +25,7 @@ struct Assets
     {
         UNDEFINED,
         MODEL,
+        PROGRAM
     };
 
     enum Flag
@@ -33,35 +34,37 @@ struct Assets
         DYNAMIC    = 0x2
     };
 
-    struct Info
-    {
-        u32 hash = 0;
-        std::string name;
-        u32 flags = 0;
-        Type type = UNDEFINED;
-        u32 version = 0;
-    };
-
-    struct SubMeshInfo
-    {
-        std::string name;
-        u64 triangleOffset = 0;
-        u64 triangleCount = 0;
-    };
-
     struct Model
     {
+        struct Part
+        {
+            std::string name;
+            u64 triangleOffset = 0;
+            u64 triangleCount = 0;
+        };
+
         // Vertex attributes
         std::vector< glm::fvec3 > positions;
         std::vector< glm::fvec3 > normals;
         std::vector< glm::fvec3 > colors;
 
-        std::vector< SubMeshInfo > subMeshes;
+        std::vector< Part > parts;
 
         // TODO(martinmo): Think about restructuring into meshes storing
         // TODO(martinmo): - Separate name and hash
         // TODO(martinmo): - Primitive type (others than just triangles...)
         // TODO(martinmo): - Indices into actual mesh data stored in model?
+    };
+
+    struct Program
+    {
+        enum Type
+        {
+            VERTEX_SHADER,
+            FRAGMENT_SHADER
+        };
+
+        std::map< Type, std::string > sourceByType;
     };
 
     Assets();
@@ -72,14 +75,26 @@ struct Assets
     u32 assetFlags(u32 hash);
 
     Model *refModel(u32 hash);
+    Program *refProgram(u32 hash);
 
 private:
+    struct Info
+    {
+        u32 hash = 0;
+        std::string name;
+        u32 flags = 0;
+        Type type = Type::UNDEFINED;
+        u32 version = 0;
+    };
+
     struct PrivateState;
 
     std::shared_ptr< PrivateState > m_privateState;
 
     std::map< u32, Info > m_assetInfos;
+
     std::map< u32, Model > m_models;
+    std::map< u32, Program > m_programs;
 
     template< class AssetType >
     std::pair< AssetType *, Info * > refAsset(u32 hash,
@@ -100,7 +115,10 @@ private:
         return ref;
     }
 
+    static bool loadFileIntoString(const std::string &filename, std::string &contents);
+
     static bool loadModel(PrivateState &privateState, Model &model, Info &info);
+    static bool loadProgram(PrivateState &privateState, Program &model, Info &info);
 
     u32 krHash(const char *data, size_t size);
 
