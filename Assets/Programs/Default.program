@@ -3,8 +3,8 @@ $type(vertex-shader)
 $include(Common.inc)
 // =================================================================================================
 
-uniform mat4 ModelWorldMatrix;
-uniform mat4 ModelViewMatrix;
+uniform mat4 ModelToWorldMatrix;
+uniform mat4 ModelToViewMatrix;
 uniform mat4 ProjectionMatrix;
 
 uniform vec4 RenderParams;
@@ -22,9 +22,9 @@ void main()
 {
     renderParams = RenderParams;
     vertexNormal = normalize(Normal).xyz;
-    vertexNormalWorld = normalize((ModelWorldMatrix * vec4(Normal, 0.0)).xyz);
+    vertexNormalWorld = normalize((ModelToWorldMatrix * vec4(Normal, 0.0)).xyz);
     vertexColor = Color;
-    gl_Position = ProjectionMatrix * ModelViewMatrix * vec4(Position, 1.0);
+    gl_Position = ProjectionMatrix * ModelToViewMatrix * vec4(Position, 1.0);
 }
 
 // =================================================================================================

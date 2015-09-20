@@ -34,6 +34,15 @@ struct Assets
         DYNAMIC    = 0x2
     };
 
+    struct Info
+    {
+        u32 hash = 0;
+        std::string name;
+        u32 flags = 0;
+        Type type = Type::UNDEFINED;
+        u32 version = 0;
+    };
+
     struct Model
     {
         struct Part
@@ -71,22 +80,12 @@ struct Assets
     virtual ~Assets();
 
     u32 asset(const std::string &name, u32 flags = 0);
-    u32 assetVersion(u32 hash);
-    u32 assetFlags(u32 hash);
+    const Info *assetInfo(u32 hash);
 
     Model *refModel(u32 hash);
     Program *refProgram(u32 hash);
 
 private:
-    struct Info
-    {
-        u32 hash = 0;
-        std::string name;
-        u32 flags = 0;
-        Type type = Type::UNDEFINED;
-        u32 version = 0;
-    };
-
     struct PrivateState;
 
     std::shared_ptr< PrivateState > m_privateState;

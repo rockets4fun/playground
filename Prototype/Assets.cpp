@@ -55,25 +55,14 @@ u32 Assets::asset(const std::string &name, u32 flags)
 }
 
 // -------------------------------------------------------------------------------------------------
-u32 Assets::assetVersion(u32 hash)
+const Assets::Info *Assets::assetInfo(u32 hash)
 {
     auto infoIter = m_assetInfos.find(hash);
     if (infoIter == m_assetInfos.end())
     {
-        return 0;
+        return nullptr;
     }
-    return infoIter->second.version;
-}
-
-// -------------------------------------------------------------------------------------------------
-u32 Assets::assetFlags(u32 hash)
-{
-    auto infoIter = m_assetInfos.find(hash);
-    if (infoIter == m_assetInfos.end())
-    {
-        return 0;
-    }
-    return infoIter->second.flags;
+    return &infoIter->second;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -126,7 +115,7 @@ Assets::Program *Assets::refProgram(u32 hash)
         {
             Logging::debug("ERROR: Failed to load program \"%s\"", ref.second->name.c_str());
         }
-        ref.second->type = Type::MODEL;
+        ref.second->type = Type::PROGRAM;
     }
     return ref.first;
 }

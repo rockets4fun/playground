@@ -95,15 +95,16 @@ public: // Implementation of module interface
 private:
     struct PrivateFuncs;
     struct PrivateState;
-    struct PrivateMesh;
     struct PrivateHelpers;
+    struct PrivateMesh;
 
     std::shared_ptr< PrivateFuncs > funcs;
     std::shared_ptr< PrivateState > state;
     std::shared_ptr< PrivateHelpers > helpers;
 
-    void renderPass(StateDb &sdb, u32 renderMask,
-        const glm::fmat4 &projection, const glm::fmat4 &worldToView);
+    void renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateInfo *program,
+            const glm::fmat4 &projection, const glm::fmat4 &worldToView,
+            const glm::fvec4 &renderParams);
 
     bool initializeGl();
 

@@ -109,6 +109,9 @@ std::string StateDb::stateNameById(u64 stateId)
 // -------------------------------------------------------------------------------------------------
 u64 StateDb::registerState(u64 typeId, const std::string &name, u64 elemSize)
 {
+    // TODO(martinmo): Implemnt this as template method and use 'std::is_pod()'
+    // TODO(martinmo): to make sure state struct contains POD types only
+
     // Element size has to be non-zero and a multiple of 4 B (32 bit)
     COMMON_ASSERT(elemSize > 0);
     COMMON_ASSERT(elemSize % 4 == 0);

@@ -26,7 +26,10 @@
 // ==> This will never be included outside of this class
 #include "CoreGl/glcorearb.h"
 
-// Declared here because we do not want to expose OpenGL implementation details in header
+// Structs declared in implementaion file because we do not want to
+// expose any OpenGL implementation details in header
+
+// -------------------------------------------------------------------------------------------------
 struct Renderer::PrivateFuncs
 {
     // Basic functions
@@ -76,51 +79,17 @@ struct Renderer::PrivateFuncs
     PFNGLDEBUGMESSAGECALLBACKARBPROC glDebugMessageCallbackARB = nullptr;
 };
 
-// Declared here because we do not want to expose OpenGL implementation details in header
+// -------------------------------------------------------------------------------------------------
 struct Renderer::PrivateState
 {
-    GLuint defVs = 0;
-    GLuint defFs = 0;
-    GLuint defProg = 0;
-
-    GLint defProgUniformModelWorldMatrix;
-    GLint defProgUniformModelViewMatrix;
-    GLint defProgUniformProjectionMatrix;
-    GLint defProgUniformRenderParams;
-
-    GLint defProgAttribPosition;
-    GLint defProgAttribNormal;
-    GLint defProgAttribColor;
-
     GLuint defVao = 0;
 
-    GLuint cubePositionsVbo;
-    GLuint cubeNormalsVbo;
+    u64 defaultProgramHandle = 0;
 
     std::map< u32, PrivateMesh > meshes;
 };
 
-// Declared here because we do not want to expose OpenGL implementation details in header
-struct Renderer::PrivateMesh
-{
-    enum Flag
-    {
-        DYNAMIC = 0x1,
-        DIRTY   = 0x2
-    };
-
-    Assets::Model *model = nullptr;
-
-    GLuint positionsVbo = 0;
-    GLuint normalsVbo = 0;
-    GLuint colorsVbo = 0;
-    GLenum usage = GL_STATIC_DRAW;
-
-    int vertexCount = 0;
-    u32 flags = 0;
-};
-
-// Declared here because we do not want to expose OpenGL implementation details in header
+// -------------------------------------------------------------------------------------------------
 struct Renderer::PrivateHelpers
 {
     typedef void (APIENTRYP GetProc)
@@ -130,8 +99,8 @@ struct Renderer::PrivateHelpers
 
     PrivateHelpers(PrivateFuncs *funcs);
 
-    bool createAndCompileShader(GLuint &shader, GLenum type, const std::string &source);
-    bool createAndLinkSimpleProgram(GLuint &program, GLuint vertexShader, GLuint fragmentShader);
+    bool updateShader(GLuint &shader, GLenum type, const std::string &source);
+    bool updateProgram(GLuint &program, GLuint vertexShader, GLuint fragmentShader);
 
     void printInfoLog(GLuint object, GetProc getProc, InfoLogProc infoLogProc);
 
@@ -142,19 +111,54 @@ private:
     PrivateFuncs *funcs = nullptr;
 };
 
+// -------------------------------------------------------------------------------------------------
+struct Renderer::PrivateMesh
+{
+    enum Flag
+    {
+        DYNAMIC = 0x1,
+        DIRTY   = 0x2
+    };
+
+    Assets::Model *model = nullptr;
+    const Assets::Info *assetInfo = nullptr;
+
+    GLuint positionsVbo = 0;
+    GLuint normalsVbo = 0;
+    GLuint colorsVbo = 0;
+    GLenum usage = GL_STATIC_DRAW;
+
+    int vertexCount = 0;
+    u32 flags = 0;
+};
+
+// -------------------------------------------------------------------------------------------------
 u64 Renderer::Program::TYPE = 0;
 u64 Renderer::Program::Info::STATE = 0;
-// Declared here because we do not want to expose OpenGL implementation details in header
 struct Renderer::Program::PrivateInfo
 {
     static u64 STATE;
-    u32 dummy;
+    const Assets::Info *assetInfo = nullptr;
+    u32 assetVersionLoaded = 0;
+    // Shaders and program
+    GLuint program = 0;
+    GLuint vertexShader = 0;
+    GLuint fragmentShader = 0;
+    // Uniforms
+    GLint uModelToWorldMatrix = 0;
+    GLint uModelToViewMatrix = 0;
+    GLint uProjectionMatrix = 0;
+    GLint uRenderParams = 0;
+    // Attributes
+    GLint aPosition = 0;
+    GLint aNormal = 0;
+    GLint aColor = 0;
 };
 u64 Renderer::Program::PrivateInfo::STATE = 0;
 
+// -------------------------------------------------------------------------------------------------
 u64 Renderer::Mesh::TYPE = 0;
 u64 Renderer::Mesh::Info::STATE = 0;
-// Declared here because we do not want to expose OpenGL implementation details in header
 struct Renderer::Mesh::PrivateInfo
 {
     static u64 STATE;
@@ -163,9 +167,11 @@ struct Renderer::Mesh::PrivateInfo
 };
 u64 Renderer::Mesh::PrivateInfo::STATE = 0;
 
+// -------------------------------------------------------------------------------------------------
 u64 Renderer::Camera::TYPE = 0;
 u64 Renderer::Camera::Info::STATE = 0;
 
+// -------------------------------------------------------------------------------------------------
 u64 Renderer::Transform::TYPE = 0;
 u64 Renderer::Transform::Info::STATE = 0;
 
@@ -175,14 +181,17 @@ Renderer::PrivateHelpers::PrivateHelpers(PrivateFuncs *funcs) : funcs(funcs)
 }
 
 // -------------------------------------------------------------------------------------------------
-bool Renderer::PrivateHelpers::createAndCompileShader(
+bool Renderer::PrivateHelpers::updateShader(
     GLuint &shader, GLenum type, const std::string &src)
 {
-    shader = funcs->glCreateShader(type);
     if (!shader)
     {
-        Logging::debug("ERROR: Failed to create shader object");
-        return false;
+        shader = funcs->glCreateShader(type);
+        if (!shader)
+        {
+            Logging::debug("ERROR: Failed to create shader object");
+            return false;
+        }
     }
 
     GLint shaderLength = GLint(src.length());
@@ -204,14 +213,17 @@ bool Renderer::PrivateHelpers::createAndCompileShader(
 }
 
 // -------------------------------------------------------------------------------------------------
-bool Renderer::PrivateHelpers::createAndLinkSimpleProgram(
+bool Renderer::PrivateHelpers::updateProgram(
     GLuint &program, GLuint vertexShader, GLuint fragmentShader)
 {
-    program = funcs->glCreateProgram();
     if (!program)
     {
-        Logging::debug("ERROR: Failed to create program object");
-        return false;
+        program = funcs->glCreateProgram();
+        if (!program)
+        {
+            Logging::debug("ERROR: Failed to create program object");
+            return false;
+        }
     }
 
     funcs->glAttachShader(program, vertexShader);
@@ -328,97 +340,12 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
     funcs->glEnable(GL_CULL_FACE);
     */
 
-    Assets::Program *program = assets.refProgram(
-        assets.asset("Assets/Programs/Default.program"));
-    helpers->createAndCompileShader(state->defVs, GL_VERTEX_SHADER,
-        program->sourceByType[Assets::Program::VERTEX_SHADER]);
-    helpers->createAndCompileShader(state->defFs, GL_FRAGMENT_SHADER,
-        program->sourceByType[Assets::Program::FRAGMENT_SHADER]);
-    helpers->createAndLinkSimpleProgram(state->defProg, state->defVs, state->defFs);
-
-    // TODO(martinmo): Use Uniform Buffer Objects to pass uniforms to shaders
-
-    state->defProgUniformModelWorldMatrix =
-        funcs->glGetUniformLocation(state->defProg, "ModelWorldMatrix");
-    state->defProgUniformModelViewMatrix =
-        funcs->glGetUniformLocation(state->defProg, "ModelViewMatrix");
-    state->defProgUniformProjectionMatrix =
-        funcs->glGetUniformLocation(state->defProg, "ProjectionMatrix");
-    state->defProgUniformRenderParams =
-        funcs->glGetUniformLocation(state->defProg, "RenderParams");
-
-    // TODO(martinmo): Use 'glBindAttribLocation()' before linking the program to force
-    // TODO(martinmo): assignment of attributes to specific fixed locations
-    // TODO(martinmo): (e.g. position always 0, color always 1 etc.)
-    // TODO(martinmo): ==> This allows us to use the same VAO for different shader programs
-
-    state->defProgAttribPosition =
-        funcs->glGetAttribLocation(state->defProg, "Position");
-    state->defProgAttribNormal =
-        funcs->glGetAttribLocation(state->defProg, "Normal");
-    state->defProgAttribColor =
-        funcs->glGetAttribLocation(state->defProg, "Color");
-
-    funcs->glUseProgram(state->defProg);
-
     funcs->glGenVertexArrays(1, &state->defVao);
     funcs->glBindVertexArray(state->defVao);
 
-    // World coordinate system: +X=E, +Y=N and +Z=up
-    // Front facing is CCW towards negative axis
-    float cubePositions[] =
-    {
-        // West -X
-        -0.5f, -0.5f, -0.5f, -0.5f, -0.5f, +0.5f, -0.5f, +0.5f, +0.5f,
-        -0.5f, -0.5f, -0.5f, -0.5f, +0.5f, +0.5f, -0.5f, +0.5f, -0.5f,
-        // East +X
-        +0.5f, -0.5f, -0.5f, +0.5f, +0.5f, +0.5f, +0.5f, -0.5f, +0.5f,
-        +0.5f, -0.5f, -0.5f, +0.5f, +0.5f, -0.5f, +0.5f, +0.5f, +0.5f,
-        // South -Y
-        -0.5f, -0.5f, -0.5f, +0.5f, -0.5f, +0.5f, -0.5f, -0.5f, +0.5f,
-        -0.5f, -0.5f, -0.5f, +0.5f, -0.5f, -0.5f, +0.5f, -0.5f, +0.5f,
-        // North +Y
-        -0.5f, +0.5f, -0.5f, -0.5f, +0.5f, +0.5f, +0.5f, +0.5f, +0.5f, 
-        -0.5f, +0.5f, -0.5f, +0.5f, +0.5f, +0.5f, +0.5f, +0.5f, -0.5f, 
-        // Bottom -Z
-        -0.5f, -0.5f, -0.5f, -0.5f, +0.5f, -0.5f, +0.5f, +0.5f, -0.5f,
-        -0.5f, -0.5f, -0.5f, +0.5f, +0.5f, -0.5f, +0.5f, -0.5f, -0.5f,
-        // Top +Z
-        -0.5f, -0.5f, +0.5f, +0.5f, +0.5f, +0.5f, -0.5f, +0.5f, +0.5f,
-        -0.5f, -0.5f, +0.5f, +0.5f, -0.5f, +0.5f, +0.5f, +0.5f, +0.5f,
-    };
-    float cubeNormals[] =
-    {
-        // West -X (red)
-        -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
-        -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f,
-        // East +X (red)
-        +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f,
-        +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f,
-        // South -Y (green)
-         0.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,
-         0.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,
-        // North +Y (green)
-         0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,
-         0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,
-        // Bottom -Z (blue)
-         0.0f,  0.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f, -1.0f,
-         0.0f,  0.0f, -1.0f,  0.0f,  0.0f, -1.0f,  0.0f,  0.0f, -1.0f,
-        // Top +Z (blue)
-         0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,
-         0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,  0.0f,  0.0f, +1.0f,
-    };
-
-    // Create cube VBOs and define data
-    {
-        funcs->glGenBuffers(1, &state->cubePositionsVbo);
-        funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubePositionsVbo);
-        funcs->glBufferData(GL_ARRAY_BUFFER, sizeof(cubePositions), cubePositions, GL_STATIC_DRAW);
-
-        funcs->glGenBuffers(1, &state->cubeNormalsVbo);
-        funcs->glBindBuffer(GL_ARRAY_BUFFER, state->cubeNormalsVbo);
-        funcs->glBufferData(GL_ARRAY_BUFFER, sizeof(cubeNormals), cubeNormals, GL_STATIC_DRAW);
-    }
+    Program::Info *defProgram = sdb.create< Program::Info >(state->defaultProgramHandle);
+    defProgram->programAsset = assets.asset("Assets/Programs/Default.program");
+    assets.refProgram(defProgram->programAsset);
 
     funcs->glClearColor(0.15f, 0.15f, 0.15f, 1.0);
     funcs->glEnable(GL_DEPTH_TEST);
@@ -429,18 +356,19 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
 // -------------------------------------------------------------------------------------------------
 void Renderer::shutdown(StateDb &sdb)
 {
-    if (state->cubeNormalsVbo) funcs->glDeleteBuffers(1, &state->cubeNormalsVbo);
-    if (state->cubePositionsVbo) funcs->glDeleteBuffers(1, &state->cubePositionsVbo);
-
     if (state->defVao) funcs->glDeleteVertexArrays(1, &state->defVao);
 
-    if (state->defProg) funcs->glDeleteProgram(state->defProg);
-    if (state->defFs) funcs->glDeleteShader(state->defFs);
-    if (state->defVs) funcs->glDeleteShader(state->defVs);
+    auto programsPrivate = sdb.stateAll< Program::PrivateInfo >();
+    for (auto programPrivate : programsPrivate)
+    {
+        if (programPrivate->program)        funcs->glDeleteProgram(programPrivate->program);
+        if (programPrivate->fragmentShader) funcs->glDeleteShader (programPrivate->fragmentShader);
+        if (programPrivate->vertexShader)   funcs->glDeleteShader (programPrivate->vertexShader);
+    }
 
     for (auto &mapIter : state->meshes)
     {
-        funcs->glDeleteBuffers(2, &mapIter.second.positionsVbo);
+        funcs->glDeleteBuffers(3, &mapIter.second.positionsVbo);
     }
 
     helpers = nullptr;
@@ -455,6 +383,55 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
     {
         PROFILING_SECTION(FinishBegin, glm::fvec3(1.0f, 0.5f, 0.0f))
         funcs->glFinish();
+    }
+
+    // Prepare/update programs
+    auto programs = sdb.stateAll< Program::Info >();
+    auto programsPrivate = sdb.stateAll< Program::PrivateInfo >();
+    for (auto programPrivate : programsPrivate)
+    {
+        if (!programPrivate->assetInfo)
+        {
+            auto program = programs.rel(programsPrivate, programPrivate);
+            programPrivate->assetInfo = assets.assetInfo(program->programAsset);
+            COMMON_ASSERT(programPrivate->assetInfo)
+        }
+        int assetVersion = programPrivate->assetInfo->version;
+        if (programPrivate->assetVersionLoaded != assetVersion)
+        {
+            Assets::Program *programAsset = assets.refProgram(programPrivate->assetInfo->hash);
+            helpers->updateShader(programPrivate->vertexShader, GL_VERTEX_SHADER,
+                programAsset->sourceByType[Assets::Program::VERTEX_SHADER]);
+            helpers->updateShader(programPrivate->fragmentShader, GL_FRAGMENT_SHADER,
+                programAsset->sourceByType[Assets::Program::FRAGMENT_SHADER]);
+            helpers->updateProgram(programPrivate->program,
+                programPrivate->vertexShader, programPrivate->fragmentShader);
+
+            // TODO(martinmo): Use Uniform Buffer Objects to pass uniforms to shaders
+
+            programPrivate->uModelToWorldMatrix =
+                funcs->glGetUniformLocation(programPrivate->program, "ModelToWorldMatrix");
+            programPrivate->uModelToViewMatrix =
+                funcs->glGetUniformLocation(programPrivate->program, "ModelToViewMatrix");
+            programPrivate->uProjectionMatrix =
+                funcs->glGetUniformLocation(programPrivate->program, "ProjectionMatrix");
+            programPrivate->uRenderParams =
+                funcs->glGetUniformLocation(programPrivate->program, "RenderParams");
+
+            // TODO(martinmo): Use 'glBindAttribLocation()' before linking the program to force
+            // TODO(martinmo): assignment of attributes to specific fixed locations
+            // TODO(martinmo): (e.g. position always 0, color always 1 etc.)
+            // TODO(martinmo): ==> This allows us to use the same VAO for different shader programs
+
+            programPrivate->aPosition =
+                funcs->glGetAttribLocation(programPrivate->program, "Position");
+            programPrivate->aNormal =
+                funcs->glGetAttribLocation(programPrivate->program, "Normal");
+            programPrivate->aColor =
+                funcs->glGetAttribLocation(programPrivate->program, "Color");
+
+            programPrivate->assetVersionLoaded = assetVersion;
+        }
     }
 
     // Prepare references to per-model private data
@@ -479,8 +456,10 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         {
             privateMesh->model = assets.refModel(modelAsset);
             COMMON_ASSERT(privateMesh->model);
+            privateMesh->assetInfo = assets.assetInfo(modelAsset);
+            COMMON_ASSERT(privateMesh->assetInfo);
             // TODO(martinmo): Add way of getting asset and flags in one call/lookup
-            if (assets.assetFlags(modelAsset) & Assets::Flag::DYNAMIC)
+            if (privateMesh->assetInfo->flags & Assets::Flag::DYNAMIC)
             {
                 privateMesh->flags |= PrivateMesh::Flag::DYNAMIC;
                 privateMesh->usage = GL_DYNAMIC_DRAW;
@@ -496,6 +475,9 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         }
     }
 
+    auto defaultProgram = sdb.state< Program::PrivateInfo >(state->defaultProgramHandle);
+    funcs->glUseProgram(defaultProgram->program);
+
     // Default render pass
     {
         const float aspect = 16.0f / 9.0f;
@@ -509,9 +491,8 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
                 camera->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
         }
         funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        funcs->glUniform4fv(state->defProgUniformRenderParams, 1,
-            glm::value_ptr(glm::fvec4(debugNormals ? 1.0f : 0.0f, 0.0, 0.0, 0.0)));
-        renderPass(sdb, Group::DEFAULT, projection, worldToView);
+        glm::fvec4 renderParams = glm::fvec4(debugNormals ? 1.0f : 0.0f, 0.0, 0.0, 0.0);
+        renderPass(sdb, Group::DEFAULT, defaultProgram, projection, worldToView, renderParams);
     }
 
     // UI render pass
@@ -519,9 +500,8 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         glm::fmat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 450.0f, -10.0f, 10.0f);
         glm::fmat4 worldToView;
         funcs->glClear(GL_DEPTH_BUFFER_BIT);
-        funcs->glUniform4fv(state->defProgUniformRenderParams, 1,
-            glm::value_ptr(glm::fvec4(debugNormals ? 1.0f : 0.0f, 1.0, 0.0, 0.0)));
-        renderPass(sdb, Group::DEFAULT_UI, projection, worldToView);
+        glm::fvec4 renderParams = glm::fvec4(debugNormals ? 1.0f : 0.0f, 1.0, 0.0, 0.0);
+        renderPass(sdb, Group::DEFAULT_UI, defaultProgram, projection, worldToView, renderParams);
     }
 
     // Seems like 'glFinish()' implicitly waits for v-sync on OS X
@@ -534,11 +514,11 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
 }
 
 // -------------------------------------------------------------------------------------------------
-void Renderer::renderPass(StateDb &sdb, u32 renderMask,
-        const glm::fmat4 &projection, const glm::fmat4 &worldToView)
+void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateInfo *program,
+    const glm::fmat4 &projection, const glm::fmat4 &worldToView, const glm::fvec4 &renderParams)
 {
-    funcs->glUniformMatrix4fv(state->defProgUniformProjectionMatrix,
-                1, GL_FALSE, glm::value_ptr(projection));
+    funcs->glUniform4fv(program->uRenderParams, 1, glm::value_ptr(renderParams));
+    funcs->glUniformMatrix4fv(program->uProjectionMatrix, 1, GL_FALSE, glm::value_ptr(projection));
 
     auto meshes = sdb.stateAll< Mesh::Info >();
     auto meshesPrivate = sdb.stateAll< Mesh::PrivateInfo >();
@@ -580,30 +560,27 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask,
         // ==> Think about creating one VAO per renderable mesh
         {
             funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->positionsVbo);
-            funcs->glVertexAttribPointer(
-                state->defProgAttribPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
-            funcs->glEnableVertexAttribArray(state->defProgAttribPosition);
+            funcs->glVertexAttribPointer(program->aPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
+            funcs->glEnableVertexAttribArray(program->aPosition);
 
             funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->normalsVbo);
-            funcs->glVertexAttribPointer(
-                state->defProgAttribNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
-            funcs->glEnableVertexAttribArray(state->defProgAttribNormal);
+            funcs->glVertexAttribPointer(program->aNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
+            funcs->glEnableVertexAttribArray(program->aNormal);
 
             funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->colorsVbo);
-            funcs->glVertexAttribPointer(
-                state->defProgAttribColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
-            funcs->glEnableVertexAttribArray(state->defProgAttribColor);
+            funcs->glVertexAttribPointer(program->aColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
+            funcs->glEnableVertexAttribArray(program->aColor);
         }
 
         glm::fmat4 modelToWorld;
         modelToWorld = glm::translate(glm::fmat4(), mesh->translation);
         modelToWorld = modelToWorld * glm::mat4_cast(mesh->rotation);
         funcs->glUniformMatrix4fv(
-            state->defProgUniformModelWorldMatrix, 1, GL_FALSE, glm::value_ptr(modelToWorld));
+            program->uModelToWorldMatrix, 1, GL_FALSE, glm::value_ptr(modelToWorld));
 
         glm::fmat4 modelToView = worldToView * modelToWorld;
         funcs->glUniformMatrix4fv(
-            state->defProgUniformModelViewMatrix, 1, GL_FALSE, glm::value_ptr(modelToView));
+            program->uModelToViewMatrix, 1, GL_FALSE, glm::value_ptr(modelToView));
 
         funcs->glDrawArrays(GL_TRIANGLES, 0, privateMesh->vertexCount);
     }
