@@ -39,6 +39,25 @@ struct Renderer::PrivateFuncs
     // Buffer clearing functions
     PFNGLCLEARCOLORPROC glClearColor = nullptr;
     PFNGLCLEARPROC      glClear = nullptr;
+    // Texturing
+    PFNGLGENTEXTURESPROC    glGenTextures = nullptr;
+    PFNGLDELETETEXTURESPROC glDeleteTextures = nullptr;
+    PFNGLBINDTEXTUREPROC    glBindTexture = nullptr;
+    PFNGLTEXPARAMETERFPROC  glTexParameterf = nullptr;
+    PFNGLTEXPARAMETERIPROC  glTexParameteri = nullptr;
+    PFNGLTEXIMAGE2DPROC     glTexImage2D = nullptr;
+    PFNGLACTIVETEXTUREPROC  glActiveTexture = nullptr;
+    // Frame buffer object
+    PFNGLGENFRAMEBUFFERSPROC         glGenFramebuffers = nullptr;
+    PFNGLDELETEFRAMEBUFFERSPROC      glDeleteFramebuffers = nullptr;
+    PFNGLBINDFRAMEBUFFERPROC         glBindFramebuffer = nullptr;
+    PFNGLFRAMEBUFFERTEXTURE2DPROC    glFramebufferTexture2D = nullptr;
+    PFNGLFRAMEBUFFERRENDERBUFFERPROC glFramebufferRenderbuffer = nullptr;
+    PFNGLCHECKFRAMEBUFFERSTATUSPROC  glCheckFramebufferStatus = nullptr;
+    // Render buffers
+    PFNGLGENRENDERBUFFERSPROC    glGenRenderbuffers = nullptr;
+    PFNGLDELETERENDERBUFFERSPROC glDeleteRenderbuffers = nullptr;
+    PFNGLRENDERBUFFERSTORAGEPROC glRenderbufferStorage = nullptr;
     // Shader object functions
     PFNGLCREATESHADERPROC     glCreateShader = nullptr;
     PFNGLSHADERSOURCEPROC     glShaderSource = nullptr;
@@ -67,6 +86,7 @@ struct Renderer::PrivateFuncs
     PFNGLBUFFERSUBDATAPROC glBufferSubData = nullptr;
     // Shader uniform functions
     PFNGLGETUNIFORMLOCATIONPROC glGetUniformLocation = nullptr;
+    PFNGLUNIFORM1IPROC          glUniform1i = nullptr;
     PFNGLUNIFORM4FVPROC         glUniform4fv = nullptr;
     PFNGLUNIFORMMATRIX4FVPROC   glUniformMatrix4fv = nullptr;
     // Vertex shader attribute functions
@@ -84,7 +104,12 @@ struct Renderer::PrivateState
 {
     GLuint defVao = 0;
 
+    GLuint defFbo = 0;
+    GLuint colorTex = 0;
+    GLuint depthTex = 0;
+
     u64 defaultProgramHandle = 0;
+    u64 postProgramHandle = 0;
 
     std::map< u32, PrivateMesh > meshes;
 };
@@ -149,6 +174,8 @@ struct Renderer::Program::PrivateInfo
     GLint uModelToViewMatrix = 0;
     GLint uProjectionMatrix = 0;
     GLint uRenderParams = 0;
+    GLint uColorTex = 0;
+    GLint uDepthTex = 0;
     // Attributes
     GLint aPosition = 0;
     GLint aNormal = 0;
@@ -343,9 +370,42 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
     funcs->glGenVertexArrays(1, &state->defVao);
     funcs->glBindVertexArray(state->defVao);
 
-    Program::Info *defProgram = sdb.create< Program::Info >(state->defaultProgramHandle);
-    defProgram->programAsset = assets.asset("Assets/Programs/Default.program");
-    assets.refProgram(defProgram->programAsset);
+    // Frame buffer color texture
+    funcs->glGenTextures(1, &state->colorTex);
+    funcs->glBindTexture(GL_TEXTURE_2D, state->colorTex);
+    funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    funcs->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+              800, 450, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+    funcs->glBindTexture(GL_TEXTURE_2D, 0);
+    // Frame buffer depth texture
+    funcs->glGenTextures(1, &state->depthTex);
+    funcs->glBindTexture(GL_TEXTURE_2D, state->depthTex);
+    funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+    funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+    funcs->glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+              800, 450, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, 0);
+    funcs->glBindTexture(GL_TEXTURE_2D, 0);
+    // Frame buffer
+    funcs->glGenFramebuffers(1, &state->defFbo);
+    funcs->glBindFramebuffer(GL_FRAMEBUFFER, state->defFbo);
+    funcs->glFramebufferTexture2D(GL_FRAMEBUFFER,
+        GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, state->colorTex, 0);
+    funcs->glFramebufferTexture2D(GL_FRAMEBUFFER,
+        GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, state->depthTex, 0);
+    if (funcs->glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    {
+        Logging::debug("ERROR: Default FBO is incomplete");
+    }
+    funcs->glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
+    Program::Info *defaultProgram = sdb.create< Program::Info >(state->defaultProgramHandle);
+    defaultProgram->programAsset = assets.asset("Assets/Programs/Default.program");
+    assets.refProgram(defaultProgram->programAsset);
+
+    Program::Info *postProgram = sdb.create< Program::Info >(state->postProgramHandle);
+    postProgram->programAsset = assets.asset("Assets/Programs/Post.program");
+    assets.refProgram(postProgram->programAsset);
 
     funcs->glClearColor(0.15f, 0.15f, 0.15f, 1.0);
     funcs->glEnable(GL_DEPTH_TEST);
@@ -423,6 +483,10 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
                 funcs->glGetUniformLocation(programPrivate->program, "ProjectionMatrix");
             programPrivate->uRenderParams =
                 funcs->glGetUniformLocation(programPrivate->program, "RenderParams");
+            programPrivate->uColorTex =
+                funcs->glGetUniformLocation(programPrivate->program, "ColorTex");
+            programPrivate->uDepthTex =
+                funcs->glGetUniformLocation(programPrivate->program, "DepthTex");
 
             // TODO(martinmo): Use 'glBindAttribLocation()' before linking the program to force
             // TODO(martinmo): assignment of attributes to specific fixed locations
@@ -482,7 +546,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
     }
 
     auto defaultProgram = sdb.state< Program::PrivateInfo >(state->defaultProgramHandle);
-    funcs->glUseProgram(defaultProgram->program);
+    auto postProgram = sdb.state< Program::PrivateInfo >(state->postProgramHandle);
 
     // Default render pass
     {
@@ -496,17 +560,42 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
             worldToView = glm::lookAt(camera->position.xyz(),
                 camera->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
         }
-        funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glm::fvec4 renderParams = glm::fvec4(debugNormals ? 1.0f : 0.0f, 0.0, 0.0, 0.0);
+
+        funcs->glBindFramebuffer(GL_FRAMEBUFFER, state->defFbo);
+        funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         renderPass(sdb, Group::DEFAULT, defaultProgram, projection, worldToView, renderParams);
+        funcs->glBindFramebuffer(GL_FRAMEBUFFER, 0);
+    }
+
+    // Default post-processing pass
+    {
+        glm::fmat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 450.0f, -10.0f, 10.0f);
+        glm::fmat4 worldToView;
+        glm::fvec4 renderParams = glm::fvec4(debugNormals ? 1.0f : 0.0f, 1.0, 0.0, 0.0);
+
+        funcs->glUseProgram(postProgram->program);
+        GLint colorTex = 0; GLint depthTex = 1;
+        if (postProgram->uColorTex >= 0) funcs->glUniform1i(postProgram->uColorTex, colorTex);
+        if (postProgram->uDepthTex >= 0) funcs->glUniform1i(postProgram->uDepthTex, depthTex);
+
+        funcs->glActiveTexture(GL_TEXTURE0); funcs->glBindTexture(GL_TEXTURE_2D, state->colorTex);
+        funcs->glActiveTexture(GL_TEXTURE1); funcs->glBindTexture(GL_TEXTURE_2D, state->depthTex);
+
+        funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        renderPass(sdb, Group::DEFAULT_POST, postProgram, projection, worldToView, renderParams);
+
+        funcs->glActiveTexture(GL_TEXTURE1); funcs->glBindTexture(GL_TEXTURE_2D, 0);
+        funcs->glActiveTexture(GL_TEXTURE0); funcs->glBindTexture(GL_TEXTURE_2D, 0);
     }
 
     // UI render pass
     {
         glm::fmat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 450.0f, -10.0f, 10.0f);
         glm::fmat4 worldToView;
-        funcs->glClear(GL_DEPTH_BUFFER_BIT);
         glm::fvec4 renderParams = glm::fvec4(debugNormals ? 1.0f : 0.0f, 1.0, 0.0, 0.0);
+
+        funcs->glClear(GL_DEPTH_BUFFER_BIT);
         renderPass(sdb, Group::DEFAULT_UI, defaultProgram, projection, worldToView, renderParams);
     }
 
@@ -523,6 +612,8 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
 void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateInfo *program,
     const glm::fmat4 &projection, const glm::fmat4 &worldToView, const glm::fvec4 &renderParams)
 {
+    funcs->glUseProgram(program->program);
+
     funcs->glUniform4fv(program->uRenderParams, 1, glm::value_ptr(renderParams));
     funcs->glUniformMatrix4fv(program->uProjectionMatrix, 1, GL_FALSE, glm::value_ptr(projection));
 
@@ -623,6 +714,25 @@ bool Renderer::initializeGl()
     RENDERER_GL_FUNC(glClearColor);
     RENDERER_GL_FUNC(glClear);
 
+    RENDERER_GL_FUNC(glGenTextures);
+    RENDERER_GL_FUNC(glDeleteTextures);
+    RENDERER_GL_FUNC(glBindTexture);
+    RENDERER_GL_FUNC(glTexParameterf);
+    RENDERER_GL_FUNC(glTexParameteri);
+    RENDERER_GL_FUNC(glTexImage2D);
+    RENDERER_GL_FUNC(glActiveTexture);
+
+    RENDERER_GL_FUNC(glGenFramebuffers);
+    RENDERER_GL_FUNC(glDeleteFramebuffers);
+    RENDERER_GL_FUNC(glBindFramebuffer);
+    RENDERER_GL_FUNC(glFramebufferTexture2D);
+    RENDERER_GL_FUNC(glFramebufferRenderbuffer);
+    RENDERER_GL_FUNC(glCheckFramebufferStatus);
+
+    RENDERER_GL_FUNC(glGenRenderbuffers);
+    RENDERER_GL_FUNC(glDeleteRenderbuffers);
+    RENDERER_GL_FUNC(glRenderbufferStorage);
+
     RENDERER_GL_FUNC(glCreateShader);
     RENDERER_GL_FUNC(glShaderSource);
     RENDERER_GL_FUNC(glCompileShader);
@@ -650,6 +760,7 @@ bool Renderer::initializeGl()
     RENDERER_GL_FUNC(glBufferSubData);
 
     RENDERER_GL_FUNC(glGetUniformLocation);
+    RENDERER_GL_FUNC(glUniform1i);
     RENDERER_GL_FUNC(glUniform4fv);
     RENDERER_GL_FUNC(glUniformMatrix4fv);
 

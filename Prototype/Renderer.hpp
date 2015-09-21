@@ -21,8 +21,9 @@ struct Renderer : public ModuleIf
 {
     enum Group
     {
-        DEFAULT    = 0x1,
-        DEFAULT_UI = 0x2
+        DEFAULT      = 0x1,
+        DEFAULT_POST = 0x2,
+        DEFAULT_UI   = 0x4
     };
 
     struct Program

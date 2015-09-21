@@ -19,12 +19,18 @@ Platform::~Platform()
 }
 
 // -------------------------------------------------------------------------------------------------
+#ifdef COMMON_WINDOWS
+#   define stat _stat
+#endif
 s64 Platform::fileModificationTime(const std::string &filename)
 {
-    struct _stat status;
-    if (_stat(filename.c_str(), &status) != 0)
+    struct stat status;
+    if (stat(filename.c_str(), &status) != 0)
     {
         return -1;
     }
     return status.st_mtime;
 }
+#ifdef COMMON_WINDOWS
+#   undef stat
+#endif

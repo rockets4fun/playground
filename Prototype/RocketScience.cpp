@@ -49,7 +49,8 @@ void RocketScience::registerTypesAndStates(StateDb &sdb)
 
 // -------------------------------------------------------------------------------------------------
 void pushRect2d(Assets::Model *model,
-        const glm::fvec2 &ll, const glm::fvec2 &ur, const glm::fvec3 &color, float z = 0.0f)
+        const glm::fvec2 &ll, const glm::fvec2 &ur,
+        const glm::fvec3 &color = glm::fvec3(1.0f, 1.0f, 1.0f), float z = 0.0f)
 {
     // World coordinate system: +X=E, +Y=N and +Z=up (front facing is CCW towards negative axis)
     // Lower left triangle
@@ -93,17 +94,31 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
         "procedural/ocean", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
     m_uiModelAsset = assets.asset(
         "procedural/ui", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
+    m_postModelAsset = assets.asset(
+        "procedural/post", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
 
     {
         auto mesh = sdb.create< Renderer::Mesh::Info >(m_arrowMeshHandle);
         mesh->modelAsset = assets.asset("Assets/Models/Arrow.obj");
         mesh->groups = Renderer::Group::DEFAULT;
     }
-
     {
-        auto mesh = sdb.create< Renderer::Mesh::Info >(m_uiMeshHandle);
+        auto mesh = sdb.create< Renderer::Mesh::Info >();
+        mesh->modelAsset = m_postModelAsset;
+        mesh->groups = Renderer::Group::DEFAULT_POST;
+        auto model = assets.refModel(m_postModelAsset);
+        pushRect2d(model,
+            glm::fvec2(  0.0f,   0.0f),
+            glm::fvec2(800.0f, 450.0f));
+        // FIXME(martinmo): Encode texture coords into color attribute (hack!)
+        model->colors[0] = model->colors[4] = glm::fvec3(0.0f, 0.0f, 0.0f);
+        model->colors[1] = model->colors[3] = glm::fvec3(1.0f, 1.0f, 0.0f);
+        model->colors[2] =                    glm::fvec3(0.0f, 1.0f, 0.0f);
+        model->colors[5] =                    glm::fvec3(1.0f, 0.0f, 0.0f);
+    }
+    {
+        auto mesh = sdb.create< Renderer::Mesh::Info >();
         mesh->modelAsset = m_uiModelAsset;
-        //mesh->rotation = glm::angleAxis(glm::radians(90.0f), glm::fvec3(1.0f, 0.0f, 0.0f));
         mesh->groups = Renderer::Group::DEFAULT_UI;
     }
 
@@ -418,8 +433,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
     {
         PROFILING_SECTION(UpdateUi, glm::fvec3(1.0f, 0.0f, 1.0f))
 
-        auto uiMesh = sdb.state< Renderer::Mesh::Info >(m_uiMeshHandle);
-        auto uiModel = assets.refModel(uiMesh->modelAsset);
+        auto uiModel = assets.refModel(m_uiModelAsset);
         uiModel->positions.clear(); uiModel->normals.clear(); uiModel->colors.clear();
 
         Profiling *profiling = Profiling::instance();
