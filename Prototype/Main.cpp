@@ -110,8 +110,8 @@ int main(int argc, char *argv[])
             }
 
             {
-                PROFILING_SECTION(CheckDeps, glm::fvec3(1.0f, 0.0f, 0.5f));
-                assets.checkDeps();
+                PROFILING_SECTION(ReleadAssets, glm::fvec3(1.0f, 0.0f, 0.5f));
+                assets.reloadModifiedAssets();
             }
 
             SDL_GL_SwapWindow(window);

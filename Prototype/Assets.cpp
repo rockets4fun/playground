@@ -122,6 +122,30 @@ Assets::Program *Assets::refProgram(u32 hash)
 }
 
 // -------------------------------------------------------------------------------------------------
+void Assets::reloadModifiedAssets()
+{
+    std::set< u32 > toBeUpdated;
+    for (auto &dep : m_depsByFile)
+    {
+        const std::string &filename = dep.first;
+        s64 newModificationTime = Platform::fileModificationTime(filename);
+        if (newModificationTime == dep.second.modificationTime)
+        {
+            continue;
+        }
+        Logging::debug("File \"%s\" changed on disc", filename.c_str());
+        for (auto hash : dep.second.hashes) toBeUpdated.insert(hash);
+        dep.second.modificationTime = newModificationTime;
+    }
+    for (auto hash : toBeUpdated)
+    {
+        Info &info = m_assetInfos[hash];
+        if (info.type == Type::PROGRAM) loadProgram(info, m_programs[hash]);
+        ++info.version;
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
 bool Assets::loadFileIntoString(const std::string &filename, std::string &contents)
 {
     std::ifstream in(filename.c_str(), std::ios::in | std::ios::binary);
@@ -245,7 +269,7 @@ bool Assets::loadModel(const Info &info, Model &model)
 bool Assets::loadProgram(const Info &info, Program &program)
 {
     resetDeps(info.hash);
-    registerDep(info.hash, filename);
+    registerDep(info.hash, info.name);
 
     program.sourceByType.clear();
 
@@ -334,30 +358,6 @@ void Assets::resetDeps(u32 hash)
         auto &hashes = dep.second.hashes;
         auto foundDep = hashes.find(hash);
         if (foundDep != hashes.end()) hashes.erase(foundDep);
-    }
-}
-
-// -------------------------------------------------------------------------------------------------
-void Assets::checkDeps()
-{
-    std::set< u32 > toBeUpdated;
-    for (auto &dep : m_depsByFile)
-    {
-        const std::string &filename = dep.first;
-        s64 newModificationTime = Platform::fileModificationTime(filename);
-        if (newModificationTime == dep.second.modificationTime)
-        {
-            continue;
-        }
-        Logging::debug("File \"%s\" changed on disc", filename.c_str());
-        for (auto hash : dep.second.hashes) toBeUpdated.insert(hash);
-        dep.second.modificationTime = newModificationTime;
-    }
-    for (auto hash : toBeUpdated)
-    {
-        Info &info = m_assetInfos[hash];
-        if (info.type == Type::PROGRAM) loadProgram(info, m_programs[hash]);
-        ++info.version;
     }
 }
 

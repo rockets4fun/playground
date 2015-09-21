@@ -86,7 +86,7 @@ struct Assets
     Model *refModel(u32 hash);
     Program *refProgram(u32 hash);
 
-    void checkDeps();
+    void reloadModifiedAssets();
 
 private:
     struct PrivateState;
