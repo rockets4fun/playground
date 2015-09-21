@@ -399,6 +399,12 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         u32 assetVersion = programPrivate->assetInfo->version;
         if (programPrivate->assetVersionLoaded != assetVersion)
         {
+            if (assetVersion > 1)
+            {
+                funcs->glUseProgram(0);
+                funcs->glDetachShader(programPrivate->program, programPrivate->fragmentShader);
+                funcs->glDetachShader(programPrivate->program, programPrivate->vertexShader);
+            }
             Assets::Program *programAsset = assets.refProgram(programPrivate->assetInfo->hash);
             helpers->updateShader(programPrivate->vertexShader, GL_VERTEX_SHADER,
                 programAsset->sourceByType[Assets::Program::VERTEX_SHADER]);

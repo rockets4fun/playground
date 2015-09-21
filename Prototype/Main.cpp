@@ -109,6 +109,11 @@ int main(int argc, char *argv[])
                 module->update(sdb, assets, renderer, deltaTimeInS);
             }
 
+            {
+                PROFILING_SECTION(CheckDeps, glm::fvec3(1.0f, 0.0f, 0.5f));
+                assets.checkDeps();
+            }
+
             SDL_GL_SwapWindow(window);
         }
 

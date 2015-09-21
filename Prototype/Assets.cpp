@@ -14,6 +14,7 @@
 #include <assimp/postprocess.h>
 
 #include "Logging.hpp"
+#include "Platform.hpp"
 
 struct Assets::PrivateState
 {
@@ -80,7 +81,7 @@ Assets::Model *Assets::refModel(u32 hash)
         {
             // Procedural models will be defined by application logic
         }
-        else if (loadModel(*m_privateState.get(), *ref.first, *ref.second))
+        else if (loadModel(*ref.second, *ref.first))
         {
             ++ref.second->version;
             Logging::debug("Model \"%s\" loaded (%d triangles)",
@@ -106,7 +107,7 @@ Assets::Program *Assets::refProgram(u32 hash)
     }
     if (ref.second->type == Type::UNDEFINED)
     {
-        if (loadProgram(*m_privateState.get(), *ref.first, *ref.second))
+        if (loadProgram(*ref.second, *ref.first))
         {
             ++ref.second->version;
             Logging::debug("Program \"%s\" loaded", ref.second->name.c_str());
@@ -137,13 +138,17 @@ bool Assets::loadFileIntoString(const std::string &filename, std::string &conten
 }
 
 // -------------------------------------------------------------------------------------------------
-bool Assets::loadModel(PrivateState &privateState, Model &model, Info &info)
+bool Assets::loadModel(const Info &info, Model &model)
 {
+    resetDeps(info.hash);
+    registerDep(info.hash, info.name);
+
     model.positions.clear();
     model.normals.clear();
     model.colors.clear();
+    model.parts.clear();
 
-    const aiScene *scene = privateState.importer.ReadFile(info.name, aiProcess_Triangulate);
+    const aiScene *scene = m_privateState->importer.ReadFile(info.name, aiProcess_Triangulate);
     if (!scene)
     {
         // FIXME(martinmo): Proper error message through platform abstraction
@@ -237,8 +242,13 @@ bool Assets::loadModel(PrivateState &privateState, Model &model, Info &info)
 }
 
 // -------------------------------------------------------------------------------------------------
-bool Assets::loadProgram(PrivateState &privateState, Program &program, Info &info)
+bool Assets::loadProgram(const Info &info, Program &program)
 {
+    resetDeps(info.hash);
+    registerDep(info.hash, filename);
+
+    program.sourceByType.clear();
+
     std::string filename = info.name;
     std::string filepath = filename.substr(0, filename.find_last_of("/") + 1);
 
@@ -264,10 +274,12 @@ bool Assets::loadProgram(PrivateState &privateState, Program &program, Info &inf
         }
         preprocessedSource += searchResult.prefix().str();
 
-        std::string includeSource;
         // FIXME(martinmo): Avoid direct/indirect recursive includes
-        const std::string &includeFilename = searchResult.str(1);
-        if (!loadFileIntoString(filepath + includeFilename, includeSource))
+        std::string includeFilename = filepath + searchResult.str(1);
+        registerDep(info.hash, includeFilename);
+
+        std::string includeSource;
+        if (!loadFileIntoString(includeFilename, includeSource))
         {
             Logging::debug("WARNING: Failed to load include \"%s\"", includeFilename.c_str());
         }
@@ -300,6 +312,53 @@ bool Assets::loadProgram(PrivateState &privateState, Program &program, Info &inf
     }
 
     return true;
+}
+
+// -------------------------------------------------------------------------------------------------
+void Assets::registerDep(u32 hash, const std::string &filename)
+{
+    auto foundDepInfo = m_depsByFile.find(filename);
+    if (foundDepInfo == m_depsByFile.end())
+    {
+        foundDepInfo = m_depsByFile.insert(std::make_pair(filename, DepInfo())).first;
+        foundDepInfo->second.modificationTime = Platform::fileModificationTime(filename);
+    }
+    foundDepInfo->second.hashes.insert(hash);
+}
+
+// -------------------------------------------------------------------------------------------------
+void Assets::resetDeps(u32 hash)
+{
+    for (auto &dep : m_depsByFile)
+    {
+        auto &hashes = dep.second.hashes;
+        auto foundDep = hashes.find(hash);
+        if (foundDep != hashes.end()) hashes.erase(foundDep);
+    }
+}
+
+// -------------------------------------------------------------------------------------------------
+void Assets::checkDeps()
+{
+    std::set< u32 > toBeUpdated;
+    for (auto &dep : m_depsByFile)
+    {
+        const std::string &filename = dep.first;
+        s64 newModificationTime = Platform::fileModificationTime(filename);
+        if (newModificationTime == dep.second.modificationTime)
+        {
+            continue;
+        }
+        Logging::debug("File \"%s\" changed on disc", filename.c_str());
+        for (auto hash : dep.second.hashes) toBeUpdated.insert(hash);
+        dep.second.modificationTime = newModificationTime;
+    }
+    for (auto hash : toBeUpdated)
+    {
+        Info &info = m_assetInfos[hash];
+        if (info.type == Type::PROGRAM) loadProgram(info, m_programs[hash]);
+        ++info.version;
+    }
 }
 
 // -------------------------------------------------------------------------------------------------

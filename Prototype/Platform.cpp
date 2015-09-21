@@ -5,6 +5,9 @@
 
 #include "Platform.hpp"
 
+#include <sys/types.h>
+#include <sys/stat.h>
+
 // -------------------------------------------------------------------------------------------------
 Platform::Platform()
 {
@@ -13,4 +16,15 @@ Platform::Platform()
 // -------------------------------------------------------------------------------------------------
 Platform::~Platform()
 {
+}
+
+// -------------------------------------------------------------------------------------------------
+s64 Platform::fileModificationTime(const std::string &filename)
+{
+    struct _stat status;
+    if (_stat(filename.c_str(), &status) != 0)
+    {
+        return -1;
+    }
+    return status.st_mtime;
 }

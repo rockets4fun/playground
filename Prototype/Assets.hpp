@@ -10,6 +10,7 @@
 
 #include <memory>
 #include <map>
+#include <set>
 #include <vector>
 #include <string>
 
@@ -85,8 +86,16 @@ struct Assets
     Model *refModel(u32 hash);
     Program *refProgram(u32 hash);
 
+    void checkDeps();
+
 private:
     struct PrivateState;
+
+    struct DepInfo
+    {
+        s64 modificationTime = 0;
+        std::set< u32 > hashes;
+    };
 
     std::shared_ptr< PrivateState > m_privateState;
 
@@ -94,6 +103,8 @@ private:
 
     std::map< u32, Model > m_models;
     std::map< u32, Program > m_programs;
+
+    std::map< std::string, DepInfo > m_depsByFile;
 
     template< class AssetType >
     std::pair< AssetType *, Info * > refAsset(u32 hash,
@@ -116,8 +127,11 @@ private:
 
     static bool loadFileIntoString(const std::string &filename, std::string &contents);
 
-    static bool loadModel(PrivateState &privateState, Model &model, Info &info);
-    static bool loadProgram(PrivateState &privateState, Program &model, Info &info);
+    bool loadModel(const Info &info, Model &model);
+    bool loadProgram(const Info &info, Program &model);
+
+    void registerDep(u32 hash, const std::string &filename);
+    void resetDeps(u32 hash);
 
     u32 krHash(const char *data, size_t size);
 

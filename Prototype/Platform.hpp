@@ -8,12 +8,16 @@
 
 #include "Common.hpp"
 
+#include <string>
+
 // -------------------------------------------------------------------------------------------------
 /// @brief Platform abstraction
 struct Platform
 {
     Platform();
     virtual ~Platform();
+
+    static s64 fileModificationTime(const std::string &filename);
 
 public:
 
