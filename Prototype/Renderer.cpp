@@ -141,9 +141,9 @@ struct Renderer::Program::PrivateInfo
     const Assets::Info *assetInfo = nullptr;
     u32 assetVersionLoaded = 0;
     // Shaders and program
-    GLuint program = 0;
     GLuint vertexShader = 0;
     GLuint fragmentShader = 0;
+    GLuint program = 0;
     // Uniforms
     GLint uModelToWorldMatrix = 0;
     GLint uModelToViewMatrix = 0;
@@ -396,7 +396,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
             programPrivate->assetInfo = assets.assetInfo(program->programAsset);
             COMMON_ASSERT(programPrivate->assetInfo)
         }
-        int assetVersion = programPrivate->assetInfo->version;
+        u32 assetVersion = programPrivate->assetInfo->version;
         if (programPrivate->assetVersionLoaded != assetVersion)
         {
             Assets::Program *programAsset = assets.refProgram(programPrivate->assetInfo->hash);
