@@ -90,9 +90,10 @@ struct Renderer::PrivateFuncs
     PFNGLUNIFORM4FVPROC         glUniform4fv = nullptr;
     PFNGLUNIFORMMATRIX4FVPROC   glUniformMatrix4fv = nullptr;
     // Vertex shader attribute functions
-    PFNGLGETATTRIBLOCATIONPROC       glGetAttribLocation = nullptr;
-    PFNGLVERTEXATTRIBPOINTERPROC     glVertexAttribPointer = nullptr;
-    PFNGLENABLEVERTEXATTRIBARRAYPROC glEnableVertexAttribArray = nullptr;
+    PFNGLGETATTRIBLOCATIONPROC        glGetAttribLocation = nullptr;
+    PFNGLVERTEXATTRIBPOINTERPROC      glVertexAttribPointer = nullptr;
+    PFNGLENABLEVERTEXATTRIBARRAYPROC  glEnableVertexAttribArray = nullptr;
+    PFNGLDISABLEVERTEXATTRIBARRAYPROC glDisableVertexAttribArray = nullptr;
     // Drawing command functions
     PFNGLDRAWARRAYSPROC glDrawArrays = nullptr;
     // ARB_debug_output (extension to 3.2 core)
@@ -654,19 +655,26 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         }
 
         // Vertex attribute assignments are stored inside the bound VAO
-        // ==> Think about creating one VAO per renderable mesh
+        // ==> Think about creating one VAO per renderable mesh/program combo?
         {
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->positionsVbo);
-            funcs->glVertexAttribPointer(program->aPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
-            funcs->glEnableVertexAttribArray(program->aPosition);
-
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->normalsVbo);
-            funcs->glVertexAttribPointer(program->aNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
-            funcs->glEnableVertexAttribArray(program->aNormal);
-
-            funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->colorsVbo);
-            funcs->glVertexAttribPointer(program->aColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
-            funcs->glEnableVertexAttribArray(program->aColor);
+            if (program->aPosition >= 0)
+            {
+                funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->positionsVbo);
+                funcs->glVertexAttribPointer(program->aPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
+                funcs->glEnableVertexAttribArray(program->aPosition);
+            }
+            if (program->aNormal >= 0)
+            {
+                funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->normalsVbo);
+                funcs->glVertexAttribPointer(program->aNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
+                funcs->glEnableVertexAttribArray(program->aNormal);
+            }
+            if (program->aColor >= 0)
+            {
+                funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->colorsVbo);
+                funcs->glVertexAttribPointer(program->aColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
+                funcs->glEnableVertexAttribArray(program->aColor);
+            }
         }
 
         glm::fmat4 modelToWorld;
@@ -680,6 +688,12 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
             program->uModelToViewMatrix, 1, GL_FALSE, glm::value_ptr(modelToView));
 
         funcs->glDrawArrays(GL_TRIANGLES, 0, privateMesh->vertexCount);
+
+        {
+            if (program->aPosition >= 0) funcs->glEnableVertexAttribArray(program->aPosition);
+            if (program->aNormal   >= 0) funcs->glEnableVertexAttribArray(program->aNormal);
+            if (program->aColor    >= 0) funcs->glEnableVertexAttribArray(program->aColor);
+        }
     }
 }
 
@@ -767,6 +781,7 @@ bool Renderer::initializeGl()
     RENDERER_GL_FUNC(glGetAttribLocation);
     RENDERER_GL_FUNC(glVertexAttribPointer);
     RENDERER_GL_FUNC(glEnableVertexAttribArray);
+    RENDERER_GL_FUNC(glDisableVertexAttribArray);
 
     RENDERER_GL_FUNC(glDrawArrays);
 
