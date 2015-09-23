@@ -173,7 +173,8 @@ bool Assets::loadModel(const Info &info, Model &model)
 
     model.positions.clear();
     model.normals.clear();
-    model.colors.clear();
+    model.diffusion.clear();
+    model.ambience.clear();
     model.parts.clear();
 
     const aiScene *scene = m_privateState->importer.ReadFile(info.name, aiProcess_Triangulate);
@@ -225,18 +226,23 @@ bool Assets::loadModel(const Info &info, Model &model)
                 continue;
             }
 
-            glm::fvec3 diffuseColor(1.0f, 1.0f, 1.0f);
+            glm::fvec3 diffuse (1.0f, 1.0f, 1.0f);
+            glm::fvec3 ambience(0.0f, 0.0f, 0.0f);
             aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
             aiString materialNameAssimp;
             material->Get(AI_MATKEY_NAME, materialNameAssimp);
             std::string materialName = materialNameAssimp.C_Str();
             if (materialName != "DefaultMaterial")
             {
-                aiColor3D diffuseColorAssimp;
-                if (material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseColorAssimp) == AI_SUCCESS)
+                aiColor3D diffuseAssimp;
+                if (material->Get(AI_MATKEY_COLOR_DIFFUSE, diffuseAssimp) == AI_SUCCESS)
                 {
-                    diffuseColor = glm::fvec3(
-                        diffuseColorAssimp.r, diffuseColorAssimp.g, diffuseColorAssimp.b);
+                    diffuse = glm::fvec3(diffuseAssimp.r, diffuseAssimp.g, diffuseAssimp.b);
+                }
+                aiColor3D ambienceAssimp;
+                if (material->Get(AI_MATKEY_COLOR_AMBIENT, ambienceAssimp) == AI_SUCCESS)
+                {
+                    ambience = glm::fvec3(ambienceAssimp.r, ambienceAssimp.g, ambienceAssimp.b);
                 }
             }
 
@@ -253,7 +259,8 @@ bool Assets::loadModel(const Info &info, Model &model)
                         mesh->mNormals[face->mIndices[idx]].x,
                         mesh->mNormals[face->mIndices[idx]].y,
                         mesh->mNormals[face->mIndices[idx]].z));
-                    model.colors.push_back(diffuseColor);
+                    model.diffusion.push_back(diffuse);
+                    model.ambience.push_back(ambience);
                 }
             }
         }

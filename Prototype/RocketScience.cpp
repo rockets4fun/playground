@@ -54,15 +54,16 @@ void pushRect2d(Assets::Model *model,
 {
     // World coordinate system: +X=E, +Y=N and +Z=up (front facing is CCW towards negative axis)
     // Lower left triangle
-    model->positions.push_back(glm::fvec3(ll.x, ll.y, z)); model->colors.push_back(color);
-    model->positions.push_back(glm::fvec3(ur.x, ur.y, z)); model->colors.push_back(color);
-    model->positions.push_back(glm::fvec3(ll.x, ur.y, z)); model->colors.push_back(color);
+    model->positions.push_back(glm::fvec3(ll.x, ll.y, z)); model->diffusion.push_back(color);
+    model->positions.push_back(glm::fvec3(ur.x, ur.y, z)); model->diffusion.push_back(color);
+    model->positions.push_back(glm::fvec3(ll.x, ur.y, z)); model->diffusion.push_back(color);
     // Upper right triangle
-    model->positions.push_back(glm::fvec3(ur.x, ur.y, z)); model->colors.push_back(color);
-    model->positions.push_back(glm::fvec3(ll.x, ll.y, z)); model->colors.push_back(color);
-    model->positions.push_back(glm::fvec3(ur.x, ll.y, z)); model->colors.push_back(color);
-    // Normals...
-    for (int nIdx = 0; nIdx < 6; ++nIdx) model->normals.push_back(glm::fvec3(0.0f, 0.0f, 1.0f));
+    model->positions.push_back(glm::fvec3(ur.x, ur.y, z)); model->diffusion.push_back(color);
+    model->positions.push_back(glm::fvec3(ll.x, ll.y, z)); model->diffusion.push_back(color);
+    model->positions.push_back(glm::fvec3(ur.x, ll.y, z)); model->diffusion.push_back(color);
+    // Others...
+    for (int nIdx = 0; nIdx < 6; ++nIdx) model->normals.push_back (glm::fvec3(0.0f, 0.0f, 1.0f));
+    for (int nIdx = 0; nIdx < 6; ++nIdx) model->ambience.push_back(glm::fvec3(0.0f, 0.0f, 0.0f));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -111,10 +112,10 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
             glm::fvec2(  0.0f,   0.0f),
             glm::fvec2(800.0f, 450.0f));
         // FIXME(martinmo): Encode texture coords into color attribute (hack!)
-        model->colors[0] = model->colors[4] = glm::fvec3(0.0f, 0.0f, 0.0f);
-        model->colors[1] = model->colors[3] = glm::fvec3(1.0f, 1.0f, 0.0f);
-        model->colors[2] =                    glm::fvec3(0.0f, 1.0f, 0.0f);
-        model->colors[5] =                    glm::fvec3(1.0f, 0.0f, 0.0f);
+        model->diffusion[0] = model->diffusion[4] = glm::fvec3(0.0f, 0.0f, 0.0f);
+        model->diffusion[1] = model->diffusion[3] = glm::fvec3(1.0f, 1.0f, 0.0f);
+        model->diffusion[2] =                       glm::fvec3(0.0f, 1.0f, 0.0f);
+        model->diffusion[5] =                       glm::fvec3(1.0f, 0.0f, 0.0f);
     }
     {
         auto mesh = sdb.create< Renderer::Mesh::Info >();
@@ -151,7 +152,8 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
                 // Triangle colors
                 float rand = glm::linearRand(0.0f, +0.3f);
                 glm::fvec3 color(0.4f + rand, 0.4f + rand, 0.4f + rand);
-                for (int vIdx = 0; vIdx < 6; ++vIdx) model->colors.push_back(color);
+                for (int vIdx = 0; vIdx < 6; ++vIdx) model->diffusion.push_back(color);
+                for (int vIdx = 0; vIdx < 6; ++vIdx) model->ambience.push_back(glm::fvec3(0.0));
             }
         }
         // Instantiate ocean tiles
@@ -434,7 +436,10 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         PROFILING_SECTION(UpdateUi, glm::fvec3(1.0f, 0.0f, 1.0f))
 
         auto uiModel = assets.refModel(m_uiModelAsset);
-        uiModel->positions.clear(); uiModel->normals.clear(); uiModel->colors.clear();
+        uiModel->positions.clear();
+        uiModel->normals.clear();
+        uiModel->diffusion.clear();
+        uiModel->ambience.clear();
 
         Profiling *profiling = Profiling::instance();
         Profiling::Thread *mainThread = profiling->mainThreadPrevFrame();

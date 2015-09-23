@@ -56,7 +56,8 @@ struct Assets
         // Vertex attributes
         std::vector< glm::fvec3 > positions;
         std::vector< glm::fvec3 > normals;
-        std::vector< glm::fvec3 > colors;
+        std::vector< glm::fvec3 > diffusion;
+        std::vector< glm::fvec3 > ambience;
 
         std::vector< Part > parts;
 

@@ -150,8 +150,10 @@ struct Renderer::PrivateMesh
     const Assets::Info *assetInfo = nullptr;
 
     GLuint positionsVbo = 0;
-    GLuint normalsVbo = 0;
-    GLuint colorsVbo = 0;
+    GLuint normalsVbo   = 0;
+    GLuint diffusionVbo = 0;
+    GLuint ambienceVbo  = 0;
+
     GLenum usage = GL_STATIC_DRAW;
 
     int vertexCount = 0;
@@ -180,7 +182,8 @@ struct Renderer::Program::PrivateInfo
     // Attributes
     GLint aPosition = 0;
     GLint aNormal = 0;
-    GLint aColor = 0;
+    GLint aDiffusion = 0;
+    GLint aAmbience = 0;
 };
 u64 Renderer::Program::PrivateInfo::STATE = 0;
 
@@ -371,34 +374,37 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
     funcs->glGenVertexArrays(1, &state->defVao);
     funcs->glBindVertexArray(state->defVao);
 
-    // Frame buffer color texture
-    funcs->glGenTextures(1, &state->colorTex);
-    funcs->glBindTexture(GL_TEXTURE_2D, state->colorTex);
-    funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    funcs->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-              800, 450, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-    funcs->glBindTexture(GL_TEXTURE_2D, 0);
-    // Frame buffer depth texture
-    funcs->glGenTextures(1, &state->depthTex);
-    funcs->glBindTexture(GL_TEXTURE_2D, state->depthTex);
-    funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-    funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    funcs->glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
-              800, 450, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, 0);
-    funcs->glBindTexture(GL_TEXTURE_2D, 0);
-    // Frame buffer
-    funcs->glGenFramebuffers(1, &state->defFbo);
-    funcs->glBindFramebuffer(GL_FRAMEBUFFER, state->defFbo);
-    funcs->glFramebufferTexture2D(GL_FRAMEBUFFER,
-        GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, state->colorTex, 0);
-    funcs->glFramebufferTexture2D(GL_FRAMEBUFFER,
-        GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, state->depthTex, 0);
-    if (funcs->glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+    // Set up frame buffer for playing around...
     {
-        Logging::debug("ERROR: Default FBO is incomplete");
+        // Color texture
+        funcs->glGenTextures(1, &state->colorTex);
+        funcs->glBindTexture(GL_TEXTURE_2D, state->colorTex);
+        funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        funcs->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+                  800, 450, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+        funcs->glBindTexture(GL_TEXTURE_2D, 0);
+        // Depth texture
+        funcs->glGenTextures(1, &state->depthTex);
+        funcs->glBindTexture(GL_TEXTURE_2D, state->depthTex);
+        funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+        funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        funcs->glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
+                  800, 450, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, 0);
+        funcs->glBindTexture(GL_TEXTURE_2D, 0);
+        // Frame buffer
+        funcs->glGenFramebuffers(1, &state->defFbo);
+        funcs->glBindFramebuffer(GL_FRAMEBUFFER, state->defFbo);
+        funcs->glFramebufferTexture2D(GL_FRAMEBUFFER,
+            GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, state->colorTex, 0);
+        funcs->glFramebufferTexture2D(GL_FRAMEBUFFER,
+            GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, state->depthTex, 0);
+        if (funcs->glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        {
+            Logging::debug("ERROR: Default FBO is incomplete");
+        }
+        funcs->glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
-    funcs->glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
     Program::Info *defaultProgram = sdb.create< Program::Info >(state->defaultProgramHandle);
     defaultProgram->programAsset = assets.asset("Assets/Programs/Default.program");
@@ -498,8 +504,10 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
                 funcs->glGetAttribLocation(programPrivate->program, "Position");
             programPrivate->aNormal =
                 funcs->glGetAttribLocation(programPrivate->program, "Normal");
-            programPrivate->aColor =
-                funcs->glGetAttribLocation(programPrivate->program, "Color");
+            programPrivate->aDiffusion =
+                funcs->glGetAttribLocation(programPrivate->program, "Diffusion");
+            programPrivate->aAmbience =
+                funcs->glGetAttribLocation(programPrivate->program, "Ambience");
 
             programPrivate->assetVersionLoaded = assetVersion;
         }
@@ -537,7 +545,8 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
             }
             funcs->glGenBuffers(1, &privateMesh->positionsVbo);
             funcs->glGenBuffers(1, &privateMesh->normalsVbo);
-            funcs->glGenBuffers(1, &privateMesh->colorsVbo);
+            funcs->glGenBuffers(1, &privateMesh->diffusionVbo);
+            funcs->glGenBuffers(1, &privateMesh->ambienceVbo);
             privateMesh->flags |= PrivateMesh::Flag::DIRTY;
         }
         else if (privateMesh->flags & PrivateMesh::Flag::DYNAMIC)
@@ -563,12 +572,13 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         }
         glm::fvec4 renderParams = glm::fvec4(debugNormals ? 1.0f : 0.0f, 0.0, 0.0, 0.0);
 
-        funcs->glBindFramebuffer(GL_FRAMEBUFFER, state->defFbo);
+        //funcs->glBindFramebuffer(GL_FRAMEBUFFER, state->defFbo);
         funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         renderPass(sdb, Group::DEFAULT, defaultProgram, projection, worldToView, renderParams);
         funcs->glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
+    /*
     // Default post-processing pass
     {
         glm::fmat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 450.0f, -10.0f, 10.0f);
@@ -589,6 +599,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         funcs->glActiveTexture(GL_TEXTURE1); funcs->glBindTexture(GL_TEXTURE_2D, 0);
         funcs->glActiveTexture(GL_TEXTURE0); funcs->glBindTexture(GL_TEXTURE_2D, 0);
     }
+    */
 
     // UI render pass
     {
@@ -645,8 +656,10 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
                 privateMesh->model->positions, privateMesh->usage, oldVertexCount);
             helpers->updateVertexBufferData(privateMesh->normalsVbo,
                 privateMesh->model->normals, privateMesh->usage, oldVertexCount);
-            helpers->updateVertexBufferData(privateMesh->colorsVbo,
-                privateMesh->model->colors, privateMesh->usage, oldVertexCount);
+            helpers->updateVertexBufferData(privateMesh->diffusionVbo,
+                privateMesh->model->diffusion, privateMesh->usage, oldVertexCount);
+            helpers->updateVertexBufferData(privateMesh->ambienceVbo,
+                privateMesh->model->ambience, privateMesh->usage, oldVertexCount);
             privateMesh->flags &= ~PrivateMesh::Flag::DIRTY;
         }
         if (!privateMesh->vertexCount)
@@ -669,11 +682,17 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
                 funcs->glVertexAttribPointer(program->aNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
                 funcs->glEnableVertexAttribArray(program->aNormal);
             }
-            if (program->aColor >= 0)
+            if (program->aDiffusion >= 0)
             {
-                funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->colorsVbo);
-                funcs->glVertexAttribPointer(program->aColor, 3, GL_FLOAT, GL_FALSE, 0, 0);
-                funcs->glEnableVertexAttribArray(program->aColor);
+                funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->diffusionVbo);
+                funcs->glVertexAttribPointer(program->aDiffusion, 3, GL_FLOAT, GL_FALSE, 0, 0);
+                funcs->glEnableVertexAttribArray(program->aDiffusion);
+            }
+            if (program->aAmbience >= 0)
+            {
+                funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->ambienceVbo);
+                funcs->glVertexAttribPointer(program->aAmbience, 3, GL_FLOAT, GL_FALSE, 0, 0);
+                funcs->glEnableVertexAttribArray(program->aAmbience);
             }
         }
 
@@ -690,9 +709,10 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         funcs->glDrawArrays(GL_TRIANGLES, 0, privateMesh->vertexCount);
 
         {
-            if (program->aPosition >= 0) funcs->glEnableVertexAttribArray(program->aPosition);
-            if (program->aNormal   >= 0) funcs->glEnableVertexAttribArray(program->aNormal);
-            if (program->aColor    >= 0) funcs->glEnableVertexAttribArray(program->aColor);
+            if (program->aPosition  >= 0) funcs->glEnableVertexAttribArray(program->aPosition);
+            if (program->aNormal    >= 0) funcs->glEnableVertexAttribArray(program->aNormal);
+            if (program->aDiffusion >= 0) funcs->glEnableVertexAttribArray(program->aDiffusion);
+            if (program->aAmbience  >= 0) funcs->glEnableVertexAttribArray(program->aAmbience);
         }
     }
 }

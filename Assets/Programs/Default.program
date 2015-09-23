@@ -11,19 +11,26 @@ uniform vec4 RenderParams;
 
 in vec3 Position;
 in vec3 Normal;
-in vec3 Color;
+
+in vec3 Diffusion;
+in vec3 Ambience;
 
 out vec4 renderParams;
 out vec3 vertexNormal;
 out vec3 vertexNormalWorld;
-out vec3 vertexColor;
+
+out vec3 vertexDiffusion;
+out vec3 vertexAmbience;
 
 void main()
 {
     renderParams = RenderParams;
     vertexNormal = normalize(Normal).xyz;
     vertexNormalWorld = normalize((ModelToWorldMatrix * vec4(Normal, 0.0)).xyz);
-    vertexColor = Color;
+
+    vertexDiffusion = Diffusion;
+    vertexAmbience  = Ambience;
+
     gl_Position = ProjectionMatrix * ModelToViewMatrix * vec4(Position, 1.0);
 }
 
@@ -35,7 +42,9 @@ $include(Common.inc)
 in vec4 renderParams;
 in vec3 vertexNormal;
 in vec3 vertexNormalWorld;
-in vec3 vertexColor;
+
+in vec3 vertexDiffusion;
+in vec3 vertexAmbience;
 
 out vec4 fragmentColor;
 
@@ -43,16 +52,16 @@ void main()
 {
     if (renderParams.x > 0.5)
     {
-        fragmentColor = vec4(abs(vertexNormal) * vertexColor, 1.0);
+        fragmentColor = vec4(abs(vertexNormal) * vertexDiffusion, 1.0);
     }
     else if (renderParams.y > 0.5)
     {
-        fragmentColor = vec4(vertexColor, 1.0);
+        fragmentColor = vec4(vertexDiffusion, 1.0);
     }
     else
     {
         vec3 lightDir = normalize(vec3(0.0, 1.0, -1.0));
         float lambert = max(0.0, dot(vertexNormalWorld, -lightDir));
-        fragmentColor = vec4(vertexColor * max(0.2, lambert), 1.0);
+        fragmentColor = vec4(vertexAmbience + vertexDiffusion * max(0.1, lambert), 1.0);
     }
 }
