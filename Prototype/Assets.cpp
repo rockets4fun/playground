@@ -86,6 +86,10 @@ Assets::Model *Assets::refModel(u32 hash)
             ++ref.second->version;
             Logging::debug("Model \"%s\" loaded (%d triangles)",
                 ref.second->name.c_str(), int(ref.first->positions.size() / 3));
+            for (auto &part : ref.first->parts)
+            {
+                Logging::debug("  Part \"%s\" (%d triangles)", part.name.c_str(), part.triangleCount);
+            }
         }
         else
         {
@@ -201,9 +205,15 @@ bool Assets::loadModel(const Info &info, Model &model)
     }
 
     // Iterate over all faces of all meshes and append data
-    u64 prevTriangleCount = 0;
-    for (auto leaf : leafs)
+    model.parts.push_back(Model::Part());
+    for (const auto &leaf : leafs)
     {
+        std::string partName = leaf->mName.C_Str();
+
+        Model::Part *currentPart = &model.parts.back();
+        if (currentPart->name.empty()) currentPart->name = partName;
+        if (partName == "defaultobject") partName = currentPart->name;
+
         for (size_t meshIdx = 0; meshIdx < leaf->mNumMeshes; ++meshIdx)
         {
             const aiMesh *mesh = scene->mMeshes[leaf->mMeshes[meshIdx]];
@@ -211,12 +221,11 @@ bool Assets::loadModel(const Info &info, Model &model)
             // TODO(martinmo): Support more than just triangles...
             if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
             {
-                // FIXME(martinmo): Add warning if we skip meshes...
+                Logging::debug("WARNING: Skipping mesh in %s (non-triangle)", partName.c_str());
                 continue;
             }
 
             glm::fvec3 diffuseColor(1.0f, 1.0f, 1.0f);
-
             aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
             aiString materialNameAssimp;
             material->Get(AI_MATKEY_NAME, materialNameAssimp);
@@ -247,17 +256,40 @@ bool Assets::loadModel(const Info &info, Model &model)
                     model.colors.push_back(diffuseColor);
                 }
             }
-            u64 triangleCount = model.positions.size() / 3;
-            {
-                Model::Part part;
-                part.name = leaf->mName.C_Str();
-                part.triangleOffset = prevTriangleCount;
-                part.triangleCount = triangleCount - prevTriangleCount;
-                model.parts.push_back(part);
-            }
-            prevTriangleCount = triangleCount;
+        }
+        if (partName != currentPart->name)
+        {
+            Model::Part newPart;
+            newPart.triangleOffset = currentPart->triangleOffset + currentPart->triangleCount;
+            newPart.name = partName;
+            model.parts.push_back(newPart);
+            currentPart = &model.parts.back();
+        }
+        u64 overallTriangleCount = model.positions.size() / 3;
+        currentPart->triangleCount = overallTriangleCount - currentPart->triangleOffset;
+    }
+
+    /*
+    // Debug colors for individual parts
+    glm::fvec3 debugColors[] =
+    {
+        glm::fvec3(1.0, 0.0, 0.0),
+        glm::fvec3(0.0, 1.0, 0.0),
+        glm::fvec3(0.0, 0.0, 1.0),
+        glm::fvec3(1.0, 1.0, 0.0),
+        glm::fvec3(0.0, 1.0, 1.0),
+        glm::fvec3(1.0, 0.0, 1.0)
+    };
+    for (auto &part : model.parts)
+    {
+        u64 firstVertexIdx = part.triangleOffset * 3;
+        u64 lastVertexIdx = firstVertexIdx + part.triangleCount * 3 - 1;
+        for (u64 vertexIdx = firstVertexIdx; vertexIdx <= lastVertexIdx; ++vertexIdx)
+        {
+            model.colors[vertexIdx] = debugColors[(&part - &model.parts[0]) % 6];
         }
     }
+    */
 
     COMMON_ASSERT(model.normals.size() == model.positions.size());
     COMMON_ASSERT(model.positions.size() % 3 == 0);
