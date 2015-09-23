@@ -1,0 +1,33 @@
+// =================================================================================================
+$type(vertex-shader)
+$include(Common.inc)
+// =================================================================================================
+
+uniform mat4 ModelToViewMatrix;
+uniform mat4 ProjectionMatrix;
+
+in vec3 Position;
+in vec3 Ambience;
+
+out vec3 vertexAmbience;
+
+void main()
+{
+    vertexAmbience  = Ambience;
+
+    gl_Position = ProjectionMatrix * ModelToViewMatrix * vec4(Position, 1.0);
+}
+
+// =================================================================================================
+$type(fragment-shader)
+$include(Common.inc)
+// =================================================================================================
+
+in vec3 vertexAmbience;
+
+out vec4 fragmentColor;
+
+void main()
+{
+    fragmentColor = vec4(vertexAmbience, 1.0);
+}

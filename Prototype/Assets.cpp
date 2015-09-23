@@ -81,20 +81,25 @@ Assets::Model *Assets::refModel(u32 hash)
         {
             // Procedural models will be defined by application logic
         }
-        else if (loadModel(*ref.second, *ref.first))
-        {
-            ++ref.second->version;
-            Logging::debug("Model \"%s\" loaded (%d triangles)",
-                ref.second->name.c_str(), int(ref.first->positions.size() / 3));
-            for (auto &part : ref.first->parts)
-            {
-                Logging::debug("  Part \"%s\" (%d triangles)", part.name.c_str(), part.triangleCount);
-            }
-        }
         else
         {
-            Logging::debug("ERROR: Failed to load model \"%s\"", ref.second->name.c_str());
-            // TODO(martinmo): Default to unit cube if we fail to load?
+            Logging::debug("Loading model \"%s\"...", ref.second->name.c_str());
+            if (loadModel(*ref.second, *ref.first))
+            {
+                ++ref.second->version;
+                for (auto &part : ref.first->parts)
+                {
+                    Logging::debug("  Part \"%s\" (%d triangles)",
+                        part.name.c_str(), part.triangleCount);
+                }
+                Logging::debug("Successfully loaded model with %d triangles",
+                    int(ref.first->positions.size() / 3));
+            }
+            else
+            {
+                Logging::debug("ERROR: Failed to load model \"%s\"", ref.second->name.c_str());
+                // TODO(martinmo): Default to unit cube if we fail to load?
+            }
         }
         ref.second->type = Type::MODEL;
     }

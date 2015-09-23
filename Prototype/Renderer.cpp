@@ -33,12 +33,14 @@
 struct Renderer::PrivateFuncs
 {
     // Basic functions
-    PFNGLENABLEPROC   glEnable = nullptr;
-    PFNGLCULLFACEPROC glCullFace = nullptr;
-    PFNGLFINISHPROC   glFinish = nullptr;
-    // Buffer clearing functions
+    PFNGLENABLEPROC     glEnable = nullptr;
+    PFNGLDISABLEPROC    glDisable = nullptr;
+    PFNGLCULLFACEPROC   glCullFace = nullptr;
+    PFNGLFINISHPROC     glFinish = nullptr;
+    PFNGLBLENDFUNCPROC  glBlendFunc = nullptr;
     PFNGLCLEARCOLORPROC glClearColor = nullptr;
     PFNGLCLEARPROC      glClear = nullptr;
+    PFNGLVIEWPORTPROC   glViewport = nullptr;
     // Texturing
     PFNGLGENTEXTURESPROC    glGenTextures = nullptr;
     PFNGLDELETETEXTURESPROC glDeleteTextures = nullptr;
@@ -109,8 +111,9 @@ struct Renderer::PrivateState
     GLuint colorTex = 0;
     GLuint depthTex = 0;
 
-    u64 defaultProgramHandle = 0;
-    u64 postProgramHandle = 0;
+    u64 defaultProgramHandle      = 0;
+    u64 emissionProgramHandle     = 0;
+    u64 emissionPostProgramHandle = 0;
 
     std::map< u32, PrivateMesh > meshes;
 };
@@ -410,11 +413,14 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
     defaultProgram->programAsset = assets.asset("Assets/Programs/Default.program");
     assets.refProgram(defaultProgram->programAsset);
 
-    Program::Info *postProgram = sdb.create< Program::Info >(state->postProgramHandle);
-    postProgram->programAsset = assets.asset("Assets/Programs/Post.program");
-    assets.refProgram(postProgram->programAsset);
+    Program::Info *emissionProgram = sdb.create< Program::Info >(state->emissionProgramHandle);
+    emissionProgram->programAsset = assets.asset("Assets/Programs/Emission.program");
+    assets.refProgram(emissionProgram->programAsset);
 
-    funcs->glClearColor(0.15f, 0.15f, 0.15f, 1.0);
+    Program::Info *emissionPostProgram = sdb.create< Program::Info >(state->emissionPostProgramHandle);
+    emissionPostProgram->programAsset = assets.asset("Assets/Programs/EmissionPost.program");
+    assets.refProgram(emissionPostProgram->programAsset);
+
     funcs->glEnable(GL_DEPTH_TEST);
 
     return true;
@@ -555,14 +561,15 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         }
     }
 
-    auto defaultProgram = sdb.state< Program::PrivateInfo >(state->defaultProgramHandle);
-    auto postProgram = sdb.state< Program::PrivateInfo >(state->postProgramHandle);
+    auto defaultProgram      = sdb.state< Program::PrivateInfo >(state->defaultProgramHandle);
+    auto emissionProgram     = sdb.state< Program::PrivateInfo >(state->emissionProgramHandle);
+    auto emissionPostProgram = sdb.state< Program::PrivateInfo >(state->emissionPostProgramHandle);
 
     // Default render pass
     {
         const float aspect = 16.0f / 9.0f;
         glm::fmat4 projection = glm::perspective(
-                    glm::radians(30.0f * aspect), aspect, 0.5f, 100.0f);
+                    glm::radians(30.0f * aspect), aspect, 0.5f, 200.0f);
         glm::fmat4 worldToView;
         if (activeCameraHandle)
         {
@@ -572,34 +579,39 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         }
         glm::fvec4 renderParams = glm::fvec4(debugNormals ? 1.0f : 0.0f, 0.0, 0.0, 0.0);
 
-        //funcs->glBindFramebuffer(GL_FRAMEBUFFER, state->defFbo);
+        funcs->glClearColor(0.15f, 0.15f, 0.15f, 1.0);
         funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        funcs->glClearColor(0.0f, 0.0f, 0.0f, 1.0);
         renderPass(sdb, Group::DEFAULT, defaultProgram, projection, worldToView, renderParams);
+
+        // Now render ambient as emissive into FBO (will be blurred later...)
+        funcs->glBindFramebuffer(GL_FRAMEBUFFER, state->defFbo);
+        funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+        //funcs->glViewport(0, 0, 400, 225);
+        renderPass(sdb, Group::DEFAULT, emissionProgram, projection, worldToView, renderParams);
+        //funcs->glViewport(0, 0, 800, 450);
         funcs->glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    /*
-    // Default post-processing pass
+    // Emission post-processing pass
     {
         glm::fmat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 450.0f, -10.0f, 10.0f);
         glm::fmat4 worldToView;
         glm::fvec4 renderParams = glm::fvec4(debugNormals ? 1.0f : 0.0f, 1.0, 0.0, 0.0);
 
-        funcs->glUseProgram(postProgram->program);
+        funcs->glUseProgram(emissionPostProgram->program);
         GLint colorTex = 0; GLint depthTex = 1;
-        if (postProgram->uColorTex >= 0) funcs->glUniform1i(postProgram->uColorTex, colorTex);
-        if (postProgram->uDepthTex >= 0) funcs->glUniform1i(postProgram->uDepthTex, depthTex);
+        if (emissionPostProgram->uColorTex >= 0) funcs->glUniform1i(emissionPostProgram->uColorTex, colorTex);
+        if (emissionPostProgram->uDepthTex >= 0) funcs->glUniform1i(emissionPostProgram->uDepthTex, depthTex);
 
+        funcs->glEnable(GL_BLEND); funcs->glBlendFunc(GL_ONE, GL_ONE);
         funcs->glActiveTexture(GL_TEXTURE0); funcs->glBindTexture(GL_TEXTURE_2D, state->colorTex);
         funcs->glActiveTexture(GL_TEXTURE1); funcs->glBindTexture(GL_TEXTURE_2D, state->depthTex);
-
-        funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        renderPass(sdb, Group::DEFAULT_POST, postProgram, projection, worldToView, renderParams);
-
+        renderPass(sdb, Group::DEFAULT_POST, emissionPostProgram, projection, worldToView, renderParams);
         funcs->glActiveTexture(GL_TEXTURE1); funcs->glBindTexture(GL_TEXTURE_2D, 0);
         funcs->glActiveTexture(GL_TEXTURE0); funcs->glBindTexture(GL_TEXTURE_2D, 0);
+        funcs->glDisable(GL_BLEND);
     }
-    */
 
     // UI render pass
     {
@@ -742,11 +754,13 @@ void Renderer::updateTransforms(StateDb &sdb)
 bool Renderer::initializeGl()
 {
     RENDERER_GL_FUNC(glEnable);
+    RENDERER_GL_FUNC(glDisable);
     RENDERER_GL_FUNC(glCullFace);
     RENDERER_GL_FUNC(glFinish);
-
+    RENDERER_GL_FUNC(glBlendFunc);
     RENDERER_GL_FUNC(glClearColor);
     RENDERER_GL_FUNC(glClear);
+    RENDERER_GL_FUNC(glViewport);
 
     RENDERER_GL_FUNC(glGenTextures);
     RENDERER_GL_FUNC(glDeleteTextures);
