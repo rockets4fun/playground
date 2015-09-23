@@ -32,9 +32,15 @@ out vec4 fragmentColor;
 
 void main()
 {
+    /*
+    float z = texture(DepthTex, texCoord.xy).x;
+    z = (0.5 * z) / (200.0 - z * (200.0 - 0.5));
+    z = 1.0 - z;
+    fragmentColor = vec4(z, z, z, 1.0);
+    */
+
     vec3 smoothed = vec3(0.0, 0.0, 0.0);
     vec2 its = 1.0 / textureSize(ColorTex, 0);
-
     float size = 5.0;
     float sampleCount = 0.0;
     for (float yOff = -size; yOff <= +size; yOff = yOff + 1.0)
@@ -45,6 +51,5 @@ void main()
         }
         sampleCount += 2.0 * size + 1.0;
     }
-
     fragmentColor = vec4(smoothed / sampleCount, 1.0);
 }

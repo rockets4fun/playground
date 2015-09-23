@@ -383,9 +383,9 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
         funcs->glGenTextures(1, &state->colorTex);
         funcs->glBindTexture(GL_TEXTURE_2D, state->colorTex);
         funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-        funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+        funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
         funcs->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
-                  800, 450, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
+                  400, 225, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
         funcs->glBindTexture(GL_TEXTURE_2D, 0);
         // Depth texture
         funcs->glGenTextures(1, &state->depthTex);
@@ -393,7 +393,7 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
         funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
         funcs->glTexImage2D(GL_TEXTURE_2D, 0, GL_DEPTH_COMPONENT,
-                  800, 450, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, 0);
+                  400, 225, 0, GL_DEPTH_COMPONENT, GL_UNSIGNED_BYTE, 0);
         funcs->glBindTexture(GL_TEXTURE_2D, 0);
         // Frame buffer
         funcs->glGenFramebuffers(1, &state->defFbo);
@@ -581,15 +581,15 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
 
         funcs->glClearColor(0.15f, 0.15f, 0.15f, 1.0);
         funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        funcs->glClearColor(0.0f, 0.0f, 0.0f, 1.0);
         renderPass(sdb, Group::DEFAULT, defaultProgram, projection, worldToView, renderParams);
 
         // Now render ambient as emissive into FBO (will be blurred later...)
         funcs->glBindFramebuffer(GL_FRAMEBUFFER, state->defFbo);
+        funcs->glClearColor(0.0f, 0.0f, 0.0f, 1.0);
         funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        //funcs->glViewport(0, 0, 400, 225);
+        funcs->glViewport(0, 0, 400, 225);
         renderPass(sdb, Group::DEFAULT, emissionProgram, projection, worldToView, renderParams);
-        //funcs->glViewport(0, 0, 800, 450);
+        funcs->glViewport(0, 0, 800, 450);
         funcs->glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
