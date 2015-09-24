@@ -384,6 +384,8 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
         funcs->glBindTexture(GL_TEXTURE_2D, state->colorTex);
         funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
         funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+        funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
         funcs->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
                   400, 225, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
         funcs->glBindTexture(GL_TEXTURE_2D, 0);
