@@ -89,7 +89,7 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
 {
     auto camera = sdb.create< Renderer::Camera::Info >(m_cameraHandle);
     camera->position = glm::fvec3(-10.0f, -20.0f, 20.0f);
-    camera->target   = glm::fvec3(  0.0f,   0.0f,  0.0f);
+    camera->target   = glm::fvec3(  0.0f,   0.0f,  5.0f);
 
     m_oceanModelAsset = assets.asset(
         "procedural/ocean", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
@@ -343,6 +343,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         {
             rigidBody->collisionShape = Physics::RigidBody::CollisionShape::CONVEX_HULL_COMPOUND;
             rigidBody->mass = 5.0f;
+            /*
             // Create Pusher rocket motor force
             {
                 auto affector = sdb.create< Physics::Affector::Info >(m_pusherAffectorHandle);
@@ -352,6 +353,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
                 //affector->forcePosition = glm::fvec3(0.00f,  3.61, 0.00f);   // Head
                 affector->forcePosition = glm::fvec3(0.00f, -2.14, 0.00f);   // Main engine
             }
+            */
         }
         else if (mesh->modelAsset == assets.asset("Assets/Models/Sphere.obj"))
         {
