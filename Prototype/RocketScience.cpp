@@ -205,12 +205,12 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
     }
 
     const bool enableRocket = true;
-    for (int meshIdx = 0; meshIdx < 128; ++meshIdx)
+    for (int meshIdx = 0; meshIdx < 150; ++meshIdx)
     {
         u64 meshHandle = 0;
         auto mesh = sdb.create< Renderer::Mesh::Info >(meshHandle);
         mesh->translation = glm::linearRand(
-            glm::fvec3(-10.0f, -10.0f, +20.0f), glm::fvec3(+10.0f, +10.0f, +40.0f));
+            glm::fvec3(-15.0f, -15.0f, +20.0f), glm::fvec3(+15.0f, +15.0f, +40.0f));
         mesh->groups = Renderer::Group::DEFAULT;
 
         if (enableRocket && meshIdx == 0)
