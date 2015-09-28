@@ -343,7 +343,6 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         {
             rigidBody->collisionShape = Physics::RigidBody::CollisionShape::CONVEX_HULL_COMPOUND;
             rigidBody->mass = 5.0f;
-            /*
             // Create Pusher rocket motor force
             {
                 auto affector = sdb.create< Physics::Affector::Info >(m_pusherAffectorHandle);
@@ -353,7 +352,6 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
                 //affector->forcePosition = glm::fvec3(0.00f,  3.61, 0.00f);   // Head
                 affector->forcePosition = glm::fvec3(0.00f, -2.14, 0.00f);   // Main engine
             }
-            */
         }
         else if (mesh->modelAsset == assets.asset("Assets/Models/Sphere.obj"))
         {
@@ -387,7 +385,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         float mainEngineForce = 0.0f;
         if (mesh->translation.z < 10.0)
         {
-            mainEngineForce = 10.0f * rigidBody->mass;
+            mainEngineForce = 12.0f * rigidBody->mass;
         }
         else
         {
