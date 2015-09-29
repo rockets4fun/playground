@@ -530,6 +530,10 @@ void RocketScience::updateBuoyancyAffectors(StateDb &sdb, double timeInS)
     auto rigidBodies = sdb.stateAll< Physics::RigidBody::Info >();
     std::vector< int > affectorCountByRigidBody(rigidBodies.endElem - rigidBodies.beginElem);
 
+    // FIXME(martinmo): Buoyancy implementation clearly needs more work
+    // FIXME(martinmo): ==> Cubes should have eight smaller affectors near corners
+    // FIXME(martinmo): ==> Tori should have three/four small affectors inside tube
+
     for (auto buoyancyAffectorHandle : m_buoyancyAffectorHandles)
     {
         auto affector  = sdb.state< Physics::Affector::Info  >(buoyancyAffectorHandle);
