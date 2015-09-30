@@ -41,6 +41,7 @@ struct Renderer::PrivateFuncs
     PFNGLCLEARCOLORPROC glClearColor = nullptr;
     PFNGLCLEARPROC      glClear = nullptr;
     PFNGLVIEWPORTPROC   glViewport = nullptr;
+    PFNGLDEPTHMASKPROC  glDepthMask = nullptr;
     // Texturing
     PFNGLGENTEXTURESPROC    glGenTextures = nullptr;
     PFNGLDELETETEXTURESPROC glDeleteTextures = nullptr;
@@ -179,6 +180,7 @@ struct Renderer::Program::PrivateInfo
     GLint uModelToWorldMatrix = 0;
     GLint uModelToViewMatrix = 0;
     GLint uProjectionMatrix = 0;
+    GLint uBlendColor = 0;
     GLint uRenderParams = 0;
     GLint uColorTex = 0;
     GLint uDepthTex = 0;
@@ -496,6 +498,8 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
                 funcs->glGetUniformLocation(programPrivate->program, "ModelToViewMatrix");
             programPrivate->uProjectionMatrix =
                 funcs->glGetUniformLocation(programPrivate->program, "ProjectionMatrix");
+            programPrivate->uBlendColor =
+                funcs->glGetUniformLocation(programPrivate->program, "BlendColor");
             programPrivate->uRenderParams =
                 funcs->glGetUniformLocation(programPrivate->program, "RenderParams");
             programPrivate->uColorTex =
@@ -585,12 +589,22 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         renderPass(sdb, Group::DEFAULT, defaultProgram, projection, worldToView, renderParams);
 
+        // Render transparent items with Z-writes off
+        funcs->glEnable(GL_CULL_FACE);
+        //funcs->glDepthMask(GL_FALSE);
+        //funcs->glEnable(GL_BLEND);
+        //funcs->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        renderPass(sdb, Group::DEFAULT_TRANSPARENT, defaultProgram, projection, worldToView, renderParams);
+        //funcs->glDisable(GL_BLEND);
+        //funcs->glDepthMask(GL_TRUE);
+        funcs->glDisable(GL_CULL_FACE);
+
         // Now render ambient as emissive into FBO (will be blurred later...)
         funcs->glBindFramebuffer(GL_FRAMEBUFFER, state->defFbo);
         funcs->glClearColor(0.0f, 0.0f, 0.0f, 1.0);
         funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         funcs->glViewport(0, 0, 400, 225);
-        renderPass(sdb, Group::DEFAULT, emissionProgram, projection, worldToView, renderParams);
+        renderPass(sdb, Group::DEFAULT | Group::DEFAULT_TRANSPARENT, emissionProgram, projection, worldToView, renderParams);
         funcs->glViewport(0, 0, 800, 450);
         funcs->glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
@@ -606,7 +620,8 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         if (emissionPostProgram->uColorTex >= 0) funcs->glUniform1i(emissionPostProgram->uColorTex, colorTex);
         if (emissionPostProgram->uDepthTex >= 0) funcs->glUniform1i(emissionPostProgram->uDepthTex, depthTex);
 
-        funcs->glEnable(GL_BLEND); funcs->glBlendFunc(GL_ONE, GL_ONE);
+        funcs->glEnable(GL_BLEND);
+        funcs->glBlendFunc(GL_ONE, GL_ONE);
         funcs->glActiveTexture(GL_TEXTURE0); funcs->glBindTexture(GL_TEXTURE_2D, state->colorTex);
         funcs->glActiveTexture(GL_TEXTURE1); funcs->glBindTexture(GL_TEXTURE_2D, state->depthTex);
         renderPass(sdb, Group::DEFAULT_POST, emissionPostProgram, projection, worldToView, renderParams);
@@ -639,6 +654,8 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
     const glm::fmat4 &projection, const glm::fmat4 &worldToView, const glm::fvec4 &renderParams)
 {
     funcs->glUseProgram(program->program);
+
+    glm::fvec4 defaultBlendColor(1.0f, 1.0f, 1.0f, 1.0f);
 
     funcs->glUniform4fv(program->uRenderParams, 1, glm::value_ptr(renderParams));
     funcs->glUniformMatrix4fv(program->uProjectionMatrix, 1, GL_FALSE, glm::value_ptr(projection));
@@ -724,6 +741,10 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         funcs->glUniformMatrix4fv(
             program->uModelToViewMatrix, 1, GL_FALSE, glm::value_ptr(modelToView));
 
+        glm::fvec4 blendColor = defaultBlendColor;
+        if (mesh->flags & Mesh::Flag::BLEND_COLOR) blendColor = mesh->blendColor;
+        funcs->glUniform4fv(program->uBlendColor, 1, glm::value_ptr(blendColor));
+
         funcs->glDrawArrays(GL_TRIANGLES, 0, privateMesh->vertexCount);
 
         {
@@ -767,6 +788,7 @@ bool Renderer::initializeGl()
     RENDERER_GL_FUNC(glClearColor);
     RENDERER_GL_FUNC(glClear);
     RENDERER_GL_FUNC(glViewport);
+    RENDERER_GL_FUNC(glDepthMask);
 
     RENDERER_GL_FUNC(glGenTextures);
     RENDERER_GL_FUNC(glDeleteTextures);

@@ -440,9 +440,11 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             particleMesh->translation = mesh->translation + mesh->rotation * affector->forcePosition;
             particleMesh->translation += -1.0f * glm::normalize(affector->force);
             particleMesh->modelAsset = assets.asset("Assets/Models/Sphere.obj");
-            particleMesh->groups = Renderer::Group::DEFAULT;
+            particleMesh->groups = Renderer::Group::DEFAULT_TRANSPARENT;
             particleMesh->uniformScale = glm::linearRand(0.8f, 1.2f);
             particleMesh->flags |= Renderer::Mesh::Flag::SCALED;
+            particleMesh->blendColor = glm::fvec4(1.0f, 1.0f, 1.0f, 1.0f);
+            particleMesh->flags |= Renderer::Mesh::Flag::BLEND_COLOR;
 
             u64 particleHandle = 0;
             auto particle = sdb.create< Particle::Info >(particleHandle);
@@ -460,6 +462,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 
     // Update rocket smoke particles
     {
+        const float maxAgeInS = 2.0f;
         std::vector< u64 > particleHandlesToBeDeleted;
         auto particles = sdb.stateAll< Particle::Info >();
         for (auto particle : particles)
@@ -467,15 +470,18 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             auto mesh = sdb.state< Renderer::Mesh::Info >(particle->meshHandle);
             mesh->translation += particle->velocity * float(deltaTimeInS);
             mesh->uniformScale += float(1.3 * deltaTimeInS);
+            float life = glm::clamp(float(particle->ageInS) / maxAgeInS, 0.0f, 1.0f);
+            mesh->blendColor = glm::mix(
+                glm::fvec4(1.0, 0.25, 0.0, 1.0), glm::fvec4(0.8, 0.8, 0.8, 0.0), life);
             float oceanHeight = oceanEquation(mesh->translation.xy(), m_timeInS);
-            float minHeight = oceanHeight + 0.5f * mesh->uniformScale;
+            float minHeight = maxAgeInS + 0.5f * mesh->uniformScale;
             if (mesh->translation.z < minHeight)
             {
                 particle->velocity.z = 0.0f;
                 mesh->translation.z = minHeight;
             }
             particle->ageInS += deltaTimeInS;
-            if (particle->ageInS > 2.0)
+            if (particle->ageInS > maxAgeInS)
             {
                 particleHandlesToBeDeleted.push_back(sdb.handleFromState(particle));
             }

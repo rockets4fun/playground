@@ -21,9 +21,10 @@ struct Renderer : public ModuleIf
 {
     enum Group
     {
-        DEFAULT      = 0x1,
-        DEFAULT_POST = 0x2,
-        DEFAULT_UI   = 0x4
+        DEFAULT             = 0x1,
+        DEFAULT_TRANSPARENT = 0x2,
+        DEFAULT_POST        = 0x4,
+        DEFAULT_UI          = 0x8
     };
 
     struct Program
@@ -41,8 +42,9 @@ struct Renderer : public ModuleIf
     {
         enum Flag
         {
-            HIDDEN = 0x1,
-            SCALED = 0x2
+            HIDDEN      = 0x1,
+            SCALED      = 0x2,
+            BLEND_COLOR = 0x4
         };
         static u64 TYPE;
         struct Info
@@ -51,6 +53,7 @@ struct Renderer : public ModuleIf
             glm::fvec3 translation;
             glm::fquat rotation;
             float uniformScale = 0.0f;
+            glm::fvec4 blendColor;
             u32 modelAsset = 0;
             u32 flags = 0;
             u32 groups = 0;
