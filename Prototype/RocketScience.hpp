@@ -44,6 +44,8 @@ private:
             u64 meshHandle = 0;
             glm::fvec3 velocity;
             double ageInS = 0.0;
+            float minSize = 0.0;
+            float maxSize = 0.0;
         };
     };
 

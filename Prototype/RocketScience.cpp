@@ -440,8 +440,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             particleMesh->translation = mesh->translation + mesh->rotation * affector->forcePosition;
             particleMesh->translation += -1.0f * glm::normalize(affector->force);
             particleMesh->modelAsset = assets.asset("Assets/Models/Sphere.obj");
-            particleMesh->groups = Renderer::Group::DEFAULT_TRANSPARENT;
-            particleMesh->uniformScale = glm::linearRand(0.8f, 1.2f);
+            particleMesh->groups = Renderer::Group::DEFAULT;
             particleMesh->flags |= Renderer::Mesh::Flag::SCALED;
             particleMesh->blendColor = glm::fvec4(1.0f, 1.0f, 1.0f, 1.0f);
             particleMesh->flags |= Renderer::Mesh::Flag::BLEND_COLOR;
@@ -450,6 +449,8 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             auto particle = sdb.create< Particle::Info >(particleHandle);
             particle->meshHandle = particleMeshHandle;
             particle->velocity = -affector->force / 3.0f;
+            particle->minSize = 1.0f + glm::linearRand(-0.2f, +0.2f);
+            particle->maxSize = 4.0f + glm::linearRand(-1.0f, +1.0f);
 
             m_rocketSmokeParticlesDelay += 0.05;
         }
@@ -462,29 +463,61 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 
     // Update rocket smoke particles
     {
-        const float maxAgeInS = 2.0f;
+        const float maxAgeInS = 2.5f;
+        const float blendInS = 0.25f;
         std::vector< u64 > particleHandlesToBeDeleted;
         auto particles = sdb.stateAll< Particle::Info >();
         for (auto particle : particles)
         {
             auto mesh = sdb.state< Renderer::Mesh::Info >(particle->meshHandle);
             mesh->translation += particle->velocity * float(deltaTimeInS);
-            mesh->uniformScale += float(1.3 * deltaTimeInS);
+
+            float grow = 0.2f;
+            float shrink = 0.35f;
             float life = glm::clamp(float(particle->ageInS) / maxAgeInS, 0.0f, 1.0f);
-            mesh->blendColor = glm::mix(
-                glm::fvec4(1.0, 0.25, 0.0, 1.0), glm::fvec4(0.8, 0.8, 0.8, 0.0), life);
+            if (life >= 1.0f - shrink)
+            {
+                mesh->uniformScale = (1.0f - glm::smoothstep(1.0f - shrink, 1.0f, life))
+                        * (particle->maxSize - particle->minSize);
+                mesh->blendColor = glm::mix(
+                    glm::fvec4(0.8, 0.8, 0.8, 1.0), glm::fvec4(0.1, 0.1, 0.1, 1.0),
+                    (life - (1.0f - shrink)) / shrink);
+            }
+            else if (life <= grow)
+            {
+                mesh->uniformScale = particle->minSize
+                        + glm::smoothstep(0.0f, grow, life)
+                        * (particle->maxSize - particle->minSize);
+                mesh->blendColor = glm::mix(
+                    glm::fvec4(0.9, 0.3, 0.0, 1.0), glm::fvec4(0.8, 0.8, 0.8, 1.0),
+                   life / grow);
+            }
+            else
+            {
+                mesh->uniformScale = particle->maxSize
+                        - glm::smoothstep(grow, 1.0f - shrink, life)
+                        * particle->minSize;
+            }
+
             float oceanHeight = oceanEquation(mesh->translation.xy(), m_timeInS);
-            float minHeight = maxAgeInS + 0.5f * mesh->uniformScale;
+            float minHeight = 0.5f * mesh->uniformScale + oceanHeight;
             if (mesh->translation.z < minHeight)
             {
                 particle->velocity.z = 0.0f;
                 mesh->translation.z = minHeight;
             }
             particle->ageInS += deltaTimeInS;
-            if (particle->ageInS > maxAgeInS)
+            if (particle->ageInS >= maxAgeInS)
             {
                 particleHandlesToBeDeleted.push_back(sdb.handleFromState(particle));
             }
+            /*
+            else if (particle->ageInS >= maxAgeInS - blendInS)
+            {
+                mesh->groups = Renderer::Group::DEFAULT_TRANSPARENT;
+                mesh->blendColor.a = (maxAgeInS - particle->ageInS) / blendInS;
+            }
+            */
         }
         for (auto &particleHandle : particleHandlesToBeDeleted)
         {

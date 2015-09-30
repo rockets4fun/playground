@@ -591,12 +591,12 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
 
         // Render transparent items with Z-writes off
         funcs->glEnable(GL_CULL_FACE);
-        //funcs->glDepthMask(GL_FALSE);
-        //funcs->glEnable(GL_BLEND);
-        //funcs->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        funcs->glDepthMask(GL_FALSE);
+        funcs->glEnable(GL_BLEND);
+        funcs->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         renderPass(sdb, Group::DEFAULT_TRANSPARENT, defaultProgram, projection, worldToView, renderParams);
-        //funcs->glDisable(GL_BLEND);
-        //funcs->glDepthMask(GL_TRUE);
+        funcs->glDisable(GL_BLEND);
+        funcs->glDepthMask(GL_TRUE);
         funcs->glDisable(GL_CULL_FACE);
 
         // Now render ambient as emissive into FBO (will be blurred later...)
