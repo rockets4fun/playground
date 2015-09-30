@@ -450,7 +450,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             particle->meshHandle = particleMeshHandle;
             particle->velocity = -affector->force / 3.0f;
             particle->minSize = 1.0f + glm::linearRand(-0.2f, +0.2f);
-            particle->maxSize = 4.0f + glm::linearRand(-1.0f, +1.0f);
+            particle->maxSize = 4.0f + glm::linearRand(-0.0f, +1.0f);
 
             m_rocketSmokeParticlesDelay += 0.05;
         }
@@ -464,7 +464,6 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
     // Update rocket smoke particles
     {
         const float maxAgeInS = 2.5f;
-        const float blendInS = 0.25f;
         std::vector< u64 > particleHandlesToBeDeleted;
         auto particles = sdb.stateAll< Particle::Info >();
         for (auto particle : particles)
@@ -472,9 +471,9 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             auto mesh = sdb.state< Renderer::Mesh::Info >(particle->meshHandle);
             mesh->translation += particle->velocity * float(deltaTimeInS);
 
-            float grow = 0.2f;
-            float shrink = 0.35f;
-            float life = glm::clamp(float(particle->ageInS) / maxAgeInS, 0.0f, 1.0f);
+            const float life = glm::clamp(float(particle->ageInS) / maxAgeInS, 0.0f, 1.0f);
+            const float grow   = 0.15f;
+            const float shrink = 0.25f;
             if (life >= 1.0f - shrink)
             {
                 mesh->uniformScale = (1.0f - glm::smoothstep(1.0f - shrink, 1.0f, life))
@@ -511,13 +510,6 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             {
                 particleHandlesToBeDeleted.push_back(sdb.handleFromState(particle));
             }
-            /*
-            else if (particle->ageInS >= maxAgeInS - blendInS)
-            {
-                mesh->groups = Renderer::Group::DEFAULT_TRANSPARENT;
-                mesh->blendColor.a = (maxAgeInS - particle->ageInS) / blendInS;
-            }
-            */
         }
         for (auto &particleHandle : particleHandlesToBeDeleted)
         {
