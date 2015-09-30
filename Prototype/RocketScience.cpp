@@ -33,6 +33,10 @@ const float RocketScience::OCEAN_TILE_VERTEX_DIST = 1.0f;
 const int RocketScience::PLATFORM_SPHERE_COUNT = 4;
 
 // -------------------------------------------------------------------------------------------------
+u64 RocketScience::Particle::TYPE = 0;
+u64 RocketScience::Particle::Info::STATE = 0;
+
+// -------------------------------------------------------------------------------------------------
 RocketScience::RocketScience()
 {
 }
@@ -45,6 +49,8 @@ RocketScience::~RocketScience()
 // -------------------------------------------------------------------------------------------------
 void RocketScience::registerTypesAndStates(StateDb &sdb)
 {
+    Particle::TYPE = sdb.registerType("Particle", 512);
+    Particle::Info::STATE = sdb.registerState(Particle::TYPE, "Info", sizeof(Particle::Info));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -424,11 +430,63 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             sdb.destroy(m_pusherAffectorHandle);
             m_pusherAffectorHandle = 0;
         }
+
+        // Add rocket smoke particles
+        m_rocketSmokeParticlesDelay -= deltaTimeInS;
+        while (m_rocketSmokeParticlesDelay < 0.0)
+        {
+            u64 particleMeshHandle = 0;
+            auto particleMesh = sdb.create< Renderer::Mesh::Info >(particleMeshHandle);
+            particleMesh->translation = mesh->translation + mesh->rotation * affector->forcePosition;
+            particleMesh->translation += -1.0f * glm::normalize(affector->force);
+            particleMesh->modelAsset = assets.asset("Assets/Models/Sphere.obj");
+            particleMesh->groups = Renderer::Group::DEFAULT;
+            particleMesh->uniformScale = glm::linearRand(0.8f, 1.2f);
+            particleMesh->flags |= Renderer::Mesh::Flag::SCALED;
+
+            u64 particleHandle = 0;
+            auto particle = sdb.create< Particle::Info >(particleHandle);
+            particle->meshHandle = particleMeshHandle;
+            particle->velocity = -affector->force / 3.0f;
+
+            m_rocketSmokeParticlesDelay += 0.05;
+        }
     }
 
     // Update buoyancy affectors
     {
         updateBuoyancyAffectors(sdb, m_timeInS);
+    }
+
+    // Update rocket smoke particles
+    {
+        std::vector< u64 > particleHandlesToBeDeleted;
+        auto particles = sdb.stateAll< Particle::Info >();
+        for (auto particle : particles)
+        {
+            auto mesh = sdb.state< Renderer::Mesh::Info >(particle->meshHandle);
+            mesh->translation += particle->velocity * float(deltaTimeInS);
+            mesh->uniformScale += float(1.3 * deltaTimeInS);
+            float oceanHeight = oceanEquation(mesh->translation.xy(), m_timeInS);
+            float minHeight = oceanHeight + 0.5f * mesh->uniformScale;
+            if (mesh->translation.z < minHeight)
+            {
+                particle->velocity.z = 0.0f;
+                mesh->translation.z = minHeight;
+            }
+            particle->ageInS += deltaTimeInS;
+            if (particle->ageInS > 2.0)
+            {
+                particleHandlesToBeDeleted.push_back(sdb.handleFromState(particle));
+            }
+        }
+        for (auto &particleHandle : particleHandlesToBeDeleted)
+        {
+            auto particle = sdb.state< Particle::Info >(particleHandle);
+            auto mesh = sdb.state< Renderer::Mesh::Info >(particle->meshHandle);
+            sdb.destroy(sdb.handleFromState(mesh));
+            sdb.destroy(sdb.handleFromState(particle));
+        }
     }
 
     // Update profiling UI

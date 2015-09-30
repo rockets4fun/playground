@@ -9,6 +9,7 @@
 #include "Common.hpp"
 
 #include <list>
+#include <vector>
 
 #include <glm/glm.hpp>
 
@@ -34,6 +35,18 @@ private:
 
     static const int PLATFORM_SPHERE_COUNT;
 
+    struct Particle
+    {
+        static u64 TYPE;
+        struct Info
+        {
+            static u64 STATE;
+            u64 meshHandle = 0;
+            glm::fvec3 velocity;
+            double ageInS = 0.0;
+        };
+    };
+
     u64 m_cameraHandle = 0;
 
     u32 m_oceanModelAsset = 0;
@@ -45,6 +58,10 @@ private:
 
     std::list< u64 > m_sleepingMeshHandles;
     std::list< u64 > m_buoyancyAffectorHandles;
+
+    double m_rocketSmokeParticlesDelay = 0.0;
+
+    std::list< u64 > m_particles;
 
     double m_timeInS = 0.0;
 
