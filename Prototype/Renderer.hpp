@@ -41,7 +41,8 @@ struct Renderer : public ModuleIf
     {
         enum Flag
         {
-            HIDDEN = 0x1
+            HIDDEN = 0x1,
+            SCALED = 0x2
         };
         static u64 TYPE;
         struct Info
@@ -49,6 +50,7 @@ struct Renderer : public ModuleIf
             static u64 STATE;
             glm::fvec3 translation;
             glm::fquat rotation;
+            float uniformScale = 0.0f;
             u32 modelAsset = 0;
             u32 flags = 0;
             u32 groups = 0;
