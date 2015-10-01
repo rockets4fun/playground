@@ -178,8 +178,8 @@ bool Assets::loadModel(const Info &info, Model &model)
 
     model.positions.clear();
     model.normals.clear();
-    model.diffusion.clear();
-    model.ambience.clear();
+    model.diffuse.clear();
+    model.ambient.clear();
     model.parts.clear();
 
     const aiScene *scene = m_privateState->importer.ReadFile(info.name, aiProcess_Triangulate);
@@ -231,8 +231,8 @@ bool Assets::loadModel(const Info &info, Model &model)
                 continue;
             }
 
-            glm::fvec3 diffuse (1.0f, 1.0f, 1.0f);
-            glm::fvec3 ambience(0.0f, 0.0f, 0.0f);
+            glm::fvec3 diffuse(1.0f, 1.0f, 1.0f);
+            glm::fvec3 ambient(0.0f, 0.0f, 0.0f);
             aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
             aiString materialNameAssimp;
             material->Get(AI_MATKEY_NAME, materialNameAssimp);
@@ -244,10 +244,10 @@ bool Assets::loadModel(const Info &info, Model &model)
                 {
                     diffuse = glm::fvec3(diffuseAssimp.r, diffuseAssimp.g, diffuseAssimp.b);
                 }
-                aiColor3D ambienceAssimp;
-                if (material->Get(AI_MATKEY_COLOR_AMBIENT, ambienceAssimp) == AI_SUCCESS)
+                aiColor3D ambientAssimp;
+                if (material->Get(AI_MATKEY_COLOR_AMBIENT, ambientAssimp) == AI_SUCCESS)
                 {
-                    ambience = glm::fvec3(ambienceAssimp.r, ambienceAssimp.g, ambienceAssimp.b);
+                    ambient = glm::fvec3(ambientAssimp.r, ambientAssimp.g, ambientAssimp.b);
                 }
             }
 
@@ -264,8 +264,8 @@ bool Assets::loadModel(const Info &info, Model &model)
                         mesh->mNormals[face->mIndices[idx]].x,
                         mesh->mNormals[face->mIndices[idx]].y,
                         mesh->mNormals[face->mIndices[idx]].z));
-                    model.diffusion.push_back(diffuse);
-                    model.ambience.push_back(ambience);
+                    model.diffuse.push_back(diffuse);
+                    model.ambient.push_back(ambient);
                 }
             }
         }

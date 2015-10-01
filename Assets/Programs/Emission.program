@@ -6,14 +6,17 @@ $include(Common.inc)
 uniform mat4 ModelToViewMatrix;
 uniform mat4 ProjectionMatrix;
 
-in vec3 Position;
-in vec3 Ambience;
+uniform vec4 AmbientAdd;
 
-out vec3 vertexAmbience;
+in vec3 Position;
+in vec3 Ambient;
+
+out vec3 vertexEmission;
 
 void main()
 {
-    vertexAmbience  = Ambience;
+    vertexEmission = Ambient + AmbientAdd.rgb;
+    vertexEmission += vec3(0.25) * length(vertexEmission);
 
     gl_Position = ProjectionMatrix * ModelToViewMatrix * vec4(Position, 1.0);
 }
@@ -23,11 +26,11 @@ $type(fragment-shader)
 $include(Common.inc)
 // =================================================================================================
 
-in vec3 vertexAmbience;
+in vec3 vertexEmission;
 
 out vec4 fragmentColor;
 
 void main()
 {
-    fragmentColor = vec4(vertexAmbience, 1.0);
+    fragmentColor = vec4(vertexEmission, 1.0);
 }

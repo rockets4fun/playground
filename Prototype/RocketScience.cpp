@@ -60,16 +60,16 @@ void pushRect2d(Assets::Model *model,
 {
     // World coordinate system: +X=E, +Y=N and +Z=up (front facing is CCW towards negative axis)
     // Lower left triangle
-    model->positions.push_back(glm::fvec3(ll.x, ll.y, z)); model->diffusion.push_back(color);
-    model->positions.push_back(glm::fvec3(ur.x, ur.y, z)); model->diffusion.push_back(color);
-    model->positions.push_back(glm::fvec3(ll.x, ur.y, z)); model->diffusion.push_back(color);
+    model->positions.push_back(glm::fvec3(ll.x, ll.y, z)); model->diffuse.push_back(color);
+    model->positions.push_back(glm::fvec3(ur.x, ur.y, z)); model->diffuse.push_back(color);
+    model->positions.push_back(glm::fvec3(ll.x, ur.y, z)); model->diffuse.push_back(color);
     // Upper right triangle
-    model->positions.push_back(glm::fvec3(ur.x, ur.y, z)); model->diffusion.push_back(color);
-    model->positions.push_back(glm::fvec3(ll.x, ll.y, z)); model->diffusion.push_back(color);
-    model->positions.push_back(glm::fvec3(ur.x, ll.y, z)); model->diffusion.push_back(color);
+    model->positions.push_back(glm::fvec3(ur.x, ur.y, z)); model->diffuse.push_back(color);
+    model->positions.push_back(glm::fvec3(ll.x, ll.y, z)); model->diffuse.push_back(color);
+    model->positions.push_back(glm::fvec3(ur.x, ll.y, z)); model->diffuse.push_back(color);
     // Others...
     for (int nIdx = 0; nIdx < 6; ++nIdx) model->normals.push_back (glm::fvec3(0.0f, 0.0f, 1.0f));
-    for (int nIdx = 0; nIdx < 6; ++nIdx) model->ambience.push_back(glm::fvec3(0.0f, 0.0f, 0.0f));
+    for (int nIdx = 0; nIdx < 6; ++nIdx) model->ambient.push_back(glm::fvec3(0.0f, 0.0f, 0.0f));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -118,10 +118,10 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
             glm::fvec2(  0.0f,   0.0f),
             glm::fvec2(800.0f, 450.0f));
         // FIXME(martinmo): Encode texture coords into color attribute (hack!)
-        model->diffusion[0] = model->diffusion[4] = glm::fvec3(0.0f, 0.0f, 0.0f);
-        model->diffusion[1] = model->diffusion[3] = glm::fvec3(1.0f, 1.0f, 0.0f);
-        model->diffusion[2] =                       glm::fvec3(0.0f, 1.0f, 0.0f);
-        model->diffusion[5] =                       glm::fvec3(1.0f, 0.0f, 0.0f);
+        model->diffuse[0] = model->diffuse[4] = glm::fvec3(0.0f, 0.0f, 0.0f);
+        model->diffuse[1] = model->diffuse[3] = glm::fvec3(1.0f, 1.0f, 0.0f);
+        model->diffuse[2] =                     glm::fvec3(0.0f, 1.0f, 0.0f);
+        model->diffuse[5] =                     glm::fvec3(1.0f, 0.0f, 0.0f);
     }
     {
         auto mesh = sdb.create< Renderer::Mesh::Info >();
@@ -158,8 +158,8 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
                 // Triangle colors
                 float rand = glm::linearRand(0.0f, +0.3f);
                 glm::fvec3 color(0.4f + rand, 0.4f + rand, 0.4f + rand);
-                for (int vIdx = 0; vIdx < 6; ++vIdx) model->diffusion.push_back(color);
-                for (int vIdx = 0; vIdx < 6; ++vIdx) model->ambience.push_back(glm::fvec3(0.0));
+                for (int vIdx = 0; vIdx < 6; ++vIdx) model->diffuse.push_back(color);
+                for (int vIdx = 0; vIdx < 6; ++vIdx) model->ambient.push_back(glm::fvec3(0.0));
             }
         }
         // Instantiate ocean tiles
@@ -438,18 +438,19 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             u64 particleMeshHandle = 0;
             auto particleMesh = sdb.create< Renderer::Mesh::Info >(particleMeshHandle);
             particleMesh->translation = mesh->translation + mesh->rotation * affector->forcePosition;
-            particleMesh->translation += -1.0f * glm::normalize(affector->force);
+            particleMesh->translation += -0.5f * glm::normalize(affector->force);
             particleMesh->modelAsset = assets.asset("Assets/Models/Sphere.obj");
             particleMesh->groups = Renderer::Group::DEFAULT;
             particleMesh->flags |= Renderer::Mesh::Flag::SCALED;
-            particleMesh->blendColor = glm::fvec4(1.0f, 1.0f, 1.0f, 1.0f);
-            particleMesh->flags |= Renderer::Mesh::Flag::BLEND_COLOR;
+            particleMesh->diffuseMul = glm::fvec4(1.0f, 1.0f, 1.0f, 1.0f);
+            particleMesh->flags |= Renderer::Mesh::Flag::DIFFUSE_MUL;
+            particleMesh->flags |= Renderer::Mesh::Flag::AMBIENT_ADD;
 
             u64 particleHandle = 0;
             auto particle = sdb.create< Particle::Info >(particleHandle);
             particle->meshHandle = particleMeshHandle;
             particle->velocity = -affector->force / 3.0f;
-            particle->minSize = 1.0f + glm::linearRand(-0.2f, +0.2f);
+            particle->minSize = 1.0f + glm::linearRand(-0.2f, +0.0f);
             particle->maxSize = 4.0f + glm::linearRand(-0.0f, +1.0f);
 
             m_rocketSmokeParticlesDelay += 0.05;
@@ -478,7 +479,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             {
                 mesh->uniformScale = (1.0f - glm::smoothstep(1.0f - shrink, 1.0f, life))
                         * (particle->maxSize - particle->minSize);
-                mesh->blendColor = glm::mix(
+                mesh->diffuseMul = glm::mix(
                     glm::fvec4(0.8, 0.8, 0.8, 1.0), glm::fvec4(0.1, 0.1, 0.1, 1.0),
                     (life - (1.0f - shrink)) / shrink);
             }
@@ -487,9 +488,12 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
                 mesh->uniformScale = particle->minSize
                         + glm::smoothstep(0.0f, grow, life)
                         * (particle->maxSize - particle->minSize);
-                mesh->blendColor = glm::mix(
+                mesh->diffuseMul = glm::mix(
                     glm::fvec4(0.9, 0.3, 0.0, 1.0), glm::fvec4(0.8, 0.8, 0.8, 1.0),
-                   life / grow);
+                    life / grow);
+                mesh->ambientAdd = glm::mix(
+                    glm::fvec4(0.9, 0.3, 0.0, 0.0), glm::fvec4(0.0, 0.0, 0.0, 0.0),
+                    life / grow);
             }
             else
             {
@@ -527,8 +531,8 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         auto uiModel = assets.refModel(m_uiModelAsset);
         uiModel->positions.clear();
         uiModel->normals.clear();
-        uiModel->diffusion.clear();
-        uiModel->ambience.clear();
+        uiModel->diffuse.clear();
+        uiModel->ambient.clear();
 
         Profiling *profiling = Profiling::instance();
         Profiling::Thread *mainThread = profiling->mainThreadPrevFrame();

@@ -6,22 +6,24 @@ $include(Common.inc)
 uniform mat4 ModelToWorldMatrix;
 uniform mat4 ModelToViewMatrix;
 uniform mat4 ProjectionMatrix;
-uniform vec4 BlendColor;
+
+uniform vec4 DiffuseMul;
+uniform vec4 AmbientAdd;
 
 uniform vec4 RenderParams;
 
 in vec3 Position;
 in vec3 Normal;
 
-in vec3 Diffusion;
-in vec3 Ambience;
+in vec3 Diffuse;
+in vec3 Ambient;
 
 out vec4 renderParams;
 out vec3 vertexNormal;
 out vec3 vertexNormalWorld;
 
-out vec3 vertexDiffusion;
-out vec3 vertexAmbience;
+out vec3 vertexDiffuse;
+out vec3 vertexAmbient;
 out float vertexAlpha;
 
 void main()
@@ -30,9 +32,9 @@ void main()
     vertexNormal = normalize(Normal).xyz;
     vertexNormalWorld = normalize((ModelToWorldMatrix * vec4(Normal, 0.0)).xyz);
 
-    vertexDiffusion = Diffusion * BlendColor.rgb;
-    vertexAmbience  = Ambience;
-    vertexAlpha = BlendColor.a;
+    vertexDiffuse = Diffuse * DiffuseMul.rgb;
+    vertexAmbient = Ambient + AmbientAdd.rgb;
+    vertexAlpha = DiffuseMul.a;
 
     gl_Position = ProjectionMatrix * ModelToViewMatrix * vec4(Position, 1.0);
 }
@@ -46,8 +48,8 @@ in vec4 renderParams;
 in vec3 vertexNormal;
 in vec3 vertexNormalWorld;
 
-in vec3 vertexDiffusion;
-in vec3 vertexAmbience;
+in vec3 vertexDiffuse;
+in vec3 vertexAmbient;
 in float vertexAlpha;
 
 out vec4 fragmentColor;
@@ -56,17 +58,18 @@ void main()
 {
     if (renderParams.x > 0.5)
     {
-        fragmentColor = vec4(abs(vertexNormal) * vertexDiffusion, vertexAlpha);
+        fragmentColor = vec4(abs(vertexNormal) * vertexDiffuse, vertexAlpha);
     }
     else if (renderParams.y > 0.5)
     {
-        fragmentColor = vec4(vertexDiffusion, vertexAlpha);
+        fragmentColor = vec4(vertexDiffuse, vertexAlpha);
     }
     else
     {
-        vec3 lightDir = normalize(vec3(0.0, 1.0, -1.0));
+        vec3 lightDir = normalize(vec3(0.0, 1.0, -0.7));
         float lambert = max(0.0, dot(vertexNormalWorld, -lightDir));
-        fragmentColor = vec4(vertexAmbience + vertexDiffusion * max(0.1, lambert), vertexAlpha);
+        fragmentColor = vec4(vertexAmbient + vertexDiffuse * max(0.1, lambert), vertexAlpha);
     }
+
     //fragmentColor = vec4(0.0);
 }

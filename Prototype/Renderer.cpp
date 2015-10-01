@@ -155,8 +155,8 @@ struct Renderer::PrivateMesh
 
     GLuint positionsVbo = 0;
     GLuint normalsVbo   = 0;
-    GLuint diffusionVbo = 0;
-    GLuint ambienceVbo  = 0;
+    GLuint diffuseVbo = 0;
+    GLuint ambientVbo = 0;
 
     GLenum usage = GL_STATIC_DRAW;
 
@@ -180,15 +180,16 @@ struct Renderer::Program::PrivateInfo
     GLint uModelToWorldMatrix = 0;
     GLint uModelToViewMatrix = 0;
     GLint uProjectionMatrix = 0;
-    GLint uBlendColor = 0;
+    GLint uDiffuseMul = 0;
+    GLint uAmbientAdd = 0;
     GLint uRenderParams = 0;
     GLint uColorTex = 0;
     GLint uDepthTex = 0;
     // Attributes
     GLint aPosition = 0;
     GLint aNormal = 0;
-    GLint aDiffusion = 0;
-    GLint aAmbience = 0;
+    GLint aDiffuse = 0;
+    GLint aAmbient = 0;
 };
 u64 Renderer::Program::PrivateInfo::STATE = 0;
 
@@ -498,8 +499,10 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
                 funcs->glGetUniformLocation(programPrivate->program, "ModelToViewMatrix");
             programPrivate->uProjectionMatrix =
                 funcs->glGetUniformLocation(programPrivate->program, "ProjectionMatrix");
-            programPrivate->uBlendColor =
-                funcs->glGetUniformLocation(programPrivate->program, "BlendColor");
+            programPrivate->uDiffuseMul =
+                funcs->glGetUniformLocation(programPrivate->program, "DiffuseMul");
+            programPrivate->uAmbientAdd =
+                funcs->glGetUniformLocation(programPrivate->program, "AmbientAdd");
             programPrivate->uRenderParams =
                 funcs->glGetUniformLocation(programPrivate->program, "RenderParams");
             programPrivate->uColorTex =
@@ -516,10 +519,10 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
                 funcs->glGetAttribLocation(programPrivate->program, "Position");
             programPrivate->aNormal =
                 funcs->glGetAttribLocation(programPrivate->program, "Normal");
-            programPrivate->aDiffusion =
-                funcs->glGetAttribLocation(programPrivate->program, "Diffusion");
-            programPrivate->aAmbience =
-                funcs->glGetAttribLocation(programPrivate->program, "Ambience");
+            programPrivate->aDiffuse =
+                funcs->glGetAttribLocation(programPrivate->program, "Diffuse");
+            programPrivate->aAmbient =
+                funcs->glGetAttribLocation(programPrivate->program, "Ambient");
 
             programPrivate->assetVersionLoaded = assetVersion;
         }
@@ -557,8 +560,8 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
             }
             funcs->glGenBuffers(1, &privateMesh->positionsVbo);
             funcs->glGenBuffers(1, &privateMesh->normalsVbo);
-            funcs->glGenBuffers(1, &privateMesh->diffusionVbo);
-            funcs->glGenBuffers(1, &privateMesh->ambienceVbo);
+            funcs->glGenBuffers(1, &privateMesh->diffuseVbo);
+            funcs->glGenBuffers(1, &privateMesh->ambientVbo);
             privateMesh->flags |= PrivateMesh::Flag::DIRTY;
         }
         else if (privateMesh->flags & PrivateMesh::Flag::DYNAMIC)
@@ -610,6 +613,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
     }
 
     // Emission post-processing pass
+    if (!debugNormals)
     {
         glm::fmat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 450.0f, -10.0f, 10.0f);
         glm::fmat4 worldToView;
@@ -624,7 +628,10 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         funcs->glBlendFunc(GL_ONE, GL_ONE);
         funcs->glActiveTexture(GL_TEXTURE0); funcs->glBindTexture(GL_TEXTURE_2D, state->colorTex);
         funcs->glActiveTexture(GL_TEXTURE1); funcs->glBindTexture(GL_TEXTURE_2D, state->depthTex);
-        renderPass(sdb, Group::DEFAULT_POST, emissionPostProgram, projection, worldToView, renderParams);
+        for (int repetitionIdx = 0; repetitionIdx < 1; ++repetitionIdx)
+        {
+            renderPass(sdb, Group::DEFAULT_POST, emissionPostProgram, projection, worldToView, renderParams);
+        }
         funcs->glActiveTexture(GL_TEXTURE1); funcs->glBindTexture(GL_TEXTURE_2D, 0);
         funcs->glActiveTexture(GL_TEXTURE0); funcs->glBindTexture(GL_TEXTURE_2D, 0);
         funcs->glDisable(GL_BLEND);
@@ -655,7 +662,8 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
 {
     funcs->glUseProgram(program->program);
 
-    glm::fvec4 defaultBlendColor(1.0f, 1.0f, 1.0f, 1.0f);
+    glm::fvec4 defaultDiffuseMul(1.0f, 1.0f, 1.0f, 1.0f);
+    glm::fvec4 defaultAmbientAdd(0.0f, 0.0f, 0.0f, 0.0f);
 
     funcs->glUniform4fv(program->uRenderParams, 1, glm::value_ptr(renderParams));
     funcs->glUniformMatrix4fv(program->uProjectionMatrix, 1, GL_FALSE, glm::value_ptr(projection));
@@ -687,10 +695,10 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
                 privateMesh->model->positions, privateMesh->usage, oldVertexCount);
             helpers->updateVertexBufferData(privateMesh->normalsVbo,
                 privateMesh->model->normals, privateMesh->usage, oldVertexCount);
-            helpers->updateVertexBufferData(privateMesh->diffusionVbo,
-                privateMesh->model->diffusion, privateMesh->usage, oldVertexCount);
-            helpers->updateVertexBufferData(privateMesh->ambienceVbo,
-                privateMesh->model->ambience, privateMesh->usage, oldVertexCount);
+            helpers->updateVertexBufferData(privateMesh->diffuseVbo,
+                privateMesh->model->diffuse, privateMesh->usage, oldVertexCount);
+            helpers->updateVertexBufferData(privateMesh->ambientVbo,
+                privateMesh->model->ambient, privateMesh->usage, oldVertexCount);
             privateMesh->flags &= ~PrivateMesh::Flag::DIRTY;
         }
         if (!privateMesh->vertexCount)
@@ -713,17 +721,17 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
                 funcs->glVertexAttribPointer(program->aNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
                 funcs->glEnableVertexAttribArray(program->aNormal);
             }
-            if (program->aDiffusion >= 0)
+            if (program->aDiffuse >= 0)
             {
-                funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->diffusionVbo);
-                funcs->glVertexAttribPointer(program->aDiffusion, 3, GL_FLOAT, GL_FALSE, 0, 0);
-                funcs->glEnableVertexAttribArray(program->aDiffusion);
+                funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->diffuseVbo);
+                funcs->glVertexAttribPointer(program->aDiffuse, 3, GL_FLOAT, GL_FALSE, 0, 0);
+                funcs->glEnableVertexAttribArray(program->aDiffuse);
             }
-            if (program->aAmbience >= 0)
+            if (program->aAmbient >= 0)
             {
-                funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->ambienceVbo);
-                funcs->glVertexAttribPointer(program->aAmbience, 3, GL_FLOAT, GL_FALSE, 0, 0);
-                funcs->glEnableVertexAttribArray(program->aAmbience);
+                funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->ambientVbo);
+                funcs->glVertexAttribPointer(program->aAmbient, 3, GL_FLOAT, GL_FALSE, 0, 0);
+                funcs->glEnableVertexAttribArray(program->aAmbient);
             }
         }
 
@@ -741,17 +749,21 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         funcs->glUniformMatrix4fv(
             program->uModelToViewMatrix, 1, GL_FALSE, glm::value_ptr(modelToView));
 
-        glm::fvec4 blendColor = defaultBlendColor;
-        if (mesh->flags & Mesh::Flag::BLEND_COLOR) blendColor = mesh->blendColor;
-        funcs->glUniform4fv(program->uBlendColor, 1, glm::value_ptr(blendColor));
+        glm::fvec4 diffuseMul = defaultDiffuseMul;
+        if (mesh->flags & Mesh::Flag::DIFFUSE_MUL) diffuseMul = mesh->diffuseMul;
+        funcs->glUniform4fv(program->uDiffuseMul, 1, glm::value_ptr(diffuseMul));
+
+        glm::fvec4 ambientAdd = defaultAmbientAdd;
+        if (mesh->flags & Mesh::Flag::AMBIENT_ADD) ambientAdd = mesh->ambientAdd;
+        funcs->glUniform4fv(program->uAmbientAdd, 1, glm::value_ptr(ambientAdd));
 
         funcs->glDrawArrays(GL_TRIANGLES, 0, privateMesh->vertexCount);
 
         {
             if (program->aPosition  >= 0) funcs->glEnableVertexAttribArray(program->aPosition);
             if (program->aNormal    >= 0) funcs->glEnableVertexAttribArray(program->aNormal);
-            if (program->aDiffusion >= 0) funcs->glEnableVertexAttribArray(program->aDiffusion);
-            if (program->aAmbience  >= 0) funcs->glEnableVertexAttribArray(program->aAmbience);
+            if (program->aDiffuse >= 0) funcs->glEnableVertexAttribArray(program->aDiffuse);
+            if (program->aAmbient  >= 0) funcs->glEnableVertexAttribArray(program->aAmbient);
         }
     }
 }

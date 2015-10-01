@@ -44,7 +44,8 @@ struct Renderer : public ModuleIf
         {
             HIDDEN      = 0x1,
             SCALED      = 0x2,
-            BLEND_COLOR = 0x4
+            DIFFUSE_MUL = 0x4,
+            AMBIENT_ADD = 0x8
         };
         static u64 TYPE;
         struct Info
@@ -53,7 +54,8 @@ struct Renderer : public ModuleIf
             glm::fvec3 translation;
             glm::fquat rotation;
             float uniformScale = 0.0f;
-            glm::fvec4 blendColor;
+            glm::fvec4 diffuseMul;
+            glm::fvec4 ambientAdd;
             u32 modelAsset = 0;
             u32 flags = 0;
             u32 groups = 0;
