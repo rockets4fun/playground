@@ -107,7 +107,7 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
     {
         auto mesh = sdb.create< Renderer::Mesh::Info >(m_arrowMeshHandle);
         mesh->modelAsset = assets.asset("Assets/Models/Arrow.obj");
-        mesh->groups = Renderer::Group::DEFAULT;
+        //mesh->groups = Renderer::Group::DEFAULT;
     }
     {
         auto mesh = sdb.create< Renderer::Mesh::Info >();
