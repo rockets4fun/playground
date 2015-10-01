@@ -165,5 +165,7 @@ SOURCES += \
 OTHER_FILES += \
     ../Assets/Programs/Default.program \
     ../Assets/Programs/Post.program \
+    ../Assets/Programs/Emission.program \
+    ../Assets/Programs/EmissionPost.program \
     ../Documentation/Notes.txt \
     ../Documentation/GameNotes.txt
