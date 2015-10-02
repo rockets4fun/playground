@@ -454,7 +454,8 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             particle->meshHandle = particleMeshHandle;
             particle->velocity = -affector->force / 3.0f;
             particle->minSize = 1.0f + glm::linearRand(-0.2f, +0.0f);
-            particle->maxSize = 5.0f + glm::linearRand(-1.0f, +1.5f);
+            if (rand() % 100 > 90) particle->maxSize = 5.0f + glm::linearRand(-1.0f, +1.5f);
+            else                   particle->maxSize = 5.0f + glm::linearRand(-0.8f, +0.25f);
 
             m_rocketSmokeParticlesDelay += 0.05 * (8.0f / glm::length(affector->force));
         }
