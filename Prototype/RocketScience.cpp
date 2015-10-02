@@ -583,7 +583,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 // -------------------------------------------------------------------------------------------------
 #define __sin(arg) std::sin(arg)
 //#define __sin(arg) glm::fastSin(arg)
-//#define __sin(arg) (arg) // on-op for testing performance impact
+//#define __sin(arg) (arg) // NOP for testing performance impact...
 float RocketScience::oceanEquation(const glm::fvec2 &position, double timeInS)
 {
     glm::fvec2 unitSize = OCEAN_TILE_UNIT_SIZE;
