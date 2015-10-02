@@ -284,6 +284,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
     // FIXME(martinmo): Add keyboard input to platform abstraction (remove dependency to SDL)
     const Uint8 *state = SDL_GetKeyboardState(NULL);
     renderer.debugNormals = state[SDL_SCANCODE_N] != 0;
+    bool rocketBoost = state[SDL_SCANCODE_SPACE] != 0;
 
     // Update camera
     {
@@ -395,8 +396,10 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         }
         else
         {
-            mainEngineForce = 9.0f * rigidBody->mass;
+            mainEngineForce = 8.0f * rigidBody->mass;
         }
+
+        if (rocketBoost) mainEngineForce *= 2.0f;
 
         // Rocket's local +Y should be aligned to global +Z
         glm::fvec3 nominalDir = glm::fvec3(0.0, 0.0, 1.0);
@@ -451,9 +454,9 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             particle->meshHandle = particleMeshHandle;
             particle->velocity = -affector->force / 3.0f;
             particle->minSize = 1.0f + glm::linearRand(-0.2f, +0.0f);
-            particle->maxSize = 4.0f + glm::linearRand(-0.0f, +1.0f);
+            particle->maxSize = 5.0f + glm::linearRand(-1.0f, +1.5f);
 
-            m_rocketSmokeParticlesDelay += 0.05;
+            m_rocketSmokeParticlesDelay += 0.05 * (8.0f / glm::length(affector->force));
         }
     }
 
@@ -471,9 +474,10 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         {
             auto mesh = sdb.state< Renderer::Mesh::Info >(particle->meshHandle);
             mesh->translation += particle->velocity * float(deltaTimeInS);
+            particle->velocity += -particle->velocity * 1.5f * float(deltaTimeInS);
 
             const float life = glm::clamp(float(particle->ageInS) / maxAgeInS, 0.0f, 1.0f);
-            const float grow   = 0.15f;
+            const float grow   = 0.30f;
             const float shrink = 0.25f;
             if (life >= 1.0f - shrink)
             {
