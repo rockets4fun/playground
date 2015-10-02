@@ -388,18 +388,12 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         affector->force = modelRot * glm::fvec3(10.0f, 0.0f, 0.0f);
         */
 
-        // Main engine force to keep height of 10 m
-        float mainEngineForce = 0.0f;
-        if (mesh->translation.z < 10.0)
-        {
-            mainEngineForce = 12.0f * rigidBody->mass;
-        }
-        else
-        {
-            mainEngineForce = 8.0f * rigidBody->mass;
-        }
+        glm::fvec3 nozzlePosition = mesh->translation + mesh->rotation * affector->forcePosition;
 
+        // Main engine force to keep height of 10 m
+        float mainEngineForce = 8.0f * rigidBody->mass;
         if (rocketBoost) mainEngineForce *= 2.0f;
+        if (nozzlePosition.z < 5.0f && !rocketBoost) mainEngineForce = 0.0f;
 
         // Rocket's local +Y should be aligned to global +Z
         glm::fvec3 nominalDir = glm::fvec3(0.0, 0.0, 1.0);
@@ -420,7 +414,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 
         // Use arrow mesh to display thrust vector
         auto arrowMesh = sdb.state< Renderer::Mesh::Info >(m_arrowMeshHandle);
-        arrowMesh->translation = mesh->translation + mesh->rotation * affector->forcePosition;
+        arrowMesh->translation = nozzlePosition;
         arrowMesh->rotation = Math::rotateFromTo(
             glm::fvec3(0.0f, 1.0f, 0.0f), -affector->force);
 
@@ -440,7 +434,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         {
             u64 particleMeshHandle = 0;
             auto particleMesh = sdb.create< Renderer::Mesh::Info >(particleMeshHandle);
-            particleMesh->translation = mesh->translation + mesh->rotation * affector->forcePosition;
+            particleMesh->translation = nozzlePosition;
             particleMesh->translation += -0.5f * glm::normalize(affector->force);
             particleMesh->modelAsset = assets.asset("Assets/Models/Sphere.obj");
             particleMesh->groups = Renderer::Group::DEFAULT;
@@ -457,7 +451,9 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             if (rand() % 100 > 90) particle->maxSize = 5.0f + glm::linearRand(-1.0f, +1.5f);
             else                   particle->maxSize = 5.0f + glm::linearRand(-0.8f, +0.25f);
 
-            m_rocketSmokeParticlesDelay += 0.05 * (8.0f / glm::length(affector->force));
+            float delayAdd = 0.05f;
+            if (mainEngineForce > 0.1f) delayAdd *= 8.0f / mainEngineForce;
+            m_rocketSmokeParticlesDelay += delayAdd;
         }
     }
 
@@ -508,7 +504,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             }
 
             float oceanHeight = oceanEquation(mesh->translation.xy(), m_timeInS);
-            float minHeight = 0.5f * mesh->uniformScale + oceanHeight;
+            float minHeight = 0.3f * mesh->uniformScale + oceanHeight;
             if (mesh->translation.z < minHeight)
             {
                 particle->velocity.z = 0.0f;
