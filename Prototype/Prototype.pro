@@ -51,8 +51,8 @@ THIRDPARTY = ../Thirdparty
 
 # Profiling using "Brofiler" on Windows
 win32 {
-    INCLUDEPATH += $${THIRDPARTY}/Brofiler
-    LIBS += $${THIRDPARTY}/Brofiler/ProfilerCore64.lib
+    INCLUDEPATH += $${THIRDPARTY}/brofiler
+    LIBS += $${THIRDPARTY}/brofiler/ProfilerCore64.lib
 }
 
 # SDL
