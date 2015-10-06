@@ -519,9 +519,8 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         for (auto &particleHandle : particleHandlesToBeDeleted)
         {
             auto particle = sdb.state< Particle::Info >(particleHandle);
-            auto mesh = sdb.state< Renderer::Mesh::Info >(particle->meshHandle);
-            sdb.destroy(sdb.handleFromState(mesh));
-            sdb.destroy(sdb.handleFromState(particle));
+            sdb.destroy(particle->meshHandle);
+            sdb.destroy(particleHandle);
         }
     }
 
