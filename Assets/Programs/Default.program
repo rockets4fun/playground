@@ -30,6 +30,8 @@ void main()
 {
     renderParams = RenderParams;
     vertexNormal = normalize(Normal).xyz;
+    // FIXME(martinmo): Use inverse transpose of 'ModelToWorldMatrix'
+    // FIXME(martinmo): if it contains non-uniform scale
     vertexNormalWorld = normalize((ModelToWorldMatrix * vec4(Normal, 0.0)).xyz);
 
     vertexDiffuse = Diffuse * DiffuseMul.rgb;
