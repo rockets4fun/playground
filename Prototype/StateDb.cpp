@@ -193,16 +193,25 @@ void StateDb::destroy(u64 objectHandle)
         for (u64 stateId : type.stateIds)
         {
             State &state = m_states[stateId];
-            // Swap in last state to fill hole
+            // Swap in state memory of last object to fill hole
             memcpy(
                 &m_stateValues[stateId][state.elemSize * idxToDestroy],
                 &m_stateValues[stateId][state.elemSize * type.objectCount], state.elemSize);
-            // Zero previous memory of swapped in element
+            // Zero previous state memory of swapped in object
             memset(
                 &m_stateValues[stateId][state.elemSize * type.objectCount], 0, state.elemSize);
         }
         std::swap(type.objectIdToIdx[objectIdToSwapIn], type.objectIdToIdx[objectId]);
         std::swap(type.idxToObjectId[type.objectCount], type.idxToObjectId[idxToDestroy]);
+    }
+    else
+    {
+        // Zero memory of destroyed object's states
+        for (u64 stateId : type.stateIds)
+        {
+            State &state = m_states[stateId];
+            memset(&m_stateValues[stateId][state.elemSize * type.objectCount], 0, state.elemSize);
+        }
     }
 
     ++type.lifecycleByObjectId[objectId];
