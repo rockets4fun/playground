@@ -430,6 +430,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 
         // Add rocket smoke particles
         m_rocketSmokeParticlesDelay -= deltaTimeInS;
+        if (mainEngineForce < 0.1f) m_rocketSmokeParticlesDelay = 0.0;
         while (m_rocketSmokeParticlesDelay < 0.0)
         {
             u64 particleMeshHandle = 0;
@@ -439,8 +440,8 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             particleMesh->modelAsset = assets.asset("Assets/Models/Sphere.obj");
             particleMesh->groups = Renderer::Group::DEFAULT;
             particleMesh->flags |= Renderer::Mesh::Flag::SCALED;
-            particleMesh->diffuseMul = glm::fvec4(1.0f, 1.0f, 1.0f, 1.0f);
             particleMesh->flags |= Renderer::Mesh::Flag::DIFFUSE_MUL;
+            particleMesh->diffuseMul = glm::fvec4(1.0f, 1.0f, 1.0f, 1.0f);
             particleMesh->flags |= Renderer::Mesh::Flag::AMBIENT_ADD;
 
             u64 particleHandle = 0;
@@ -451,9 +452,9 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             if (rand() % 100 > 90) particle->maxSize = 5.0f + glm::linearRand(-1.0f, +1.5f);
             else                   particle->maxSize = 5.0f + glm::linearRand(-0.8f, +0.25f);
 
-            float delayAdd = 0.05f;
-            if (mainEngineForce > 0.1f) delayAdd *= 8.0f / mainEngineForce;
-            m_rocketSmokeParticlesDelay += delayAdd;
+            float distBetweenParticlesInM = 0.25f;
+            float particleSpeed = glm::length(particle->velocity);
+            m_rocketSmokeParticlesDelay += distBetweenParticlesInM / particleSpeed;
         }
     }
 
@@ -464,14 +465,24 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 
     // Update rocket smoke particles
     {
-        const float maxAgeInS = 2.5f;
+        const float maxAgeInS = 2.0f;
         std::vector< u64 > particleHandlesToBeDeleted;
         auto particles = sdb.stateAll< Particle::Info >();
         for (auto particle : particles)
         {
+            if (particle->ageInS >= maxAgeInS)
+            {
+                particleHandlesToBeDeleted.push_back(sdb.handleFromState(particle));
+                continue;
+            }
+
             auto mesh = sdb.state< Renderer::Mesh::Info >(particle->meshHandle);
-            mesh->translation += particle->velocity * float(deltaTimeInS);
-            particle->velocity += -particle->velocity * 1.5f * float(deltaTimeInS);
+            if (particle->ageInS > 0.0)
+            {
+                mesh->translation += particle->velocity * float(deltaTimeInS);
+            }
+            particle->velocity += -particle->velocity * 1.0f * float(deltaTimeInS);
+            particle->ageInS += deltaTimeInS;
 
             const float life = glm::clamp(float(particle->ageInS) / maxAgeInS, 0.0f, 1.0f);
             const float grow   = 0.30f;
@@ -509,11 +520,6 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             {
                 particle->velocity.z = 0.0f;
                 mesh->translation.z = minHeight;
-            }
-            particle->ageInS += deltaTimeInS;
-            if (particle->ageInS >= maxAgeInS)
-            {
-                particleHandlesToBeDeleted.push_back(sdb.handleFromState(particle));
             }
         }
         for (auto &particleHandle : particleHandlesToBeDeleted)
