@@ -1,11 +1,16 @@
 h1. Current Coding Roadmap
 ----------------------------------------------------------------------------------------------------
 
+* Next steps
+** Improve bloom effect (experiment with gaussian/triangle/multipass blur)
+** Smoothed particle creation rate according to velocity
+** Proper instanced rendering for meshes (decide per-instance attribute approach!)
+
 * Rocket drone ship landing
 ** Basic rocket control
 *** Inner controller for maintaining target yaw/pitch
 *** Outer controller for changing position by adjusting target yaw/pitch
-*** Consider rotational speed for dampening controller
+*** Consider rotational velocity for dampening controller
 ** Simple infinite water/buoyancy simulation
 ** Mouse-based interaction with rocket (e.g. pick and attach string)
 ** Land rocket on drone ship
