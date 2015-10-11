@@ -452,8 +452,8 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             if (rand() % 100 > 90) particle->maxSize = 5.0f + glm::linearRand(-1.0f, +1.5f);
             else                   particle->maxSize = 5.0f + glm::linearRand(-0.8f, +0.25f);
 
-            float distBetweenParticlesInM = 0.25f;
-            float particleSpeed = glm::length(particle->velocity);
+            double distBetweenParticlesInM = 0.5;
+            double particleSpeed = double(glm::length(particle->velocity));
             m_rocketSmokeParticlesDelay += distBetweenParticlesInM / particleSpeed;
         }
     }
