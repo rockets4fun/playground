@@ -4,13 +4,14 @@ h1. Current Coding Roadmap
 * Next steps
 ** Improve bloom effect
 *** Gaussian/triangle/multipass (FBO ping-pong) blur
-*** Separate horizontal and vertical
+*** Try separating horizontal and vertical blur steps
 ** Smoke: Smoothed particle creation rate according to velocity
-** Proper instanced rendering for meshes (decide per-instance attribute approach!)
-*** Approach 1: Attribute divisor
-*** Approach 2: Uniform buffer object (UBO)
-*** Approach 3: Buffer texture
-*** Approach 4: nD-texture
+** Proper instanced rendering for meshes
+*** Decide per-instance attribute approach
+**** Approach 1: Attribute divisor
+**** Approach 2: Uniform buffer object (UBO)
+**** Approach 3: Buffer texture
+**** Approach 4: nD-texture
 *** Siply make all public mesh data available as per-instance data?
 
 * Rocket drone ship landing
