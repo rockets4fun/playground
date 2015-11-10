@@ -41,16 +41,14 @@ void main()
 
     vec3 smoothed = vec3(0.0, 0.0, 0.0);
     vec2 its = 1.0 / textureSize(ColorTex, 0);
-    float size = 3.0;
-    float sampleCount = 0.0;
+    float size = 8.0;
+    float sampleCount = pow(2.0 * size + 1.0, 2.0);
     for (float yOff = -size; yOff <= +size; yOff = yOff + 1.0)
     {
         for (float xOff = -size; xOff <= +size; xOff = xOff + 1.0)
         {
             smoothed += texture(ColorTex, texCoord.xy + its * vec2(xOff, yOff)).rgb;
-            sampleCount += 1.0;
         }
-        smoothed += texture(ColorTex, texCoord.xy + its * vec2(0.0, yOff)).rgb;
     }
     fragmentColor = vec4(smoothed / sampleCount, 1.0);
 
