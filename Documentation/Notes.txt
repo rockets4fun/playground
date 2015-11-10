@@ -12,7 +12,7 @@ h1. Current Coding Roadmap
 **** Approach 2: Uniform buffer object (UBO)
 **** Approach 3: Buffer texture
 **** Approach 4: nD-texture
-*** Siply make all public mesh data available as per-instance data?
+*** Simply make all public mesh data available as per-instance data?
 
 * Rocket drone ship landing
 ** Basic rocket control
