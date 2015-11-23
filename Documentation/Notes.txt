@@ -5,7 +5,9 @@ h1. Current Coding Roadmap
 ** Improve bloom effect
 *** Gaussian/triangle/multipass (FBO ping-pong) blur
 *** Try separating horizontal and vertical blur steps
-** Smoke: Smoothed particle creation rate according to velocity
+*** State-based generalization of rendering passes/techniques
+** Improve sphere-based smoke effect
+*** Smoothed particle creation rate according to velocity
 ** Proper instanced rendering for meshes
 *** Decide per-instance attribute approach
 **** Approach 1: Attribute divisor
@@ -23,13 +25,17 @@ h1. Current Coding Roadmap
 ** Mouse-based interaction with rocket (e.g. pick and attach string)
 ** Land rocket on drone ship
 ** Explore comic visual style incl. sphere/geometry-based smoke
+** Buoyancy implementation touch-up
 
 * Flip maneuver controlled by top/bottom nose thruster
 ** Wing-tip-thruster-based control of roll for aiming nose thrusters
+** Implement generalized thruster approach (incl. design in OBJ-files)
 
 * Rocket payload launch abort landing
 ** Launch from drone ship
 ** Quadcopter-style control of payload (e.g. 2x4 thrusters like Dragon V2)
+
+* Sky-crane style payload delivery on body with gravity?
 
 * Compare assembly generated for call through function pointer vs. call through interface
 ** Interface pointer is pointer to abstract/pure virtual base class
