@@ -21,11 +21,12 @@ h1. Current Coding Roadmap
 *** Inner controller for maintaining target yaw/pitch
 *** Outer controller for changing position by adjusting target yaw/pitch
 *** Consider rotational velocity for dampening controller
-** Simple infinite water/buoyancy simulation
 ** Mouse-based interaction with rocket (e.g. pick and attach string)
 ** Land rocket on drone ship
 ** Explore comic visual style incl. sphere/geometry-based smoke
 ** Buoyancy implementation touch-up
+*** Change number of affectors depending on mesh (e.g. eight for cube)
+*** Only affectors penetrating the surface contribute to friction approximation
 
 * Flip maneuver controlled by top/bottom nose thruster
 ** Wing-tip-thruster-based control of roll for aiming nose thrusters
