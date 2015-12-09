@@ -7,14 +7,14 @@ h1. Current Coding Roadmap
 *** Try separating horizontal and vertical blur steps
 *** State-based generalization of rendering passes/techniques
 ** Improve sphere-based smoke effect
-*** Smoothed particle creation rate according to velocity
+*** Smoothed particle speed/creation rate according to velocity
 ** Proper instanced rendering for meshes
 *** Decide per-instance attribute approach
 **** Approach 1: Attribute divisor
 **** Approach 2: Uniform buffer object (UBO)
 **** Approach 3: Buffer texture
 **** Approach 4: nD-texture
-*** Simply make all public mesh data available as per-instance data?
+*** Simply make all public mesh data available as per-instance data
 
 * Rocket drone ship landing
 ** Basic rocket control

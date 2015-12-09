@@ -18,8 +18,7 @@ h1. Game Notes
 ** Torpedo impact/explosion influences ships impulse/speed/acceleration
 
 * Visual style/look and feel
-** Comic-style similar to clone wars but less realistic
-*** Less realistic means e.g. no dirt textures
+** Comic-style similar to clone wars but less realistic (e.g. no dirt textures)
 ** Low-poly (fracturing/breaking!) with some mechanical details
 *** Opening/closing slot/silo doors
 *** Visible thrust vectoring
@@ -44,7 +43,7 @@ h1. Game Notes
 *** Small (mining/maintenance bots)
 *** Medium (fighters)
 *** Large (small carriers, small mining ships, small transport ships)
-*** Capitol (battle ships w/w/o carrier caps, mining ships)
+*** Capital (battle ships w/w/o carrier caps, mining ships)
 ** Fire-control and auto-pilot CPUs with SW feature sets
 *** E.g. fire-control CPU that can control three guns on external HPs
 ** Model on-board energy consumption/generation/storage?
@@ -53,7 +52,7 @@ h1. Game Notes
 ** State-machine based definition of control logic
 
 * Sensors
-** Direction-dependant signature simulation
+** Direction-dependant/cross-section based signature simulation
 *** For varios sensors (radar, infrared...)
 ** "Schleichfahrt"-like ping sensors (WW2 subs again...)
 ** Simulate noise and inaccuracies
