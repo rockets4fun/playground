@@ -224,6 +224,10 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
             mesh->translation = glm::fvec3(0.0f, 0.0f, 10.0f);
             mesh->rotation = glm::angleAxis(glm::radians(90.0f), glm::fvec3(1.0f, 0.0f, 0.0f));
             mesh->modelAsset = assets.asset("Assets/Models/Pusher.obj");
+
+            // For debugging the bloom effect...
+            mesh->flags |= Renderer::Mesh::Flag::AMBIENT_ADD;
+            mesh->ambientAdd = glm::fvec4(1.0, 0.0, 0.0, 0.0);
         }
         else if (rand() % 9 > 5)
         {
