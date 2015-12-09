@@ -45,9 +45,8 @@ int main(int argc, char *argv[])
 #endif
 
     // TODO(martinmo): Implement properly resizable window (propagate to renderer)
-    SDL_Window *window = SDL_CreateWindow("RocketScience Prototype",
-        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
-        800, 450, SDL_WINDOW_OPENGL);
+    SDL_Window *window = SDL_CreateWindow(
+        "RocketScience Prototype", 16, 16, 800, 450, SDL_WINDOW_OPENGL);
 
     SDL_GLContext context = SDL_GL_CreateContext(window);
 
