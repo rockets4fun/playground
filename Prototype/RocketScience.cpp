@@ -715,6 +715,7 @@ void RocketScience::updateBuoyancyAffectors(StateDb &sdb, double timeInS)
 
             // FIXME(martinmo): Only count affectors penetrating water surface
             //affector->force += frictionForce / float(rigidBodyAffectorCount);
+
             affector->force += frictionForce;
         }
         // Torque from friction between spinning RB and water

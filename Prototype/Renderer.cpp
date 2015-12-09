@@ -604,7 +604,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         funcs->glDisable(GL_CULL_FACE);
         */
 
-        // Now render ambient as emissive into FBO (will be blurred later...)
+        // Now render ambient as emissive into half-res FBO (will be blurred later...)
         funcs->glBindFramebuffer(GL_FRAMEBUFFER, state->defFbo);
         funcs->glClearColor(0.0f, 0.0f, 0.0f, 1.0);
         funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
