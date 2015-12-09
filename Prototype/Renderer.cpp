@@ -583,8 +583,8 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         if (activeCameraHandle)
         {
             auto camera = sdb.state< Camera::Info >(activeCameraHandle);
-            worldToView = glm::lookAt(camera->position.xyz(),
-                camera->target.xyz(), glm::fvec3(0.0f, 0.0f, 1.0f));
+            worldToView = glm::lookAt(
+                camera->position, camera->target, glm::fvec3(0.0f, 0.0f, 1.0f));
         }
         glm::fvec4 renderParams = glm::fvec4(debugNormals ? 1.0f : 0.0f, 0.0, 0.0, 0.0);
 
@@ -592,6 +592,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         renderPass(sdb, Group::DEFAULT, defaultProgram, projection, worldToView, renderParams);
 
+        /*
         // Render transparent items with Z-writes off
         funcs->glEnable(GL_CULL_FACE);
         funcs->glDepthMask(GL_FALSE);
@@ -601,6 +602,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         funcs->glDisable(GL_BLEND);
         funcs->glDepthMask(GL_TRUE);
         funcs->glDisable(GL_CULL_FACE);
+        */
 
         // Now render ambient as emissive into FBO (will be blurred later...)
         funcs->glBindFramebuffer(GL_FRAMEBUFFER, state->defFbo);
