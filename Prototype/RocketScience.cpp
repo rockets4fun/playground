@@ -68,7 +68,7 @@ void pushRect2d(Assets::Model *model,
     model->positions.push_back(glm::fvec3(ll.x, ll.y, z)); model->diffuse.push_back(color);
     model->positions.push_back(glm::fvec3(ur.x, ll.y, z)); model->diffuse.push_back(color);
     // Others...
-    for (int nIdx = 0; nIdx < 6; ++nIdx) model->normals.push_back (glm::fvec3(0.0f, 0.0f, 1.0f));
+    for (int nIdx = 0; nIdx < 6; ++nIdx) model->normals.push_back(glm::fvec3(0.0f, 0.0f, 1.0f));
     for (int nIdx = 0; nIdx < 6; ++nIdx) model->ambient.push_back(glm::fvec3(0.0f, 0.0f, 0.0f));
 }
 

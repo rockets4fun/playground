@@ -761,12 +761,14 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
 
         funcs->glDrawArrays(GL_TRIANGLES, 0, privateMesh->vertexCount);
 
+        /*
         {
-            if (program->aPosition  >= 0) funcs->glEnableVertexAttribArray(program->aPosition);
-            if (program->aNormal    >= 0) funcs->glEnableVertexAttribArray(program->aNormal);
-            if (program->aDiffuse >= 0) funcs->glEnableVertexAttribArray(program->aDiffuse);
+            if (program->aPosition >= 0) funcs->glEnableVertexAttribArray(program->aPosition);
+            if (program->aNormal   >= 0) funcs->glEnableVertexAttribArray(program->aNormal);
+            if (program->aDiffuse  >= 0) funcs->glEnableVertexAttribArray(program->aDiffuse);
             if (program->aAmbient  >= 0) funcs->glEnableVertexAttribArray(program->aAmbient);
         }
+        */
     }
 }
 

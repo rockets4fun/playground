@@ -26,7 +26,7 @@
 ///
 /// With this implementation we pay (in terms of run-time) on:
 /// - Object deletion (fill hole by moving in state from end of state vector)
-/// - Object lookup through handle (ID to index traslation via per-type vector)
+/// - Object lookup through handle (ID to index translation via per-type vector)
 struct StateDb
 {
     template< class ElementType >
