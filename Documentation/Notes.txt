@@ -1,7 +1,12 @@
 h1. Current Coding Roadmap
 ----------------------------------------------------------------------------------------------------
 
-* Next steps
+* Roadmap X-Mas 2015
+** Mouse interactivity (camera control, physics manipulation)
+** Multi-window UI prototype (using ocornut's ImGui)
+** Controller/sensor FSM-based fusion/control logic prototyping
+
+* Roadmap
 ** Improve bloom effect
 *** Gaussian/triangle/multipass (FBO ping-pong) blur
 *** Try separating horizontal and vertical blur steps
