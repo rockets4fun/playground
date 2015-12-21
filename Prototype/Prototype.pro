@@ -6,14 +6,6 @@ QT -= core gui
 CONFIG += console debug_and_release
 CONFIG -= flat
 
-# Max OS X deployment target
-macx {
-    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.9
-    QMAKE_MAC_SDK = macosx10.9
-    QMAKE_LFLAGS += -F/Library/Frameworks
-}
-
-# Compiler settings
 win32 {
     # Treat all source files as C++
     QMAKE_CXXFLAGS += /TP
@@ -21,7 +13,7 @@ win32 {
     QMAKE_CXXFLAGS += /MP
 
     # Define warning level
-    QMAKE_CXXFLAGS_WARN_ON = /W4
+    QMAKE_CXXFLAGS_WARN_ON  = /W4
     # 'identifier' : unreferenced formal parameter
     QMAKE_CXXFLAGS_WARN_ON += /wd4100
     # conditional expression is constant
@@ -44,25 +36,31 @@ unix {
     QMAKE_CXXFLAGS += -std=c++11
 }
 macx {
-    QMAKE_CXXFLAGS_WARN_ON = -Wall -Wno-unused-parameter -Wno-null-dereference
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.9
+    QMAKE_MAC_SDK = macosx10.9
+    QMAKE_LFLAGS += -F/Library/Frameworks
+
+    QMAKE_CXXFLAGS_WARN_ON  = -Wall
+    QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-parameter -Wno-null-dereference
+    QMAKE_CXXFLAGS_WARN_ON += -Wno-null-dereference
 }
 
 THIRDPARTY = ../Thirdparty
 
 # Profiling using "Brofiler" on Windows
 win32 {
-    INCLUDEPATH += $${THIRDPARTY}/brofiler
-    LIBS += $${THIRDPARTY}/brofiler/ProfilerCore64.lib
+    INCLUDEPATH += $${THIRDPARTY}/Brofiler
+    LIBS += $${THIRDPARTY}/Brofiler/ProfilerCore64.lib
 }
 
 # SDL
 win32 {
-    INCLUDEPATH += $${THIRDPARTY}/sdl/include
+    INCLUDEPATH += $${THIRDPARTY}/Sdl/include
     win32:contains(QMAKE_HOST.arch, x86_64) {
-        LIBS += -L$${THIRDPARTY}/sdl/lib/x64
+        LIBS += -L$${THIRDPARTY}/Sdl/lib/x64
     }
     else {
-        LIBS += -L$${THIRDPARTY}/sdl/lib/x86
+        LIBS += -L$${THIRDPARTY}/Sdl/lib/x86
     }
     LIBS += SDL2.lib SDL2main.lib
 }
@@ -73,25 +71,25 @@ macx {
 }
 
 # glm
-win32 | macx {
+win32 | unix {
     # Clone branch "0.9.6" from "https://github.com/g-truc/glm.git"
-    INCLUDEPATH += $${THIRDPARTY}/glm
+    INCLUDEPATH += $${THIRDPARTY}/Glm
 }
 
 # Bullet
 win32 {
     # Check "USE_MSVC_RUNTIME_LIBRARY_DLL" before pressing "Generate"
-    INCLUDEPATH += $${THIRDPARTY}/bullet/src
+    INCLUDEPATH += $${THIRDPARTY}/Bullet/src
     win32:contains(QMAKE_HOST.arch, x86_64) {
         CONFIG(debug, debug|release) {
-            LIBS += $${THIRDPARTY}/bullet/lib/BulletCollision_Debug.lib
-            LIBS += $${THIRDPARTY}/bullet/lib/BulletDynamics_Debug.lib
-            LIBS += $${THIRDPARTY}/bullet/lib/LinearMath_Debug.lib
+            LIBS += $${THIRDPARTY}/Bullet/lib/BulletCollision_Debug.lib
+            LIBS += $${THIRDPARTY}/Bullet/lib/BulletDynamics_Debug.lib
+            LIBS += $${THIRDPARTY}/Bullet/lib/LinearMath_Debug.lib
         }
         CONFIG(release, debug|release) {
-            LIBS += $${THIRDPARTY}/bullet/lib/BulletCollision.lib
-            LIBS += $${THIRDPARTY}/bullet/lib/BulletDynamics.lib
-            LIBS += $${THIRDPARTY}/bullet/lib/LinearMath.lib
+            LIBS += $${THIRDPARTY}/Bullet/lib/BulletCollision.lib
+            LIBS += $${THIRDPARTY}/Bullet/lib/BulletDynamics.lib
+            LIBS += $${THIRDPARTY}/Bullet/lib/LinearMath.lib
         }
     }
     else {
@@ -101,10 +99,10 @@ macx {
     # Clone branch "master" from "https://github.com/bulletphysics/bullet3.git"
     # Use CMake to generate "Unix Makefiles" with "Use default native compilers"
     # "Configure", "Generate" and "make" from command line
-    INCLUDEPATH += $${THIRDPARTY}/bullet3/src
-    LIBS += -L$${THIRDPARTY}/bullet3/src/BulletCollision
-    LIBS += -L$${THIRDPARTY}/bullet3/src/BulletDynamics
-    LIBS += -L$${THIRDPARTY}/bullet3/src/LinearMath
+    INCLUDEPATH += $${THIRDPARTY}/Bullet3/src
+    LIBS += -L$${THIRDPARTY}/Bullet3/src/BulletCollision
+    LIBS += -L$${THIRDPARTY}/Bullet3/src/BulletDynamics
+    LIBS += -L$${THIRDPARTY}/Bullet3/src/LinearMath
     LIBS += -lBulletCollision -lBulletDynamics -lLinearMath
 }
 
@@ -113,12 +111,12 @@ win32 {
     INCLUDEPATH += $${THIRDPARTY}/assimp/include
     win32:contains(QMAKE_HOST.arch, x86_64) {
         CONFIG(debug, debug|release) {
-            LIBS += $${THIRDPARTY}/assimp/lib/assimp-vc120-mtd.lib
-            LIBS += $${THIRDPARTY}/assimp/lib/zlibstaticd.lib
+            LIBS += $${THIRDPARTY}/Assimp/lib/assimp-vc120-mtd.lib
+            LIBS += $${THIRDPARTY}/Assimp/lib/zlibstaticd.lib
         }
         CONFIG(release, debug|release) {
-            LIBS += $${THIRDPARTY}/assimp/lib/assimp-vc120-mt.lib
-            LIBS += $${THIRDPARTY}/assimp/lib/zlibstatic.lib
+            LIBS += $${THIRDPARTY}/Assimp/lib/assimp-vc120-mt.lib
+            LIBS += $${THIRDPARTY}/Assimp/lib/zlibstatic.lib
         }
     }
 }
@@ -126,8 +124,8 @@ macx {
     # Clone branch "master" from "https://github.com/assimp/assimp.git"
     # Use CMake to generate "Unix Makefiles" with "Use default native compilers"
     # "Configure", uncheck "BUILD_SHARED_LIBS", "Generate" and "make" from command line
-    INCLUDEPATH += $${THIRDPARTY}/assimp/include
-    LIBS += -L$${THIRDPARTY}/assimp/lib
+    INCLUDEPATH += $${THIRDPARTY}/Assimp/include
+    LIBS += -L$${THIRDPARTY}/Assimp/lib
     LIBS += -lassimp -lz
 }
 
