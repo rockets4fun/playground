@@ -70,13 +70,13 @@ macx {
     LIBS += -framework SDL2
 }
 
-# glm
+# =====  OpenGL Mathematics (GLM) = http://glm.g-truc.net =========================================
 win32 | unix {
     # Clone branch "0.9.6" from "https://github.com/g-truc/glm.git"
     INCLUDEPATH += $${THIRDPARTY}/Glm
 }
 
-# Bullet
+# =====  Bullet Physics Library = http://bulletphysics.org  =======================================
 win32 {
     # Check "USE_MSVC_RUNTIME_LIBRARY_DLL" before pressing "Generate"
     INCLUDEPATH += $${THIRDPARTY}/Bullet/src
@@ -106,7 +106,7 @@ macx {
     LIBS += -lBulletCollision -lBulletDynamics -lLinearMath
 }
 
-# Assimp
+# =====  Open Asset Import Library = http://assimp.sf.net =========================================
 win32 {
     INCLUDEPATH += $${THIRDPARTY}/assimp/include
     win32:contains(QMAKE_HOST.arch, x86_64) {
@@ -128,6 +128,15 @@ macx {
     LIBS += -L$${THIRDPARTY}/Assimp/lib
     LIBS += -lassimp -lz
 }
+
+# =====  ImGui - Bloat-free Immediate Mode GUI = https://github.com/ocornut/imgui  ================
+
+HEADERS += $${THIRDPARTY}/ImGui/imgui.h
+SOURCES += \
+    $${THIRDPARTY}/ImGui/imgui.cpp \
+    $${THIRDPARTY}/ImGui/imgui_draw.cpp
+
+# =================================================================================================
 
 HEADERS += \
     Template.hpp \
