@@ -149,6 +149,7 @@ SOURCES += \
 
 HEADERS += \
     Assets.hpp \
+    ImGuiEval.hpp \
     Physics.hpp \
     Platform.hpp \
     Profiling.hpp \
@@ -160,6 +161,7 @@ HEADERS += \
 
 SOURCES += \
     Assets.cpp \
+    ImGuiEval.cpp \
     Physics.cpp \
     Platform.cpp \
     Profiling.cpp \
