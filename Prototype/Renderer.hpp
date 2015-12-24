@@ -40,6 +40,7 @@ struct Renderer : public ModuleIf
 
     struct Mesh
     {
+        static u64 TYPE;
         enum Flag
         {
             HIDDEN      = 0x1,
@@ -47,7 +48,6 @@ struct Renderer : public ModuleIf
             DIFFUSE_MUL = 0x4,
             AMBIENT_ADD = 0x8
         };
-        static u64 TYPE;
         struct Info
         {
             static u64 STATE;
@@ -71,6 +71,47 @@ struct Renderer : public ModuleIf
             static u64 STATE;
             glm::fvec3 position;
             glm::fvec3 target;
+        };
+    };
+
+    struct Pass
+    {
+        static u64 TYPE;
+        enum Flag
+        {
+            CLEAR_COLOR     = 0x0001,
+            CLEAR_DEPTH     = 0x0002,
+            CLEAR_STENCIL   = 0x0003,
+
+            BLEND           = 0x0101,
+            CULL_FACE       = 0x0102,
+            DEPTH_TEST      = 0x0104,
+            SCISSOR_TEST    = 0x0108,
+
+            NO_DEPTH_WRITES = 0x0201,
+            NO_COLOR_WRITES = 0x0202
+        };
+        enum BlendFunc
+        {
+            ONE                 = 0,
+            SRC_ALPHA           = 1,
+            ONE_MINUS_SRC_ALPHA = 2
+        };
+        struct Info
+        {
+            static u64 STATE;
+            u32 flags = 0;
+            glm::fvec4 clearColor;
+            float clearDepth = 0.0f;
+            u32 blendFuncSrc = 0;
+            u32 blendFuncDst = 0;
+            u32 groups = 0;
+            u32 programAsset = 0;
+            u32 textureAsset = 0;
+            u64 cameraHandle = 0;
+            // TBD...
+            u64 srcFramebufferHandle = 0;
+            u64 dstFramebufferHandle = 0;
         };
     };
 
