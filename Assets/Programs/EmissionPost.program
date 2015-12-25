@@ -41,7 +41,7 @@ void main()
 
     vec3 smoothed = vec3(0.0, 0.0, 0.0);
     vec2 its = 1.0 / textureSize(ColorTex, 0);
-    float size = 8.0;
+    float size = 4.0;
     float sampleCount = pow(2.0 * size + 1.0, 2.0);
     for (float yOff = -size; yOff <= +size; yOff = yOff + 1.0)
     {
