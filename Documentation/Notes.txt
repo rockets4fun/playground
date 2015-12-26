@@ -2,8 +2,8 @@ h1. Current Coding Roadmap
 ----------------------------------------------------------------------------------------------------
 
 * Roadmap X-Mas 2015
+** GUI prototype (multi-window experiments, using ocornut's ImGui)
 ** Mouse interactivity (camera control, physics manipulation)
-** Multi-window UI prototype (using ocornut's ImGui)
 ** Controller/sensor FSM-based fusion/control logic prototyping
 
 * Notes on multiple windows with OpenGL output
