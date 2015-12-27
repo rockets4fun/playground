@@ -17,6 +17,7 @@
 
 #include "Renderer.hpp"
 #include "Physics.hpp"
+#include "ImGuiEval.hpp"
 #include "RocketScience.hpp"
 
 #include "Profiling.hpp"
@@ -63,22 +64,25 @@ int main(int argc, char *argv[])
     {
         Renderer renderer;
         Physics physics;
+        ImGuiEval imGuiEval;
         RocketScience rocketScience;
 
         StateDb sdb;
         Assets assets;
 
-        std::vector< ModuleIf * > modulesInit   = { &physics, &renderer, &rocketScience };
-        std::vector< ModuleIf * > modulesUpdate = { &physics, &rocketScience, &renderer };
+        std::vector< ModuleIf * > modules =
+        {
+            &physics, &rocketScience, &imGuiEval, &renderer
+        };
 
-        std::vector< ModuleIf * > modulesInitReversed = modulesInit;
-        std::reverse(modulesInitReversed.begin(), modulesInitReversed.end());
+        std::vector< ModuleIf * > modulesReversed = modules;
+        std::reverse(modulesReversed.begin(), modulesReversed.end());
 
-        for (auto &module : modulesInit)
+        for (auto &module : modules)
         {
             module->registerTypesAndStates(sdb);
         }
-        for (auto &module : modulesInit)
+        for (auto &module : modules)
         {
             if (!module->initialize(sdb, assets))
             {
@@ -103,7 +107,7 @@ int main(int argc, char *argv[])
             }
 
             double deltaTimeInS = 1.0 / 60.0;
-            for (auto &module : modulesUpdate)
+            for (auto &module : modules)
             {
                 module->update(sdb, assets, renderer, deltaTimeInS);
             }
@@ -116,7 +120,7 @@ int main(int argc, char *argv[])
             SDL_GL_SwapWindow(window);
         }
 
-        for (auto &module : modulesInitReversed)
+        for (auto &module : modulesReversed)
         {
             module->shutdown(sdb);
         }

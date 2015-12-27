@@ -130,8 +130,7 @@ macx {
 }
 
 # =====  ImGui - Bloat-free Immediate Mode GUI = https://github.com/ocornut/imgui  ================
-
-HEADERS += $${THIRDPARTY}/ImGui/imgui.h
+INCLUDEPATH += $${THIRDPARTY}/ImGui
 SOURCES += \
     $${THIRDPARTY}/ImGui/imgui.cpp \
     $${THIRDPARTY}/ImGui/imgui_draw.cpp

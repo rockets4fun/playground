@@ -17,10 +17,14 @@ struct ImGuiEval : public ModuleIf
     virtual ~ImGuiEval();
 
 public: // Application module interface
-    virtual void registerTypesAndStates(StateDb &sdb) = 0;
-    virtual bool initialize(StateDb &sdb, Assets &assets) = 0;
-    virtual void shutdown(StateDb &sdb) = 0;
-    virtual void update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS) = 0;
+    virtual void registerTypesAndStates(StateDb &sdb);
+    virtual bool initialize(StateDb &sdb, Assets &assets);
+    virtual void shutdown(StateDb &sdb);
+    virtual void update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS);
+
+private:
+    u32 m_imGuiModelAsset = 0;
+    u32 m_imGuiTextureAsset = 0;
 
 private:
     COMMON_DISABLE_COPY(ImGuiEval)
