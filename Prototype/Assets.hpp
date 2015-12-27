@@ -26,7 +26,8 @@ struct Assets
     {
         UNDEFINED,
         MODEL,
-        PROGRAM
+        PROGRAM,
+        TEXTURE
     };
 
     enum Flag
@@ -49,11 +50,12 @@ struct Assets
         struct Part
         {
             std::string name;
-            u64 triangleOffset = 0;
-            u64 triangleCount = 0;
+            u64 vertexOffset = 0;
+            u64 vertexCount = 0;
+            u32 materialHint = 0;
         };
 
-        // Vertex attributes
+        // Vertex attribute arrays
         std::vector< glm::fvec3 > positions;
         std::vector< glm::fvec3 > normals;
         std::vector< glm::fvec3 > diffuse;
@@ -78,6 +80,14 @@ struct Assets
         std::map< Type, std::string > sourceByType;
     };
 
+    struct Texture
+    {
+        typedef u32 Pixel;
+        int width = 0;
+        int height = 0;
+        std::vector< Pixel > pixels;
+    };
+
     Assets();
     virtual ~Assets();
 
@@ -86,6 +96,7 @@ struct Assets
 
     Model *refModel(u32 hash);
     Program *refProgram(u32 hash);
+    Texture *refTexture(u32 hash);
 
     void reloadModifiedAssets();
 
@@ -104,6 +115,7 @@ private:
 
     std::map< u32, Model > m_models;
     std::map< u32, Program > m_programs;
+    std::map< u32, Texture > m_textures;
 
     std::map< std::string, DepInfo > m_depsByFile;
 

@@ -74,35 +74,34 @@ Assets::Model *Assets::refModel(u32 hash)
     {
         return nullptr;
     }
-    if (ref.second->type == Type::UNDEFINED)
+    if (ref.second->type != Type::UNDEFINED)
     {
-        // This is the first time the model is referenced
-        if (ref.second->flags & Flag::PROCEDURAL)
+        return ref.first;
+    }
+
+    // This is the first time the model is referenced...
+    if (!ref.second->flags & Flag::PROCEDURAL)
+    {
+        Logging::debug("Loading model \"%s\"...", ref.second->name.c_str());
+        if (loadModel(*ref.second, *ref.first))
         {
-            // Procedural models will be defined by application logic
+            ++ref.second->version;
+            for (auto &part : ref.first->parts)
+            {
+                Logging::debug("  Part \"%s\" (%d triangles)",
+                    part.name.c_str(), part.vertexCount / 3);
+            }
+            Logging::debug("Successfully loaded model with %d triangles",
+                int(ref.first->positions.size() / 3));
         }
         else
         {
-            Logging::debug("Loading model \"%s\"...", ref.second->name.c_str());
-            if (loadModel(*ref.second, *ref.first))
-            {
-                ++ref.second->version;
-                for (auto &part : ref.first->parts)
-                {
-                    Logging::debug("  Part \"%s\" (%d triangles)",
-                        part.name.c_str(), part.triangleCount);
-                }
-                Logging::debug("Successfully loaded model with %d triangles",
-                    int(ref.first->positions.size() / 3));
-            }
-            else
-            {
-                Logging::debug("ERROR: Failed to load model \"%s\"", ref.second->name.c_str());
-                // TODO(martinmo): Default to unit cube if we fail to load?
-            }
+            Logging::debug("ERROR: Failed to load model \"%s\"", ref.second->name.c_str());
+            // TODO(martinmo): Default to unit cube if we fail to load?
         }
-        ref.second->type = Type::MODEL;
     }
+    ref.second->type = Type::MODEL;
+
     return ref.first;
 }
 
@@ -114,7 +113,12 @@ Assets::Program *Assets::refProgram(u32 hash)
     {
         return nullptr;
     }
-    if (ref.second->type == Type::UNDEFINED)
+    if (ref.second->type != Type::UNDEFINED)
+    {
+        return ref.first;
+    }
+
+    if (!ref.second->flags & Flag::PROCEDURAL)
     {
         if (loadProgram(*ref.second, *ref.first))
         {
@@ -125,8 +129,32 @@ Assets::Program *Assets::refProgram(u32 hash)
         {
             Logging::debug("ERROR: Failed to load program \"%s\"", ref.second->name.c_str());
         }
-        ref.second->type = Type::PROGRAM;
     }
+
+    ref.second->type = Type::PROGRAM;
+    return ref.first;
+}
+
+// -------------------------------------------------------------------------------------------------
+Assets::Texture *Assets::refTexture(u32 hash)
+{
+    auto ref = refAsset(hash, Type::TEXTURE, m_textures);
+    if (!ref.first)
+    {
+        return nullptr;
+    }
+    if (ref.second->type != Type::UNDEFINED)
+    {
+        return ref.first;
+    }
+
+    if (!ref.second->flags & Flag::PROCEDURAL)
+    {
+        // Only procedural textures for now...
+        return nullptr;
+    }
+    ref.second->type = Type::TEXTURE;
+
     return ref.first;
 }
 
@@ -272,13 +300,13 @@ bool Assets::loadModel(const Info &info, Model &model)
         if (partName != currentPart->name)
         {
             Model::Part newPart;
-            newPart.triangleOffset = currentPart->triangleOffset + currentPart->triangleCount;
+            newPart.vertexOffset = currentPart->vertexOffset + currentPart->vertexCount;
             newPart.name = partName;
             model.parts.push_back(newPart);
             currentPart = &model.parts.back();
         }
-        u64 overallTriangleCount = model.positions.size() / 3;
-        currentPart->triangleCount = overallTriangleCount - currentPart->triangleOffset;
+        u64 overallVertexCount = model.positions.size();
+        currentPart->vertexCount = overallVertexCount - currentPart->vertexOffset;
     }
 
     /*
@@ -294,11 +322,11 @@ bool Assets::loadModel(const Info &info, Model &model)
     };
     for (auto &part : model.parts)
     {
-        u64 firstVertexIdx = part.triangleOffset * 3;
-        u64 lastVertexIdx = firstVertexIdx + part.triangleCount * 3 - 1;
+        u64 firstVertexIdx = part.vertexOffset;
+        u64 lastVertexIdx = firstVertexIdx + part.vertexCount - 1;
         for (u64 vertexIdx = firstVertexIdx; vertexIdx <= lastVertexIdx; ++vertexIdx)
         {
-            model.colors[vertexIdx] = debugColors[(&part - &model.parts[0]) % 6];
+            model.diffuse[vertexIdx] = debugColors[(&part - &model.parts[0]) % 6];
         }
     }
     */

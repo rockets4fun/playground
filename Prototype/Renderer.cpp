@@ -154,7 +154,7 @@ struct Renderer::PrivateMesh
     const Assets::Info *assetInfo = nullptr;
 
     GLuint positionsVbo = 0;
-    GLuint normalsVbo   = 0;
+    GLuint normalsVbo = 0;
     GLuint diffuseVbo = 0;
     GLuint ambientVbo = 0;
 
@@ -691,7 +691,7 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         // Update/define vertex buffer data
         int oldVertexCount = privateMesh->vertexCount;
         privateMesh->vertexCount = int(privateMesh->model->positions.size());
-        if (privateMesh->flags & PrivateMesh::Flag::DIRTY && privateMesh->vertexCount)
+        if (privateMesh->vertexCount && (privateMesh->flags & PrivateMesh::Flag::DIRTY))
         {
             helpers->updateVertexBufferData(privateMesh->positionsVbo,
                 privateMesh->model->positions, privateMesh->usage, oldVertexCount);
@@ -759,16 +759,25 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         if (mesh->flags & Mesh::Flag::AMBIENT_ADD) ambientAdd = mesh->ambientAdd;
         funcs->glUniform4fv(program->uAmbientAdd, 1, glm::value_ptr(ambientAdd));
 
-        funcs->glDrawArrays(GL_TRIANGLES, 0, privateMesh->vertexCount);
-
-        /*
+        if (mesh->flags & Mesh::Flag::DRAW_SUBMESHES)
         {
-            if (program->aPosition >= 0) funcs->glEnableVertexAttribArray(program->aPosition);
-            if (program->aNormal   >= 0) funcs->glEnableVertexAttribArray(program->aNormal);
-            if (program->aDiffuse  >= 0) funcs->glEnableVertexAttribArray(program->aDiffuse);
-            if (program->aAmbient  >= 0) funcs->glEnableVertexAttribArray(program->aAmbient);
+            for (auto &part : privateMesh->model->parts)
+            {
+                funcs->glDrawArrays(GL_TRIANGLES,
+                    GLsizei(part.vertexOffset), GLint(part.vertexCount));
+            }
         }
-        */
+        else
+        {
+            funcs->glDrawArrays(GL_TRIANGLES, 0, privateMesh->vertexCount);
+        }
+
+        {
+            if (program->aPosition >= 0) funcs->glDisableVertexAttribArray(program->aPosition);
+            if (program->aNormal   >= 0) funcs->glDisableVertexAttribArray(program->aNormal);
+            if (program->aDiffuse  >= 0) funcs->glDisableVertexAttribArray(program->aDiffuse);
+            if (program->aAmbient  >= 0) funcs->glDisableVertexAttribArray(program->aAmbient);
+        }
     }
 }
 

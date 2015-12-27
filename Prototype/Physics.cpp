@@ -177,13 +177,13 @@ Physics::PrivateRigidBody::PrivateRigidBody(
             {
                 /*
                 btConvexHullShape *shape = new btConvexHullShape(
-                    &model->positions[subMesh.triangleOffset * 3].x, subMesh.triangleCount * 3);
+                    &model->positions[subMesh.vertexOffset * 3].x, subMesh.triangleCount * 3);
                 shape->recalcLocalAabb();
                 */
 
                 btConvexHullShape *shape = new btConvexHullShape;
-                const glm::fvec3 *positionIter = &model->positions[part.triangleOffset * 3];
-                const u64 pointCount = part.triangleCount * 3;
+                const glm::fvec3 *positionIter = &model->positions[part.vertexOffset];
+                const u64 pointCount = part.vertexCount;
                 for (u64 pointIdx = 0; pointIdx < pointCount; ++pointIdx)
                 {
                     btVector3 point = btVector3(positionIter->x, positionIter->y, positionIter->z);
