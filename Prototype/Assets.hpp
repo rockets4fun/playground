@@ -47,6 +47,25 @@ struct Assets
 
     struct Model
     {
+        struct Attr
+        {
+            enum CompType
+            {
+                FLOAT = 0,
+                U8
+            };
+
+            std::string name;
+            void *data = nullptr;                // pointer to actual per-vertex data
+            CompType compType = CompType::FLOAT; // type of per-vertex component(s)
+            int compCount = 3;                   // per-vertex component count
+            int strideInB = 0;                   // offset into interleaved attribute array
+
+            Attr(const std::string &nameInit, void *dataInit,
+                CompType compTypeInit = CompType::FLOAT, int compCountInit = 3,
+                int strideInBInit = 0);
+        };
+
         struct Part
         {
             std::string name;
@@ -55,19 +74,27 @@ struct Assets
             u32 materialHint = 0;
         };
 
-        // Vertex attribute arrays
+        // Default vertex attribute arrays
         std::vector< glm::fvec3 > positions;
         std::vector< glm::fvec3 > normals;
         std::vector< glm::fvec3 > diffuse;
         std::vector< glm::fvec3 > ambient;
+        // Generic vertex attribute arrays
+        std::vector< float > generic1;
+        std::vector< float > generic2;
+        std::vector< float > generic3;
+        std::vector< float > generic4;
 
+        std::vector< Attr > attrs;
         std::vector< Part > parts;
 
-        // TODO(martinmo): Think about restructuring into meshes storing
-        // TODO(martinmo): - Separate name and hash
-        // TODO(martinmo): - Primitive type (others than just triangles...)
-        // TODO(martinmo): - Indices into actual mesh data stored in model?
+        u64 overallVertexCount = 0;
+
+        void clear();
+        void setDefaultAttrs();
     };
+
+    typedef Model::Attr MAttr;
 
     struct Program
     {

@@ -36,6 +36,14 @@ Assets::~Assets()
 }
 
 // -------------------------------------------------------------------------------------------------
+Assets::Model::Attr::Attr(const std::string &nameInit, void *dataInit,
+    CompType compTypeInit, int compCountInit, int strideInBInit) :
+    name(nameInit), data(dataInit), compType(compTypeInit), compCount(compCountInit),
+    strideInB(strideInBInit)
+{
+}
+
+// -------------------------------------------------------------------------------------------------
 u32 Assets::asset(const std::string &name, u32 flags)
 {
     u32 hash = krHash(name.c_str(), name.length());
@@ -199,16 +207,52 @@ bool Assets::loadFileIntoString(const std::string &filename, std::string &conten
 }
 
 // -------------------------------------------------------------------------------------------------
+void Assets::Model::clear()
+{
+    overallVertexCount = 0;
+
+    positions.clear();
+    normals.clear();
+    diffuse.clear();
+    ambient.clear();
+
+    attrs.clear();
+    parts.clear();
+}
+
+// -------------------------------------------------------------------------------------------------
+void Assets::Model::setDefaultAttrs()
+{
+    overallVertexCount = positions.size();
+
+    COMMON_ASSERT(overallVertexCount % 3 == 0);
+    if (!parts.empty())
+    {
+        COMMON_ASSERT(overallVertexCount ==
+            parts.back().vertexOffset + parts.back().vertexCount);
+    }
+
+    COMMON_ASSERT(positions.size() == overallVertexCount);
+    COMMON_ASSERT(normals.size()   == overallVertexCount);
+    COMMON_ASSERT(diffuse.size()   == overallVertexCount);
+    COMMON_ASSERT(ambient.size()   == overallVertexCount);
+
+    attrs =
+    {
+        MAttr("Position", &positions[0].x),
+        MAttr("Normal",   &normals  [0].x),
+        MAttr("Diffuse",  &diffuse  [0].r),
+        MAttr("Ambient",  &ambient  [0].r),
+    };
+}
+
+// -------------------------------------------------------------------------------------------------
 bool Assets::loadModel(const Info &info, Model &model)
 {
     resetDeps(info.hash);
     registerDep(info.hash, info.name);
 
-    model.positions.clear();
-    model.normals.clear();
-    model.diffuse.clear();
-    model.ambient.clear();
-    model.parts.clear();
+    model.clear();
 
     const aiScene *scene = m_privateState->importer.ReadFile(info.name, aiProcess_Triangulate);
     if (!scene)
@@ -305,8 +349,8 @@ bool Assets::loadModel(const Info &info, Model &model)
             model.parts.push_back(newPart);
             currentPart = &model.parts.back();
         }
-        u64 overallVertexCount = model.positions.size();
-        currentPart->vertexCount = overallVertexCount - currentPart->vertexOffset;
+        model.overallVertexCount = model.positions.size();
+        currentPart->vertexCount = model.overallVertexCount - currentPart->vertexOffset;
     }
 
     /*
@@ -331,8 +375,7 @@ bool Assets::loadModel(const Info &info, Model &model)
     }
     */
 
-    COMMON_ASSERT(model.normals.size() == model.positions.size());
-    COMMON_ASSERT(model.positions.size() % 3 == 0);
+    model.setDefaultAttrs();
 
     return true;
 }

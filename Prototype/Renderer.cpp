@@ -24,6 +24,10 @@
 
 // Include file containing all OpenGL declarations and definitions
 // ==> This will never be included outside of this class
+
+#ifdef COMMON_WINDOWS
+#   define NOMINMAX
+#endif
 #include "CoreGl/glcorearb.h"
 
 // Structs declared in implementaion file because we do not want to
@@ -94,6 +98,7 @@ struct Renderer::PrivateFuncs
     PFNGLUNIFORMMATRIX4FVPROC   glUniformMatrix4fv = nullptr;
     // Vertex shader attribute functions
     PFNGLGETATTRIBLOCATIONPROC        glGetAttribLocation = nullptr;
+    PFNGLBINDATTRIBLOCATIONPROC       glBindAttribLocation = nullptr;
     PFNGLVERTEXATTRIBPOINTERPROC      glVertexAttribPointer = nullptr;
     PFNGLENABLEVERTEXATTRIBARRAYPROC  glEnableVertexAttribArray = nullptr;
     PFNGLDISABLEVERTEXATTRIBARRAYPROC glDisableVertexAttribArray = nullptr;
@@ -106,8 +111,6 @@ struct Renderer::PrivateFuncs
 // -------------------------------------------------------------------------------------------------
 struct Renderer::PrivateState
 {
-    GLuint defVao = 0;
-
     GLuint defFbo = 0;
     GLuint colorTex = 0;
     GLuint depthTex = 0;
@@ -116,7 +119,8 @@ struct Renderer::PrivateState
     u64 emissionProgramHandle     = 0;
     u64 emissionPostProgramHandle = 0;
 
-    std::map< u32, PrivateMesh > meshes;
+    std::map< u32, PrivateMesh > meshesByModelAsset;
+    std::map< std::string, GLuint > attrIndicesByName;
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -130,12 +134,10 @@ struct Renderer::PrivateHelpers
     PrivateHelpers(PrivateFuncs *funcs);
 
     bool updateShader(GLuint &shader, GLenum type, const std::string &source);
-    bool updateProgram(GLuint &program, GLuint vertexShader, GLuint fragmentShader);
+    bool updateProgram(GLuint &program, GLuint vertexShader, GLuint fragmentShader,
+        const std::map< std::string, GLuint > &attrIndicesByName);
 
     void printInfoLog(GLuint object, GetProc getProc, InfoLogProc infoLogProc);
-
-    void updateVertexBufferData(GLuint vbo,
-            const std::vector< glm::fvec3 > &data, GLenum usage, int prevVertexCount = 0);
 
 private:
     PrivateFuncs *funcs = nullptr;
@@ -146,22 +148,26 @@ struct Renderer::PrivateMesh
 {
     enum Flag
     {
-        DYNAMIC = 0x1,
-        DIRTY   = 0x2
+        DYNAMIC = 0x1, // duplicate from 'assetInfo->flags' to avoid dereferenciation
+        DIRTY   = 0x2  // data still needs to be uploaded this frame
     };
 
+    struct VboInfo
+    {
+        GLuint vbo = 0;
+        std::vector< Assets::MAttr * > attrs;
+        int vertexStrideInB = 0;
+    };
+
+    u32 flags = 0;
     Assets::Model *model = nullptr;
     const Assets::Info *assetInfo = nullptr;
 
-    GLuint positionsVbo = 0;
-    GLuint normalsVbo = 0;
-    GLuint diffuseVbo = 0;
-    GLuint ambientVbo = 0;
-
+    GLuint vao = 0;
     GLenum usage = GL_STATIC_DRAW;
+    u64 uploadedVertexCount = 0;
 
-    int vertexCount = 0;
-    u32 flags = 0;
+    std::map< void *, VboInfo > vbosByInitialData;
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -185,11 +191,6 @@ struct Renderer::Program::PrivateInfo
     GLint uRenderParams = 0;
     GLint uColorTex = 0;
     GLint uDepthTex = 0;
-    // Attributes
-    GLint aPosition = 0;
-    GLint aNormal = 0;
-    GLint aDiffuse = 0;
-    GLint aAmbient = 0;
 };
 u64 Renderer::Program::PrivateInfo::STATE = 0;
 
@@ -251,7 +252,8 @@ bool Renderer::PrivateHelpers::updateShader(
 
 // -------------------------------------------------------------------------------------------------
 bool Renderer::PrivateHelpers::updateProgram(
-    GLuint &program, GLuint vertexShader, GLuint fragmentShader)
+    GLuint &program, GLuint vertexShader, GLuint fragmentShader,
+    const std::map< std::string, GLuint > &attrIndicesByName)
 {
     if (!program)
     {
@@ -265,6 +267,16 @@ bool Renderer::PrivateHelpers::updateProgram(
 
     funcs->glAttachShader(program, vertexShader);
     funcs->glAttachShader(program, fragmentShader);
+
+    // Use 'glBindAttribLocation()' before linking the program to force assignment of
+    // attributes to specific fixed locations (e.g. position always 0, color always 1 etc.)
+    // ==> This allows us to use the same VAO for all shader programs
+    for (auto &attrIndexMapEntry : attrIndicesByName)
+    {
+        funcs->glBindAttribLocation(program,
+            attrIndexMapEntry.second, attrIndexMapEntry.first.c_str());
+    }
+
     funcs->glLinkProgram(program);
 
     printInfoLog(program, funcs->glGetProgramiv, funcs->glGetProgramInfoLog);
@@ -294,22 +306,6 @@ void Renderer::PrivateHelpers::printInfoLog(
         Logging::debug("----------------------------------------");
         Logging::debug("%s", infoLog.c_str());
         Logging::debug("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
-    }
-}
-
-// -------------------------------------------------------------------------------------------------
-void Renderer::PrivateHelpers::updateVertexBufferData(GLuint vbo,
-        const std::vector< glm::fvec3 > &data, GLenum usage, int prevVertexCount)
-{
-    int vertexCount = int(data.size());
-    funcs->glBindBuffer(GL_ARRAY_BUFFER, vbo);
-    if (vertexCount != prevVertexCount)
-    {
-        funcs->glBufferData(GL_ARRAY_BUFFER, vertexCount * sizeof(glm::fvec3), &data[0].x, usage);
-    }
-    else
-    {
-        funcs->glBufferSubData(GL_ARRAY_BUFFER, 0, vertexCount * sizeof(glm::fvec3), &data[0].x);
     }
 }
 
@@ -377,9 +373,6 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
     funcs->glEnable(GL_CULL_FACE);
     */
 
-    funcs->glGenVertexArrays(1, &state->defVao);
-    funcs->glBindVertexArray(state->defVao);
-
     // Set up frame buffer for playing around...
     {
         // Color texture
@@ -434,8 +427,6 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
 // -------------------------------------------------------------------------------------------------
 void Renderer::shutdown(StateDb &sdb)
 {
-    if (state->defVao) funcs->glDeleteVertexArrays(1, &state->defVao);
-
     auto programsPrivate = sdb.stateAll< Program::PrivateInfo >();
     for (auto programPrivate : programsPrivate)
     {
@@ -444,9 +435,13 @@ void Renderer::shutdown(StateDb &sdb)
         if (programPrivate->vertexShader)   funcs->glDeleteShader (programPrivate->vertexShader);
     }
 
-    for (auto &mapIter : state->meshes)
+    for (auto &meshesIt : state->meshesByModelAsset)
     {
-        funcs->glDeleteBuffers(3, &mapIter.second.positionsVbo);
+        for (auto &vbosByDataIter : meshesIt.second.vbosByInitialData)
+        {
+            funcs->glDeleteBuffers(1, &vbosByDataIter.second.vbo);
+        }
+        funcs->glDeleteVertexArrays(1, &meshesIt.second.vao);
     }
 
     helpers = nullptr;
@@ -461,6 +456,71 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
     {
         PROFILING_SECTION(FinishBegin, glm::fvec3(1.0f, 0.5f, 0.0f))
         funcs->glFinish();
+    }
+
+    // Prepare references to per-model private data
+    auto meshes = sdb.stateAll< Mesh::Info >();
+    auto meshesPrivate = sdb.stateAll< Mesh::PrivateInfo >();
+    for (auto meshPrivate : meshesPrivate)
+    {
+        if (!meshPrivate->privateMesh)
+        {
+            auto mesh = meshes.rel(meshesPrivate, meshPrivate);
+            meshPrivate->privateMesh = &state->meshesByModelAsset[mesh->modelAsset];
+        }
+    }
+    // Prepare per-model private data
+    for (auto &meshMapEntry : state->meshesByModelAsset)
+    {
+        u32 modelAsset = meshMapEntry.first;
+        PrivateMesh *privateMesh = &meshMapEntry.second;
+        if (privateMesh->model)
+        {
+            if (privateMesh->flags & PrivateMesh::Flag::DYNAMIC)
+            {
+                privateMesh->flags |= PrivateMesh::Flag::DIRTY;
+            }
+            continue;
+        }
+        // TODO(martinmo): Delay loading the model further until we actually render?
+        // TODO(martinmo): ==> Practical applications might even prefetch on init...
+        // TODO(martinmo): ==> We need to know about models' attributes for programs...
+        // TODO(martinmo): ==> Answer seems to be no ATM
+        privateMesh->model = assets.refModel(modelAsset);
+        COMMON_ASSERT(privateMesh->model);
+        // TODO(martinmo): Add way of getting asset and flags in one call/lookup
+        privateMesh->assetInfo = assets.assetInfo(modelAsset);
+        COMMON_ASSERT(privateMesh->assetInfo);
+        if (privateMesh->assetInfo->flags & Assets::Flag::DYNAMIC)
+        {
+            privateMesh->flags |= PrivateMesh::Flag::DYNAMIC;
+            privateMesh->usage = GL_DYNAMIC_DRAW;
+        }
+        funcs->glGenVertexArrays(1, &privateMesh->vao);
+        funcs->glBindVertexArray(privateMesh->vao);
+        for (auto &attr : privateMesh->model->attrs)
+        {
+            PrivateMesh::VboInfo &vboInfo = privateMesh->vbosByInitialData[attr.data];
+            int compSize = 0; GLenum type = 0;
+            switch (attr.compType)
+            {
+                case Assets::MAttr::FLOAT : compSize = 4; type = GL_FLOAT;         break;
+                case Assets::MAttr::U8    : compSize = 1; type = GL_UNSIGNED_BYTE; break;
+            }
+            int attrStrideInB = attr.strideInB + compSize * attr.compCount;
+            vboInfo.vertexStrideInB = glm::max(attrStrideInB, vboInfo.vertexStrideInB);
+
+            GLuint &idx = state->attrIndicesByName[attr.name];
+            if (!idx) idx = GLuint(state->attrIndicesByName.size());
+
+            if (!vboInfo.vbo) funcs->glGenBuffers(1, &vboInfo.vbo);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, vboInfo.vbo);
+            funcs->glVertexAttribPointer(idx, attr.compCount, type, GL_FALSE, attr.strideInB, 0);
+            funcs->glEnableVertexAttribArray(idx);
+
+            vboInfo.attrs.push_back(&attr);
+        }
+        privateMesh->flags |= PrivateMesh::Flag::DIRTY;
     }
 
     // Prepare/update programs
@@ -479,7 +539,6 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         {
             if (assetVersion > 1)
             {
-                funcs->glUseProgram(0);
                 funcs->glDetachShader(programPrivate->program, programPrivate->fragmentShader);
                 funcs->glDetachShader(programPrivate->program, programPrivate->vertexShader);
             }
@@ -489,7 +548,8 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
             helpers->updateShader(programPrivate->fragmentShader, GL_FRAGMENT_SHADER,
                 programAsset->sourceByType[Assets::Program::FRAGMENT_SHADER]);
             helpers->updateProgram(programPrivate->program,
-                programPrivate->vertexShader, programPrivate->fragmentShader);
+                programPrivate->vertexShader, programPrivate->fragmentShader,
+                state->attrIndicesByName);
 
             // TODO(martinmo): Use Uniform Buffer Objects to pass uniforms to shaders
 
@@ -510,63 +570,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
             programPrivate->uDepthTex =
                 funcs->glGetUniformLocation(programPrivate->program, "DepthTex");
 
-            // TODO(martinmo): Use 'glBindAttribLocation()' before linking the program to force
-            // TODO(martinmo): assignment of attributes to specific fixed locations
-            // TODO(martinmo): (e.g. position always 0, color always 1 etc.)
-            // TODO(martinmo): ==> This allows us to use the same VAO for different shader programs
-
-            programPrivate->aPosition =
-                funcs->glGetAttribLocation(programPrivate->program, "Position");
-            programPrivate->aNormal =
-                funcs->glGetAttribLocation(programPrivate->program, "Normal");
-            programPrivate->aDiffuse =
-                funcs->glGetAttribLocation(programPrivate->program, "Diffuse");
-            programPrivate->aAmbient =
-                funcs->glGetAttribLocation(programPrivate->program, "Ambient");
-
             programPrivate->assetVersionLoaded = assetVersion;
-        }
-    }
-
-    // Prepare references to per-model private data
-    auto meshes = sdb.stateAll< Mesh::Info >();
-    auto meshesPrivate = sdb.stateAll< Mesh::PrivateInfo >();
-    for (auto meshPrivate : meshesPrivate)
-    {
-        if (!meshPrivate->privateMesh)
-        {
-            auto mesh = meshes.rel(meshesPrivate, meshPrivate);
-            meshPrivate->privateMesh = &state->meshes[mesh->modelAsset];
-        }
-    }
-    // Prepare per-model private data
-    for (auto &meshMapEntry : state->meshes)
-    {
-        u32 modelAsset = meshMapEntry.first;
-        PrivateMesh *privateMesh = &meshMapEntry.second;
-        // TODO(martinmo): Delay loading the model further until we actually render?
-        // TODO(martinmo): ==> Practical applications might even prefetch on init...
-        if (!privateMesh->model)
-        {
-            privateMesh->model = assets.refModel(modelAsset);
-            COMMON_ASSERT(privateMesh->model);
-            privateMesh->assetInfo = assets.assetInfo(modelAsset);
-            COMMON_ASSERT(privateMesh->assetInfo);
-            // TODO(martinmo): Add way of getting asset and flags in one call/lookup
-            if (privateMesh->assetInfo->flags & Assets::Flag::DYNAMIC)
-            {
-                privateMesh->flags |= PrivateMesh::Flag::DYNAMIC;
-                privateMesh->usage = GL_DYNAMIC_DRAW;
-            }
-            funcs->glGenBuffers(1, &privateMesh->positionsVbo);
-            funcs->glGenBuffers(1, &privateMesh->normalsVbo);
-            funcs->glGenBuffers(1, &privateMesh->diffuseVbo);
-            funcs->glGenBuffers(1, &privateMesh->ambientVbo);
-            privateMesh->flags |= PrivateMesh::Flag::DIRTY;
-        }
-        else if (privateMesh->flags & PrivateMesh::Flag::DYNAMIC)
-        {
-            privateMesh->flags |= PrivateMesh::Flag::DIRTY;
         }
     }
 
@@ -625,6 +629,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         GLint colorTex = 0; GLint depthTex = 1;
         if (emissionPostProgram->uColorTex >= 0) funcs->glUniform1i(emissionPostProgram->uColorTex, colorTex);
         if (emissionPostProgram->uDepthTex >= 0) funcs->glUniform1i(emissionPostProgram->uDepthTex, depthTex);
+        funcs->glUseProgram(0);
 
         funcs->glEnable(GL_BLEND);
         funcs->glBlendFunc(GL_ONE, GL_ONE);
@@ -689,52 +694,29 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         PrivateMesh *privateMesh = meshPrivate->privateMesh;
 
         // Update/define vertex buffer data
-        int oldVertexCount = privateMesh->vertexCount;
-        privateMesh->vertexCount = int(privateMesh->model->positions.size());
-        if (privateMesh->vertexCount && (privateMesh->flags & PrivateMesh::Flag::DIRTY))
+        if (privateMesh->flags & PrivateMesh::Flag::DIRTY)
         {
-            helpers->updateVertexBufferData(privateMesh->positionsVbo,
-                privateMesh->model->positions, privateMesh->usage, oldVertexCount);
-            helpers->updateVertexBufferData(privateMesh->normalsVbo,
-                privateMesh->model->normals, privateMesh->usage, oldVertexCount);
-            helpers->updateVertexBufferData(privateMesh->diffuseVbo,
-                privateMesh->model->diffuse, privateMesh->usage, oldVertexCount);
-            helpers->updateVertexBufferData(privateMesh->ambientVbo,
-                privateMesh->model->ambient, privateMesh->usage, oldVertexCount);
+            u64 vertexCount = privateMesh->model->overallVertexCount;
+            for (auto &vbosIt : privateMesh->vbosByInitialData)
+            {
+                void *data = vbosIt.second.attrs[0]->data;
+                u64 dataSize = vertexCount * vbosIt.second.vertexStrideInB;
+                funcs->glBindBuffer(GL_ARRAY_BUFFER, vbosIt.second.vbo);
+                if (vertexCount != privateMesh->uploadedVertexCount)
+                {
+                    funcs->glBufferData(GL_ARRAY_BUFFER, dataSize, data, privateMesh->usage);
+                }
+                else
+                {
+                    funcs->glBufferSubData(GL_ARRAY_BUFFER, 0, dataSize, data);
+                }
+            }
+            privateMesh->uploadedVertexCount = vertexCount;
             privateMesh->flags &= ~PrivateMesh::Flag::DIRTY;
         }
-        if (!privateMesh->vertexCount)
+        if (!privateMesh->uploadedVertexCount)
         {
             continue;
-        }
-
-        // Vertex attribute assignments are stored inside the bound VAO
-        // ==> Think about creating one VAO per renderable mesh/program combo?
-        {
-            if (program->aPosition >= 0)
-            {
-                funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->positionsVbo);
-                funcs->glVertexAttribPointer(program->aPosition, 3, GL_FLOAT, GL_FALSE, 0, 0);
-                funcs->glEnableVertexAttribArray(program->aPosition);
-            }
-            if (program->aNormal >= 0)
-            {
-                funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->normalsVbo);
-                funcs->glVertexAttribPointer(program->aNormal, 3, GL_FLOAT, GL_FALSE, 0, 0);
-                funcs->glEnableVertexAttribArray(program->aNormal);
-            }
-            if (program->aDiffuse >= 0)
-            {
-                funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->diffuseVbo);
-                funcs->glVertexAttribPointer(program->aDiffuse, 3, GL_FLOAT, GL_FALSE, 0, 0);
-                funcs->glEnableVertexAttribArray(program->aDiffuse);
-            }
-            if (program->aAmbient >= 0)
-            {
-                funcs->glBindBuffer(GL_ARRAY_BUFFER, privateMesh->ambientVbo);
-                funcs->glVertexAttribPointer(program->aAmbient, 3, GL_FLOAT, GL_FALSE, 0, 0);
-                funcs->glEnableVertexAttribArray(program->aAmbient);
-            }
         }
 
         glm::fmat4 modelToWorld;
@@ -759,6 +741,7 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         if (mesh->flags & Mesh::Flag::AMBIENT_ADD) ambientAdd = mesh->ambientAdd;
         funcs->glUniform4fv(program->uAmbientAdd, 1, glm::value_ptr(ambientAdd));
 
+        funcs->glBindVertexArray(privateMesh->vao);
         if (mesh->flags & Mesh::Flag::DRAW_SUBMESHES)
         {
             for (auto &part : privateMesh->model->parts)
@@ -769,16 +752,11 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         }
         else
         {
-            funcs->glDrawArrays(GL_TRIANGLES, 0, privateMesh->vertexCount);
+            funcs->glDrawArrays(GL_TRIANGLES, 0, GLsizei(privateMesh->uploadedVertexCount));
         }
-
-        {
-            if (program->aPosition >= 0) funcs->glDisableVertexAttribArray(program->aPosition);
-            if (program->aNormal   >= 0) funcs->glDisableVertexAttribArray(program->aNormal);
-            if (program->aDiffuse  >= 0) funcs->glDisableVertexAttribArray(program->aDiffuse);
-            if (program->aAmbient  >= 0) funcs->glDisableVertexAttribArray(program->aAmbient);
-        }
+        funcs->glBindVertexArray(0);
     }
+    funcs->glUseProgram(0);
 }
 
 /*
@@ -866,6 +844,7 @@ bool Renderer::initializeGl()
     RENDERER_GL_FUNC(glUniformMatrix4fv);
 
     RENDERER_GL_FUNC(glGetAttribLocation);
+    RENDERER_GL_FUNC(glBindAttribLocation);
     RENDERER_GL_FUNC(glVertexAttribPointer);
     RENDERER_GL_FUNC(glEnableVertexAttribArray);
     RENDERER_GL_FUNC(glDisableVertexAttribArray);

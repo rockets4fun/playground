@@ -98,11 +98,11 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
     camera->target   = glm::fvec3(  0.0f,   0.0f,  5.0f);
 
     m_oceanModelAsset = assets.asset(
-        "procedural/ocean", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
+        "Procedural/Models/Ocean", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
     m_uiModelAsset = assets.asset(
-        "procedural/ui", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
+        "Procedural/Models/Ui", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
     m_postModelAsset = assets.asset(
-        "procedural/post", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
+        "Procedural/Models/Post", Assets::Flag::PROCEDURAL);
 
     {
         auto mesh = sdb.create< Renderer::Mesh::Info >(m_arrowMeshHandle);
@@ -122,6 +122,7 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
         model->diffuse[1] = model->diffuse[3] = glm::fvec3(1.0f, 1.0f, 0.0f);
         model->diffuse[2] =                     glm::fvec3(0.0f, 1.0f, 0.0f);
         model->diffuse[5] =                     glm::fvec3(1.0f, 0.0f, 0.0f);
+        model->setDefaultAttrs();
     }
     {
         auto mesh = sdb.create< Renderer::Mesh::Info >();
@@ -156,12 +157,13 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
                 glm::fvec3 normal(0.0f, 0.0f, 1.0f);
                 for (int vIdx = 0; vIdx < 6; ++vIdx) model->normals.push_back(normal);
                 // Triangle colors
-                float rand = glm::linearRand(0.0f, +0.3f);
+                float rand = glm::linearRand(+0.0f, +0.3f);
                 glm::fvec3 color(0.4f + rand, 0.4f + rand, 0.4f + rand);
                 for (int vIdx = 0; vIdx < 6; ++vIdx) model->diffuse.push_back(color);
                 for (int vIdx = 0; vIdx < 6; ++vIdx) model->ambient.push_back(glm::fvec3(0.0));
             }
         }
+        model->setDefaultAttrs();
         // Instantiate ocean tiles
         const int tileCount = 4;
         for (int y = 0; y < tileCount; ++y)
@@ -226,6 +228,7 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
             mesh->modelAsset = assets.asset("Assets/Models/Pusher.obj");
 
             // For debugging the bloom effect...
+            mesh->flags |= Renderer::Mesh::Flag::DRAW_SUBMESHES;
             mesh->flags |= Renderer::Mesh::Flag::AMBIENT_ADD;
             mesh->ambientAdd = glm::fvec4(1.0, 0.0, 0.0, 0.0);
         }
@@ -539,10 +542,8 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         PROFILING_SECTION(UpdateUi, glm::fvec3(1.0f, 0.0f, 1.0f))
 
         auto uiModel = assets.refModel(m_uiModelAsset);
-        uiModel->positions.clear();
-        uiModel->normals.clear();
-        uiModel->diffuse.clear();
-        uiModel->ambient.clear();
+
+        uiModel->clear();
 
         Profiling *profiling = Profiling::instance();
         Profiling::Thread *mainThread = profiling->mainThreadPrevFrame();
@@ -552,6 +553,8 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         float barPx    = 30.0f;
         float shrinkPx =  5.0f;
         float outlPx   =  1.0f;
+
+        const float maxFt = 1000.0f / 60.0f;
 
         glm::fvec3 white(1.0f, 1.0f, 1.0f);
         glm::fvec3 black(0.0f, 0.0f, 0.0f);
@@ -575,6 +578,8 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 
                 pushRect2d       (uiModel,         ll, uro, color, callDepth);
                 pushRectOutline2d(uiModel, outlPx, ll, ur , black, callDepth + 0.5f);
+#if 0
+#endif
             }
         }
         for (int msIdx = 0; msIdx < 16; ++msIdx)
@@ -583,10 +588,11 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
                 glm::fvec2(offsPx + msPx * (msIdx + 0) + outlPx, offsPx        ),
                 glm::fvec2(offsPx + msPx * (msIdx + 1)         , offsPx + barPx), black, 5.0f);
         }
-        const float maxFt = 1000.0f / 60.0f;
         pushRectOutline2d(uiModel, outlPx * 2.0f,
             glm::fvec2(offsPx                        , offsPx - outlPx        ),
             glm::fvec2(offsPx + msPx * maxFt + outlPx, offsPx + outlPx + barPx), red, 10.0f);
+
+        uiModel->setDefaultAttrs();
     }
 }
 
