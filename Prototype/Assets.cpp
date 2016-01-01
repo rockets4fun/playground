@@ -37,9 +37,9 @@ Assets::~Assets()
 
 // -------------------------------------------------------------------------------------------------
 Assets::Model::Attr::Attr(const std::string &nameInit, void *dataInit,
-    CompType compTypeInit, int compCountInit, int strideInBInit) :
-    name(nameInit), data(dataInit), compType(compTypeInit), compCount(compCountInit),
-    strideInB(strideInBInit)
+    CompType typeInit, u64 countInit, u64 offsetInBInit) :
+    name(nameInit), data(dataInit), type(typeInit), count(countInit),
+    offsetInB(offsetInBInit)
 {
 }
 
@@ -96,8 +96,7 @@ Assets::Model *Assets::refModel(u32 hash)
             ++ref.second->version;
             for (auto &part : ref.first->parts)
             {
-                Logging::debug("  Part \"%s\" (%d triangles)",
-                    part.name.c_str(), part.vertexCount / 3);
+                Logging::debug("  Part \"%s\" (%d triangles)", part.name.c_str(), part.count / 3);
             }
             Logging::debug("Successfully loaded model with %d triangles",
                 int(ref.first->positions.size() / 3));
@@ -209,12 +208,15 @@ bool Assets::loadFileIntoString(const std::string &filename, std::string &conten
 // -------------------------------------------------------------------------------------------------
 void Assets::Model::clear()
 {
-    overallVertexCount = 0;
+    vertexCount = 0;
 
     positions.clear();
     normals.clear();
     diffuse.clear();
     ambient.clear();
+
+    indices.clear();
+    indicesAttr = Attr("", nullptr, Attr::U32, 0);
 
     attrs.clear();
     parts.clear();
@@ -223,19 +225,32 @@ void Assets::Model::clear()
 // -------------------------------------------------------------------------------------------------
 void Assets::Model::setDefaultAttrs()
 {
-    overallVertexCount = positions.size();
-
-    COMMON_ASSERT(overallVertexCount % 3 == 0);
-    if (!parts.empty())
+    if (!indices.empty())
     {
-        COMMON_ASSERT(overallVertexCount ==
-            parts.back().vertexOffset + parts.back().vertexCount);
+        indicesAttr = Attr("", &indices[0], Attr::U32, indices.size());
+    }
+    else
+    {
+        indicesAttr = Attr("", nullptr, Attr::U32, 0);
     }
 
-    COMMON_ASSERT(positions.size() == overallVertexCount);
-    COMMON_ASSERT(normals.size()   == overallVertexCount);
-    COMMON_ASSERT(diffuse.size()   == overallVertexCount);
-    COMMON_ASSERT(ambient.size()   == overallVertexCount);
+    vertexCount = positions.size();
+
+    if (!parts.empty())
+    {
+        u64 overallCount = indicesAttr.count ? indicesAttr.count : vertexCount;
+        COMMON_ASSERT(overallCount == parts.back().offset + parts.back().count);
+    }
+
+    if (!indicesAttr.count)
+    {
+        COMMON_ASSERT(vertexCount % 3 == 0);
+    }
+
+    COMMON_ASSERT(positions.size() == vertexCount);
+    COMMON_ASSERT(normals.size()   == vertexCount);
+    COMMON_ASSERT(diffuse.size()   == vertexCount);
+    COMMON_ASSERT(ambient.size()   == vertexCount);
 
     attrs =
     {
@@ -344,13 +359,13 @@ bool Assets::loadModel(const Info &info, Model &model)
         if (partName != currentPart->name)
         {
             Model::Part newPart;
-            newPart.vertexOffset = currentPart->vertexOffset + currentPart->vertexCount;
+            newPart.offset = currentPart->offset + currentPart->count;
             newPart.name = partName;
             model.parts.push_back(newPart);
             currentPart = &model.parts.back();
         }
-        model.overallVertexCount = model.positions.size();
-        currentPart->vertexCount = model.overallVertexCount - currentPart->vertexOffset;
+        model.vertexCount = model.positions.size();
+        currentPart->count = model.vertexCount - currentPart->offset;
     }
 
     /*

@@ -104,8 +104,25 @@ struct Renderer::PrivateFuncs
     PFNGLDISABLEVERTEXATTRIBARRAYPROC glDisableVertexAttribArray = nullptr;
     // Drawing command functions
     PFNGLDRAWARRAYSPROC glDrawArrays = nullptr;
+    PFNGLDRAWELEMENTSPROC glDrawElements = nullptr;
     // ARB_debug_output (extension to 3.2 core)
     PFNGLDEBUGMESSAGECALLBACKARBPROC glDebugMessageCallbackARB = nullptr;
+};
+
+static const int attrSize[] =
+{
+    4,
+    1,
+    2,
+    4
+};
+
+static const GLenum attrGlType[] =
+{
+    GL_FLOAT,
+    GL_UNSIGNED_BYTE,
+    GL_UNSIGNED_SHORT,
+    GL_UNSIGNED_INT
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -156,7 +173,7 @@ struct Renderer::PrivateMesh
     {
         GLuint vbo = 0;
         std::vector< Assets::MAttr * > attrs;
-        int vertexStrideInB = 0;
+        u64 vertexStrideInB = 0;
     };
 
     u32 flags = 0;
@@ -165,9 +182,13 @@ struct Renderer::PrivateMesh
 
     GLuint vao = 0;
     GLenum usage = GL_STATIC_DRAW;
-    u64 uploadedVertexCount = 0;
 
+    u64 uploadedVertexCount = 0;
     std::map< void *, VboInfo > vbosByInitialData;
+
+    u64 uploadedIndexCount = 0;
+    GLuint ibo = 0;
+    GLenum iboGlType;
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -437,10 +458,12 @@ void Renderer::shutdown(StateDb &sdb)
 
     for (auto &meshesIt : state->meshesByModelAsset)
     {
-        for (auto &vbosByDataIter : meshesIt.second.vbosByInitialData)
+        PrivateMesh *privateMesh = &meshesIt.second;
+        for (auto &vbosByDataIter : privateMesh->vbosByInitialData)
         {
             funcs->glDeleteBuffers(1, &vbosByDataIter.second.vbo);
         }
+        if (privateMesh->ibo) funcs->glDeleteBuffers(1, &privateMesh->ibo);
         funcs->glDeleteVertexArrays(1, &meshesIt.second.vao);
     }
 
@@ -496,29 +519,32 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
             privateMesh->flags |= PrivateMesh::Flag::DYNAMIC;
             privateMesh->usage = GL_DYNAMIC_DRAW;
         }
+        for (auto &attr : privateMesh->model->attrs)
+        {
+            u64 attrStrideInB = attr.offsetInB + attrSize[attr.type] * attr.count;
+            PrivateMesh::VboInfo &vboInfo = privateMesh->vbosByInitialData[attr.data];
+            vboInfo.vertexStrideInB = glm::max(vboInfo.vertexStrideInB, attrStrideInB);
+            vboInfo.attrs.push_back(&attr);
+        }
         funcs->glGenVertexArrays(1, &privateMesh->vao);
         funcs->glBindVertexArray(privateMesh->vao);
         for (auto &attr : privateMesh->model->attrs)
         {
-            PrivateMesh::VboInfo &vboInfo = privateMesh->vbosByInitialData[attr.data];
-            int compSize = 0; GLenum type = 0;
-            switch (attr.compType)
-            {
-                case Assets::MAttr::FLOAT : compSize = 4; type = GL_FLOAT;         break;
-                case Assets::MAttr::U8    : compSize = 1; type = GL_UNSIGNED_BYTE; break;
-            }
-            int attrStrideInB = attr.strideInB + compSize * attr.compCount;
-            vboInfo.vertexStrideInB = glm::max(attrStrideInB, vboInfo.vertexStrideInB);
-
             GLuint &idx = state->attrIndicesByName[attr.name];
             if (!idx) idx = GLuint(state->attrIndicesByName.size());
-
+            PrivateMesh::VboInfo &vboInfo = privateMesh->vbosByInitialData[attr.data];
             if (!vboInfo.vbo) funcs->glGenBuffers(1, &vboInfo.vbo);
             funcs->glBindBuffer(GL_ARRAY_BUFFER, vboInfo.vbo);
-            funcs->glVertexAttribPointer(idx, attr.compCount, type, GL_FALSE, attr.strideInB, 0);
+            funcs->glVertexAttribPointer(idx, GLint(attr.count), attrGlType[attr.type],
+                GL_FALSE, GLsizei(vboInfo.vertexStrideInB), (void *)attr.offsetInB);
             funcs->glEnableVertexAttribArray(idx);
-
-            vboInfo.attrs.push_back(&attr);
+            funcs->glBindBuffer(GL_ARRAY_BUFFER, 0);
+        }
+        funcs->glBindVertexArray(privateMesh->vao);
+        if (privateMesh->model->indicesAttr.count)
+        {
+            funcs->glGenBuffers(1, &privateMesh->ibo);
+            privateMesh->iboGlType = attrGlType[privateMesh->model->indicesAttr.type];
         }
         privateMesh->flags |= PrivateMesh::Flag::DIRTY;
     }
@@ -578,6 +604,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
     auto emissionProgram     = sdb.state< Program::PrivateInfo >(state->emissionProgramHandle);
     auto emissionPostProgram = sdb.state< Program::PrivateInfo >(state->emissionPostProgramHandle);
 
+#if 0
     // Default render pass
     {
         const float aspect = 16.0f / 9.0f;
@@ -617,7 +644,9 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         funcs->glViewport(0, 0, 800, 450);
         funcs->glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
+#endif
 
+#if 0
     // Emission post-processing pass
     if (!debugNormals)
     {
@@ -643,6 +672,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         funcs->glActiveTexture(GL_TEXTURE0); funcs->glBindTexture(GL_TEXTURE_2D, 0);
         funcs->glDisable(GL_BLEND);
     }
+#endif
 
     // UI render pass
     {
@@ -654,7 +684,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         renderPass(sdb, Group::DEFAULT_UI, defaultProgram, projection, worldToView, renderParams);
     }
 
-    // Seems like 'glFinish()' implicitly waits for v-sync on OS X
+    // Seems like 'glFinish()' implicitly waits for V-sync on OS X
 #ifndef COMMON_OSX
     {
         PROFILING_SECTION(FinishEnd, glm::fvec3(1.0f, 0.5f, 0.0f))
@@ -693,25 +723,44 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         auto meshPrivate = meshesPrivate.rel(meshes, mesh);
         PrivateMesh *privateMesh = meshPrivate->privateMesh;
 
-        // Update/define vertex buffer data
         if (privateMesh->flags & PrivateMesh::Flag::DIRTY)
         {
-            u64 vertexCount = privateMesh->model->overallVertexCount;
+            // Update/define vertex buffer data
+            u64 vertexCount = privateMesh->model->vertexCount;
             for (auto &vbosIt : privateMesh->vbosByInitialData)
             {
                 void *data = vbosIt.second.attrs[0]->data;
-                u64 dataSize = vertexCount * vbosIt.second.vertexStrideInB;
+                u64 size = vertexCount * vbosIt.second.vertexStrideInB;
                 funcs->glBindBuffer(GL_ARRAY_BUFFER, vbosIt.second.vbo);
                 if (vertexCount != privateMesh->uploadedVertexCount)
                 {
-                    funcs->glBufferData(GL_ARRAY_BUFFER, dataSize, data, privateMesh->usage);
+                    funcs->glBufferData(GL_ARRAY_BUFFER, size, data, privateMesh->usage);
                 }
                 else
                 {
-                    funcs->glBufferSubData(GL_ARRAY_BUFFER, 0, dataSize, data);
+                    funcs->glBufferSubData(GL_ARRAY_BUFFER, 0, size, data);
                 }
+                funcs->glBindBuffer(GL_ARRAY_BUFFER, 0);
             }
             privateMesh->uploadedVertexCount = vertexCount;
+            // Update/define index buffer data
+            if (privateMesh->ibo)
+            {
+                Assets::MAttr &indicesAttr = privateMesh->model->indicesAttr;
+                void *data = indicesAttr.data;
+                u64 size = indicesAttr.count * attrSize[indicesAttr.type];
+                funcs->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, privateMesh->ibo);
+                if (indicesAttr.count != privateMesh->uploadedIndexCount)
+                {
+                    funcs->glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, data, privateMesh->usage);
+                }
+                else
+                {
+                    funcs->glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, size, data);
+                }
+                funcs->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+                privateMesh->uploadedIndexCount = indicesAttr.count;
+            }
             privateMesh->flags &= ~PrivateMesh::Flag::DIRTY;
         }
         if (!privateMesh->uploadedVertexCount)
@@ -742,18 +791,39 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         funcs->glUniform4fv(program->uAmbientAdd, 1, glm::value_ptr(ambientAdd));
 
         funcs->glBindVertexArray(privateMesh->vao);
-        if (mesh->flags & Mesh::Flag::DRAW_SUBMESHES)
+        if (privateMesh->ibo) funcs->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, privateMesh->ibo);
+        if (mesh->flags & Mesh::Flag::DRAW_PARTS)
         {
-            for (auto &part : privateMesh->model->parts)
+            if (privateMesh->ibo)
             {
-                funcs->glDrawArrays(GL_TRIANGLES,
-                    GLsizei(part.vertexOffset), GLint(part.vertexCount));
+                for (auto &part : privateMesh->model->parts)
+                {
+                    funcs->glDrawElements(GL_TRIANGLES, GLint(part.count),
+                        privateMesh->iboGlType, (void *)part.offset);
+                }
+            }
+            else
+            {
+                for (auto &part : privateMesh->model->parts)
+                {
+                    funcs->glDrawArrays(GL_TRIANGLES, GLsizei(part.offset), GLint(part.count));
+                }
             }
         }
         else
         {
-            funcs->glDrawArrays(GL_TRIANGLES, 0, GLsizei(privateMesh->uploadedVertexCount));
+            if (privateMesh->ibo)
+            {
+                funcs->glDrawElements(GL_TRIANGLES,
+                    GLsizei(privateMesh->uploadedIndexCount),
+                    privateMesh->iboGlType, (void *)0);
+            }
+            else
+            {
+                funcs->glDrawArrays(GL_TRIANGLES, 0, GLsizei(privateMesh->uploadedVertexCount));
+            }
         }
+        if (privateMesh->ibo) funcs->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         funcs->glBindVertexArray(0);
     }
     funcs->glUseProgram(0);
@@ -850,6 +920,7 @@ bool Renderer::initializeGl()
     RENDERER_GL_FUNC(glDisableVertexAttribArray);
 
     RENDERER_GL_FUNC(glDrawArrays);
+    RENDERER_GL_FUNC(glDrawElements);
 
     if (SDL_GL_ExtensionSupported("GL_ARB_debug_output"))
     {

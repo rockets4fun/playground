@@ -182,8 +182,8 @@ Physics::PrivateRigidBody::PrivateRigidBody(
                 */
 
                 btConvexHullShape *shape = new btConvexHullShape;
-                const glm::fvec3 *positionIter = &model->positions[part.vertexOffset];
-                const u64 pointCount = part.vertexCount;
+                const glm::fvec3 *positionIter = &model->positions[part.offset];
+                const u64 pointCount = part.count;
                 for (u64 pointIdx = 0; pointIdx < pointCount; ++pointIdx)
                 {
                     btVector3 point = btVector3(positionIter->x, positionIter->y, positionIter->z);

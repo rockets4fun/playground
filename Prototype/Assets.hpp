@@ -51,26 +51,25 @@ struct Assets
         {
             enum CompType
             {
-                FLOAT = 0,
-                U8
+                FLOAT = 0, U8, U16, U32
             };
 
             std::string name;
-            void *data = nullptr;                // pointer to actual per-vertex data
-            CompType compType = CompType::FLOAT; // type of per-vertex component(s)
-            int compCount = 3;                   // per-vertex component count
-            int strideInB = 0;                   // offset into interleaved attribute array
+            void *data = nullptr;            // pointer to actual per-vertex data
+            CompType type = CompType::FLOAT; // type of per-vertex component(s)
+            u64 count = 3;                   // per-vertex component count
+            u64 offsetInB = 0;               // offset into interleaved attribute array
 
-            Attr(const std::string &nameInit, void *dataInit,
-                CompType compTypeInit = CompType::FLOAT, int compCountInit = 3,
-                int strideInBInit = 0);
+            Attr(const std::string &nameInit = "", void *dataInit = nullptr,
+                CompType typeInit = CompType::FLOAT, u64 countInit = 3,
+                u64 strideInBInit = 0);
         };
 
         struct Part
         {
             std::string name;
-            u64 vertexOffset = 0;
-            u64 vertexCount = 0;
+            u64 offset = 0;
+            u64 count = 0;
             u32 materialHint = 0;
         };
 
@@ -79,16 +78,15 @@ struct Assets
         std::vector< glm::fvec3 > normals;
         std::vector< glm::fvec3 > diffuse;
         std::vector< glm::fvec3 > ambient;
-        // Generic vertex attribute arrays
-        std::vector< float > generic1;
-        std::vector< float > generic2;
-        std::vector< float > generic3;
-        std::vector< float > generic4;
+
+        std::vector< u32 > indices;
 
         std::vector< Attr > attrs;
+        Attr indicesAttr = Attr("", nullptr, Attr::U32, 0);
+
         std::vector< Part > parts;
 
-        u64 overallVertexCount = 0;
+        u64 vertexCount = 0;
 
         void clear();
         void setDefaultAttrs();

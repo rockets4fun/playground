@@ -47,7 +47,7 @@ struct Renderer : public ModuleIf
             SCALED         = 0x02,
             DIFFUSE_MUL    = 0x04,
             AMBIENT_ADD    = 0x08,
-            DRAW_SUBMESHES = 0x10
+            DRAW_PARTS     = 0x10
         };
         struct Info
         {
