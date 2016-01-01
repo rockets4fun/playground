@@ -7,6 +7,9 @@
 #define IMGUIEVAL_HPP
 
 #include "Common.hpp"
+
+#include <vector>
+
 #include "ModuleIf.hpp"
 
 // -------------------------------------------------------------------------------------------------
@@ -23,8 +26,10 @@ public: // Application module interface
     virtual void update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS);
 
 private:
-    u32 m_imGuiModelAsset = 0;
-    u32 m_imGuiTextureAsset = 0;
+    std::vector< u64 > m_meshHandles;
+    u32 m_fontTextureAsset = 0;
+
+    bool m_testWindowVisible = true;
 
 private:
     COMMON_DISABLE_COPY(ImGuiEval)
