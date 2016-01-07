@@ -5,6 +5,7 @@ h1. Current Coding Roadmap
 ** GUI prototype (multi-window experiments, using ocornut's ImGui)
 ** Mouse interactivity (camera control, physics manipulation)
 ** Controller/sensor FSM-based fusion/control logic prototyping
+** Pusher modeling: Baked AO, chamfered panels, details for payload link...
 
 * Notes on multiple windows with OpenGL output
 ** Sharing context data most likely means implicit synchronization of API calls...
