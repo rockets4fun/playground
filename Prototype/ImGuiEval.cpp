@@ -5,6 +5,7 @@
 
 #include "ImGuiEval.hpp"
 
+#include <SDL.h>
 #include <imgui.h>
 
 #include "Assets.hpp"
@@ -112,6 +113,11 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
     {
         ImDrawData *drawData = ImGui::GetDrawData();
         // Transform UI meshes into models and mesh references for renderer
+        while (m_meshHandles.size() > drawData->CmdListsCount)
+        {
+            sdb.destroy(m_meshHandles.back());
+            m_meshHandles.pop_back();
+        }
         for (int cmdListIdx = 0; cmdListIdx < drawData->CmdListsCount; ++cmdListIdx)
         {
             ImDrawList *cmdList = drawData->CmdLists[cmdListIdx];
@@ -162,5 +168,15 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
 
             model->vertexCount = cmdList->VtxBuffer.size();
         }
+    }
+
+    // (3) Read input state via SDL and provide to ImGui
+    {
+        int mouseX = -1, mouseY = -1;
+        Uint32 mouseMask = SDL_GetMouseState(&mouseX, &mouseY);
+        imGui.MousePos = ImVec2((float)mouseX, (float)mouseY);
+        imGui.MouseDown[0] = (mouseMask & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
+        imGui.MouseDown[1] = (mouseMask & SDL_BUTTON(SDL_BUTTON_RIGHT)) != 0;
+        imGui.MouseDown[2] = (mouseMask & SDL_BUTTON(SDL_BUTTON_MIDDLE)) != 0;
     }
 }
