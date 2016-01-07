@@ -11,6 +11,19 @@
 #include "StateDb.hpp"
 #include "Renderer.hpp"
 
+struct Str
+{
+    static std::string build(const char *format, ...)
+    {
+        char buffer[1024];
+        va_list args;
+        va_start(args, format);
+        int ret = vsnprintf(buffer, sizeof(buffer), format, args);
+        va_end(args);
+        return std::string(buffer);
+    }
+};
+
 // -------------------------------------------------------------------------------------------------
 ImGuiEval::ImGuiEval()
 {
@@ -35,14 +48,33 @@ bool ImGuiEval::initialize(StateDb &sdb, Assets &assets)
     imGui.DisplaySize.y = 450.0f;
 
     {
-        m_fontTextureAsset = assets.asset(
+        u32 fontTextureAsset = assets.asset(
             "Procedural/Textures/ImGuiFont", Assets::Flag::PROCEDURAL | Assets::Flag::DYNAMIC);
         unsigned char *imGuiPixels = nullptr;
-        Assets::Texture *texture = assets.refTexture(m_fontTextureAsset);
+        Assets::Texture *texture = assets.refTexture(fontTextureAsset);
         imGui.Fonts->GetTexDataAsRGBA32(&imGuiPixels, &texture->width, &texture->height);
         texture->pixels.resize(texture->width * texture->height);
         memcpy(&texture->pixels[0], imGuiPixels,
             texture->pixels.size() * sizeof(Assets::Texture::Pixel));
+        assets.touch(fontTextureAsset);
+
+        auto fontTexture = sdb.create< Renderer::Texture::Info >(m_fontTextureHandle);
+        fontTexture->textureAsset = fontTextureAsset;
+        imGui.Fonts->TexID = &m_fontTextureHandle;
+    }
+
+    {
+        u32 programAsset = assets.asset("Assets/Programs/ImGui.program");
+        assets.refProgram(programAsset);
+        auto program = sdb.create< Renderer::Program::Info >(m_programHandle);
+        program->programAsset = programAsset;
+    }
+
+    {
+        auto pass = sdb.create< Renderer::Pass::Info >(m_passHandle);
+        pass->programHandle = m_programHandle;
+        pass->groups = Renderer::Group::DEFAULT_IM_GUI;
+        pass->flags = Renderer::Pass::BLEND;
     }
 
     return true;
@@ -51,21 +83,11 @@ bool ImGuiEval::initialize(StateDb &sdb, Assets &assets)
 // -------------------------------------------------------------------------------------------------
 void ImGuiEval::shutdown(StateDb &sdb)
 {
+    for (auto &meshHandle : m_meshHandles) sdb.destroy(meshHandle);
+    sdb.destroy(m_fontTextureHandle);
+
     ImGui::Shutdown();
 }
-
-struct Str
-{
-    static std::string build(const char *format, ...)
-    {
-        char buffer[1024];
-        va_list args;
-        va_start(args, format);
-        int ret = vsnprintf(buffer, sizeof(buffer), format, args);
-        va_end(args);
-        return std::string(buffer);
-    }
-};
 
 // -------------------------------------------------------------------------------------------------
 void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS)
@@ -109,13 +131,13 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
             {
                 model->attrs =
                 {
-                    Assets::MAttr("Position", nullptr, Assets::MAttr::FLOAT, 2,  0),
-                    Assets::MAttr("UV",       nullptr, Assets::MAttr::FLOAT, 2,  8),
-                    Assets::MAttr("Diffuse",  nullptr, Assets::MAttr::U8,    4, 16),
+                    Assets::MAttr("Position", nullptr, Assets::MAttr::FLOAT, 2,  0, false),
+                    Assets::MAttr("UV",       nullptr, Assets::MAttr::FLOAT, 2,  8, false),
+                    Assets::MAttr("Color",    nullptr, Assets::MAttr::U8,    4, 16, true),
                 };
                 model->indicesAttr = Assets::MAttr("", nullptr, Assets::MAttr::U16, 0);
                 COMMON_ASSERT(sizeof(ImDrawIdx) == 2);
-                mesh->groups = Renderer::Group::DEFAULT_UI;
+                mesh->groups = Renderer::Group::DEFAULT_IM_GUI;
                 mesh->flags |= Renderer::Mesh::DRAW_PARTS;
             }
 
@@ -132,7 +154,7 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
                 ImDrawCmd &cmd = cmdList->CmdBuffer[cmdIdx];
                 if (cmdIdx >= int(model->parts.size())) model->parts.resize(cmdIdx + 1);
                 Assets::Model::Part &part = model->parts[cmdIdx];
-                part.materialHint = u32(cmd.TextureId);
+                part.materialHint = *(u64 *)cmd.TextureId;
                 part.offset = prevElemOffset;
                 part.count = cmd.ElemCount;
                 prevElemOffset += part.count;

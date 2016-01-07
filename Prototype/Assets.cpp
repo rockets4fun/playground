@@ -37,9 +37,9 @@ Assets::~Assets()
 
 // -------------------------------------------------------------------------------------------------
 Assets::Model::Attr::Attr(const std::string &nameInit, void *dataInit,
-    CompType typeInit, u64 countInit, u64 offsetInBInit) :
+    CompType typeInit, u64 countInit, u64 offsetInBInit, bool normalizeInit) :
     name(nameInit), data(dataInit), type(typeInit), count(countInit),
-    offsetInB(offsetInBInit)
+    offsetInB(offsetInBInit), normalize(normalizeInit)
 {
 }
 
@@ -64,7 +64,7 @@ u32 Assets::asset(const std::string &name, u32 flags)
 }
 
 // -------------------------------------------------------------------------------------------------
-const Assets::Info *Assets::assetInfo(u32 hash)
+const Assets::Info *Assets::info(u32 hash)
 {
     auto infoIter = m_assetInfos.find(hash);
     if (infoIter == m_assetInfos.end())
@@ -72,6 +72,17 @@ const Assets::Info *Assets::assetInfo(u32 hash)
         return nullptr;
     }
     return &infoIter->second;
+}
+
+// -------------------------------------------------------------------------------------------------
+u32 Assets::touch(u32 hash)
+{
+    auto infoIter = m_assetInfos.find(hash);
+    if (infoIter == m_assetInfos.end())
+    {
+        return 0;
+    }
+    return ++infoIter->second.version;
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -195,6 +206,7 @@ bool Assets::loadFileIntoString(const std::string &filename, std::string &conten
     std::ifstream in(filename.c_str(), std::ios::in | std::ios::binary);
     if (!in)
     {
+        Logging::debug("ERROR: Failed to load file into string \"%s\"", filename.c_str());
         return false;
     }
     in.seekg(0, std::ios::end);

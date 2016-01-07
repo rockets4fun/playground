@@ -21,10 +21,11 @@ struct Renderer : public ModuleIf
 {
     enum Group
     {
-        DEFAULT             = 0x1,
-        DEFAULT_TRANSPARENT = 0x2,
-        DEFAULT_POST        = 0x4,
-        DEFAULT_UI          = 0x8
+        DEFAULT             = 0x01,
+        DEFAULT_TRANSPARENT = 0x02,
+        DEFAULT_POST        = 0x04,
+        DEFAULT_GUI         = 0x08,
+        DEFAULT_IM_GUI      = 0x10
     };
 
     struct Program
@@ -64,6 +65,29 @@ struct Renderer : public ModuleIf
         struct PrivateInfo;
     };
 
+    struct Texture
+    {
+        static u64 TYPE;
+        struct Info
+        {
+            static u64 STATE;
+            u32 textureAsset = 0;
+        };
+        struct PrivateInfo;
+    };
+
+    //struct Material
+    //{
+    //    static u64 TYPE;
+    //    struct Info
+    //    {
+    //        static u64 STATE;
+    //        u32 programAsset;
+    //        u32 textureAssets[8];
+    //    };
+    //    struct PrivateInfo;
+    //};
+
     struct Camera
     {
         static u64 TYPE;
@@ -80,17 +104,17 @@ struct Renderer : public ModuleIf
         static u64 TYPE;
         enum Flag
         {
-            CLEAR_COLOR     = 0x0001,
-            CLEAR_DEPTH     = 0x0002,
-            CLEAR_STENCIL   = 0x0003,
-
-            BLEND           = 0x0101,
-            CULL_FACE       = 0x0102,
-            DEPTH_TEST      = 0x0104,
-            SCISSOR_TEST    = 0x0108,
-
-            NO_DEPTH_WRITES = 0x0201,
-            NO_COLOR_WRITES = 0x0202
+            CLEAR_COLOR     = 0x00000001,
+            CLEAR_DEPTH     = 0x00000002,
+            CLEAR_STENCIL   = 0x00000004,
+            // ...
+            BLEND           = 0x00000100,
+            CULL_FACE       = 0x00000200,
+            DEPTH_TEST      = 0x00000400,
+            SCISSOR_TEST    = 0x00000800,
+            // ...
+            NO_DEPTH_WRITES = 0x00010000,
+            NO_COLOR_WRITES = 0x00020000
         };
         enum BlendFunc
         {
@@ -107,28 +131,26 @@ struct Renderer : public ModuleIf
             u32 blendFuncSrc = 0;
             u32 blendFuncDst = 0;
             u32 groups = 0;
-            u32 programAsset = 0;
-            u32 textureAsset = 0;
             u64 cameraHandle = 0;
-            // TBD...
-            u64 srcFramebufferHandle = 0;
-            u64 dstFramebufferHandle = 0;
+            u64 programHandle = 0;
+            //u64 srcFramebufferHandle = 0;
+            //u64 dstFramebufferHandle = 0;
         };
     };
 
-    struct Transform
-    {
-        static u64 TYPE;
-        struct Info
-        {
-            static u64 STATE;
-            u64 parentTransformHandle = 0;
-            glm::fvec3 translation;
-            glm::fquat rotation;
-            glm::fmat4 localToWorld;
-            glm::fmat4 worldToLocal;
-        };
-    };
+    //struct Transform
+    //{
+    //    static u64 TYPE;
+    //    struct Info
+    //    {
+    //        static u64 STATE;
+    //        u64 parentTransformHandle = 0;
+    //        glm::fvec3 translation;
+    //        glm::fquat rotation;
+    //        glm::fmat4 localToWorld;
+    //        glm::fmat4 worldToLocal;
+    //    };
+    //};
 
     u64 activeCameraHandle = 0;
     bool debugNormals = false;
@@ -153,8 +175,8 @@ private:
     std::shared_ptr< PrivateHelpers > helpers;
 
     void renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateInfo *program,
-            const glm::fmat4 &projection, const glm::fmat4 &worldToView,
-            const glm::fvec4 &renderParams);
+            const glm::fmat4 &projection, const glm::fmat4 &worldToView = glm::fmat4(1.0),
+            const glm::fvec4 &renderParams = glm::fvec4(0.0));
 
     bool initializeGl();
 

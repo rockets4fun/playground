@@ -127,7 +127,7 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
     {
         auto mesh = sdb.create< Renderer::Mesh::Info >();
         mesh->modelAsset = m_uiModelAsset;
-        mesh->groups = Renderer::Group::DEFAULT_UI;
+        mesh->groups = Renderer::Group::DEFAULT_GUI;
     }
 
     // Create simplistic tiled ocean
@@ -227,10 +227,11 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
             mesh->rotation = glm::angleAxis(glm::radians(90.0f), glm::fvec3(1.0f, 0.0f, 0.0f));
             mesh->modelAsset = assets.asset("Assets/Models/Pusher.obj");
 
+            /*
             // For debugging the bloom effect...
-            mesh->flags |= Renderer::Mesh::Flag::DRAW_SUBMESHES;
             mesh->flags |= Renderer::Mesh::Flag::AMBIENT_ADD;
             mesh->ambientAdd = glm::fvec4(1.0, 0.0, 0.0, 0.0);
+            */
         }
         else if (rand() % 9 > 5)
         {
@@ -508,10 +509,10 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
                         + glm::smoothstep(0.0f, grow, life)
                         * (particle->maxSize - particle->minSize);
                 mesh->diffuseMul = glm::mix(
-                    glm::fvec4(0.9, 0.3, 0.0, 1.0), glm::fvec4(0.8, 0.8, 0.8, 1.0),
+                    glm::fvec4(1.0, 0.5, 0.0, 1.0), glm::fvec4(0.8, 0.8, 0.8, 1.0),
                     life / grow);
                 mesh->ambientAdd = glm::mix(
-                    glm::fvec4(0.9, 0.3, 0.0, 0.0), glm::fvec4(0.0, 0.0, 0.0, 0.0),
+                    glm::fvec4(1.0, 0.5, 0.0, 0.0), glm::fvec4(0.0, 0.0, 0.0, 0.0),
                     life / grow);
             }
             else
@@ -578,8 +579,6 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 
                 pushRect2d       (uiModel,         ll, uro, color, callDepth);
                 pushRectOutline2d(uiModel, outlPx, ll, ur , black, callDepth + 0.5f);
-#if 0
-#endif
             }
         }
         for (int msIdx = 0; msIdx < 16; ++msIdx)

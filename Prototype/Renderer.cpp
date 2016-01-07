@@ -30,8 +30,24 @@
 #endif
 #include "CoreGl/glcorearb.h"
 
-// Structs declared in implementaion file because we do not want to
-// expose any OpenGL implementation details in header
+// Structs declared in implementation file because we do not
+// want to expose any OpenGL implementation details in header
+
+static const int attrSize[] =
+{
+    4,
+    1,
+    2,
+    4
+};
+
+static const GLenum attrGlType[] =
+{
+    GL_FLOAT,
+    GL_UNSIGNED_BYTE,
+    GL_UNSIGNED_SHORT,
+    GL_UNSIGNED_INT
+};
 
 // -------------------------------------------------------------------------------------------------
 struct Renderer::PrivateFuncs
@@ -109,22 +125,6 @@ struct Renderer::PrivateFuncs
     PFNGLDEBUGMESSAGECALLBACKARBPROC glDebugMessageCallbackARB = nullptr;
 };
 
-static const int attrSize[] =
-{
-    4,
-    1,
-    2,
-    4
-};
-
-static const GLenum attrGlType[] =
-{
-    GL_FLOAT,
-    GL_UNSIGNED_BYTE,
-    GL_UNSIGNED_SHORT,
-    GL_UNSIGNED_INT
-};
-
 // -------------------------------------------------------------------------------------------------
 struct Renderer::PrivateState
 {
@@ -132,8 +132,8 @@ struct Renderer::PrivateState
     GLuint colorTex = 0;
     GLuint depthTex = 0;
 
-    u64 defaultProgramHandle      = 0;
-    u64 emissionProgramHandle     = 0;
+    u64 defaultProgramHandle = 0;
+    u64 emissionProgramHandle = 0;
     u64 emissionPostProgramHandle = 0;
 
     std::map< u32, PrivateMesh > meshesByModelAsset;
@@ -151,7 +151,7 @@ struct Renderer::PrivateHelpers
     PrivateHelpers(PrivateFuncs *funcs);
 
     bool updateShader(GLuint &shader, GLenum type, const std::string &source);
-    bool updateProgram(GLuint &program, GLuint vertexShader, GLuint fragmentShader,
+    bool updateProgram(Program::PrivateInfo *privateInfo,
         const std::map< std::string, GLuint > &attrIndicesByName);
 
     void printInfoLog(GLuint object, GetProc getProc, InfoLogProc infoLogProc);
@@ -176,9 +176,9 @@ struct Renderer::PrivateMesh
         u64 vertexStrideInB = 0;
     };
 
-    u32 flags = 0;
-    Assets::Model *model = nullptr;
+    Assets::Model *asset = nullptr;
     const Assets::Info *assetInfo = nullptr;
+    u32 flags = 0;
 
     GLuint vao = 0;
     GLenum usage = GL_STATIC_DRAW;
@@ -188,7 +188,7 @@ struct Renderer::PrivateMesh
 
     u64 uploadedIndexCount = 0;
     GLuint ibo = 0;
-    GLenum iboGlType;
+    GLenum iboGlType = GL_NONE;
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -203,15 +203,19 @@ struct Renderer::Program::PrivateInfo
     GLuint vertexShader = 0;
     GLuint fragmentShader = 0;
     GLuint program = 0;
+    // FIXME(martinmo): State DB does not support non-0 initial values...
+    // FIXME(martinmo): ==> Value of -1 would be correct value (see below)
     // Uniforms
-    GLint uModelToWorldMatrix = 0;
-    GLint uModelToViewMatrix = 0;
-    GLint uProjectionMatrix = 0;
-    GLint uDiffuseMul = 0;
-    GLint uAmbientAdd = 0;
-    GLint uRenderParams = 0;
-    GLint uColorTex = 0;
-    GLint uDepthTex = 0;
+    GLint uModelToWorldMatrix = -1;
+    GLint uModelToViewMatrix = -1;
+    GLint uProjectionMatrix = -1;
+    GLint uDiffuseMul = -1;
+    GLint uAmbientAdd = -1;
+    GLint uRenderParams = -1;
+    GLint uColorTex = -1;
+    GLint uDepthTex = -1;
+    GLint uTexture0 = -1;
+    GLint uTexture1 = -1;
 };
 u64 Renderer::Program::PrivateInfo::STATE = 0;
 
@@ -227,12 +231,31 @@ struct Renderer::Mesh::PrivateInfo
 u64 Renderer::Mesh::PrivateInfo::STATE = 0;
 
 // -------------------------------------------------------------------------------------------------
+u64 Renderer::Texture::TYPE = 0;
+u64 Renderer::Texture::Info::STATE = 0;
+struct Renderer::Texture::PrivateInfo
+{
+    static u64 STATE;
+    Assets::Texture *asset = nullptr;
+    const Assets::Info *assetInfo = nullptr;
+    u32 assetVersionLoaded = 0;
+    GLuint texture = 0;
+};
+u64 Renderer::Texture::PrivateInfo::STATE = 0;
+
+// -------------------------------------------------------------------------------------------------
+u64 Renderer::Pass::TYPE = 0;
+u64 Renderer::Pass::Info::STATE = 0;
+
+// -------------------------------------------------------------------------------------------------
 u64 Renderer::Camera::TYPE = 0;
 u64 Renderer::Camera::Info::STATE = 0;
 
+/*
 // -------------------------------------------------------------------------------------------------
 u64 Renderer::Transform::TYPE = 0;
 u64 Renderer::Transform::Info::STATE = 0;
+*/
 
 // -------------------------------------------------------------------------------------------------
 Renderer::PrivateHelpers::PrivateHelpers(PrivateFuncs *funcs) : funcs(funcs)
@@ -272,38 +295,36 @@ bool Renderer::PrivateHelpers::updateShader(
 }
 
 // -------------------------------------------------------------------------------------------------
-bool Renderer::PrivateHelpers::updateProgram(
-    GLuint &program, GLuint vertexShader, GLuint fragmentShader,
+bool Renderer::PrivateHelpers::updateProgram(Program::PrivateInfo *privateInfo,
     const std::map< std::string, GLuint > &attrIndicesByName)
 {
-    if (!program)
+    if (!privateInfo->program)
     {
-        program = funcs->glCreateProgram();
-        if (!program)
+        privateInfo->program = funcs->glCreateProgram();
+        if (!privateInfo->program)
         {
             Logging::debug("ERROR: Failed to create program object");
             return false;
         }
     }
 
-    funcs->glAttachShader(program, vertexShader);
-    funcs->glAttachShader(program, fragmentShader);
+    funcs->glAttachShader(privateInfo->program, privateInfo->vertexShader);
+    funcs->glAttachShader(privateInfo->program, privateInfo->fragmentShader);
 
     // Use 'glBindAttribLocation()' before linking the program to force assignment of
     // attributes to specific fixed locations (e.g. position always 0, color always 1 etc.)
-    // ==> This allows us to use the same VAO for all shader programs
+    // ==> This allows us to use the same VAO independent of shader program in use
     for (auto &attrIndexMapEntry : attrIndicesByName)
     {
-        funcs->glBindAttribLocation(program,
+        funcs->glBindAttribLocation(privateInfo->program,
             attrIndexMapEntry.second, attrIndexMapEntry.first.c_str());
     }
 
-    funcs->glLinkProgram(program);
-
-    printInfoLog(program, funcs->glGetProgramiv, funcs->glGetProgramInfoLog);
+    funcs->glLinkProgram(privateInfo->program);
+    printInfoLog(privateInfo->program, funcs->glGetProgramiv, funcs->glGetProgramInfoLog);
 
     GLint linkStatus = GL_FALSE;
-    funcs->glGetProgramiv(program, GL_LINK_STATUS, &linkStatus);
+    funcs->glGetProgramiv(privateInfo->program, GL_LINK_STATUS, &linkStatus);
     if (linkStatus == GL_FALSE)
     {
         Logging::debug("ERROR: Failed to link program");
@@ -362,13 +383,25 @@ void Renderer::registerTypesAndStates(StateDb &sdb)
     Mesh::PrivateInfo::STATE = sdb.registerState(
         Mesh::TYPE, "PrivateInfo", sizeof(Mesh::PrivateInfo));
 
+    Texture::TYPE = sdb.registerType("Texture", 256);
+    Texture::Info::STATE = sdb.registerState(
+        Texture::TYPE, "Info", sizeof(Texture::Info));
+    Texture::PrivateInfo::STATE = sdb.registerState(
+        Texture::TYPE, "PrivateInfo", sizeof(Texture::PrivateInfo));
+
     Camera::TYPE = sdb.registerType("Camera", 8);
     Camera::Info::STATE = sdb.registerState(
         Camera::TYPE, "Info", sizeof(Camera::Info));
 
+    Pass::TYPE = sdb.registerType("Pass", 8);
+    Pass::Info::STATE = sdb.registerState(
+        Pass::TYPE, "Info", sizeof(Pass::Info));
+
+    /*
     Transform::TYPE = sdb.registerType("Transform", 4096);
     Transform::Info::STATE = sdb.registerState(
         Transform::TYPE, "Info", sizeof(Transform::Info));
+    */
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -476,6 +509,7 @@ void Renderer::shutdown(StateDb &sdb)
 void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS)
 {
     PROFILING_SECTION(Renderer, glm::fvec3(0.0f, 0.0f, 1.0f))
+
     {
         PROFILING_SECTION(FinishBegin, glm::fvec3(1.0f, 0.5f, 0.0f))
         funcs->glFinish();
@@ -497,7 +531,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
     {
         u32 modelAsset = meshMapEntry.first;
         PrivateMesh *privateMesh = &meshMapEntry.second;
-        if (privateMesh->model)
+        if (privateMesh->asset)
         {
             if (privateMesh->flags & PrivateMesh::Flag::DYNAMIC)
             {
@@ -509,17 +543,17 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         // TODO(martinmo): ==> Practical applications might even prefetch on init...
         // TODO(martinmo): ==> We need to know about models' attributes for programs...
         // TODO(martinmo): ==> Answer seems to be no ATM
-        privateMesh->model = assets.refModel(modelAsset);
-        COMMON_ASSERT(privateMesh->model);
+        privateMesh->asset = assets.refModel(modelAsset);
+        COMMON_ASSERT(privateMesh->asset);
         // TODO(martinmo): Add way of getting asset and flags in one call/lookup
-        privateMesh->assetInfo = assets.assetInfo(modelAsset);
+        privateMesh->assetInfo = assets.info(modelAsset);
         COMMON_ASSERT(privateMesh->assetInfo);
         if (privateMesh->assetInfo->flags & Assets::Flag::DYNAMIC)
         {
             privateMesh->flags |= PrivateMesh::Flag::DYNAMIC;
             privateMesh->usage = GL_DYNAMIC_DRAW;
         }
-        for (auto &attr : privateMesh->model->attrs)
+        for (auto &attr : privateMesh->asset->attrs)
         {
             u64 attrStrideInB = attr.offsetInB + attrSize[attr.type] * attr.count;
             PrivateMesh::VboInfo &vboInfo = privateMesh->vbosByInitialData[attr.data];
@@ -528,7 +562,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         }
         funcs->glGenVertexArrays(1, &privateMesh->vao);
         funcs->glBindVertexArray(privateMesh->vao);
-        for (auto &attr : privateMesh->model->attrs)
+        for (auto &attr : privateMesh->asset->attrs)
         {
             GLuint &idx = state->attrIndicesByName[attr.name];
             if (!idx) idx = GLuint(state->attrIndicesByName.size());
@@ -536,15 +570,15 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
             if (!vboInfo.vbo) funcs->glGenBuffers(1, &vboInfo.vbo);
             funcs->glBindBuffer(GL_ARRAY_BUFFER, vboInfo.vbo);
             funcs->glVertexAttribPointer(idx, GLint(attr.count), attrGlType[attr.type],
-                GL_FALSE, GLsizei(vboInfo.vertexStrideInB), (void *)attr.offsetInB);
+                attr.normalize, GLsizei(vboInfo.vertexStrideInB), (GLvoid *)attr.offsetInB);
             funcs->glEnableVertexAttribArray(idx);
             funcs->glBindBuffer(GL_ARRAY_BUFFER, 0);
         }
-        funcs->glBindVertexArray(privateMesh->vao);
-        if (privateMesh->model->indicesAttr.count)
+        funcs->glBindVertexArray(0);
+        if (privateMesh->asset->indicesAttr.count)
         {
             funcs->glGenBuffers(1, &privateMesh->ibo);
-            privateMesh->iboGlType = attrGlType[privateMesh->model->indicesAttr.type];
+            privateMesh->iboGlType = attrGlType[privateMesh->asset->indicesAttr.type];
         }
         privateMesh->flags |= PrivateMesh::Flag::DIRTY;
     }
@@ -557,55 +591,100 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         if (!programPrivate->assetInfo)
         {
             auto program = programs.rel(programsPrivate, programPrivate);
-            programPrivate->assetInfo = assets.assetInfo(program->programAsset);
+            programPrivate->assetInfo = assets.info(program->programAsset);
             COMMON_ASSERT(programPrivate->assetInfo)
         }
         u32 assetVersion = programPrivate->assetInfo->version;
-        if (programPrivate->assetVersionLoaded != assetVersion)
+        if (programPrivate->assetVersionLoaded == assetVersion)
         {
-            if (assetVersion > 1)
-            {
-                funcs->glDetachShader(programPrivate->program, programPrivate->fragmentShader);
-                funcs->glDetachShader(programPrivate->program, programPrivate->vertexShader);
-            }
-            Assets::Program *programAsset = assets.refProgram(programPrivate->assetInfo->hash);
-            helpers->updateShader(programPrivate->vertexShader, GL_VERTEX_SHADER,
-                programAsset->sourceByType[Assets::Program::VERTEX_SHADER]);
-            helpers->updateShader(programPrivate->fragmentShader, GL_FRAGMENT_SHADER,
-                programAsset->sourceByType[Assets::Program::FRAGMENT_SHADER]);
-            helpers->updateProgram(programPrivate->program,
-                programPrivate->vertexShader, programPrivate->fragmentShader,
-                state->attrIndicesByName);
-
-            // TODO(martinmo): Use Uniform Buffer Objects to pass uniforms to shaders
-
-            programPrivate->uModelToWorldMatrix =
-                funcs->glGetUniformLocation(programPrivate->program, "ModelToWorldMatrix");
-            programPrivate->uModelToViewMatrix =
-                funcs->glGetUniformLocation(programPrivate->program, "ModelToViewMatrix");
-            programPrivate->uProjectionMatrix =
-                funcs->glGetUniformLocation(programPrivate->program, "ProjectionMatrix");
-            programPrivate->uDiffuseMul =
-                funcs->glGetUniformLocation(programPrivate->program, "DiffuseMul");
-            programPrivate->uAmbientAdd =
-                funcs->glGetUniformLocation(programPrivate->program, "AmbientAdd");
-            programPrivate->uRenderParams =
-                funcs->glGetUniformLocation(programPrivate->program, "RenderParams");
-            programPrivate->uColorTex =
-                funcs->glGetUniformLocation(programPrivate->program, "ColorTex");
-            programPrivate->uDepthTex =
-                funcs->glGetUniformLocation(programPrivate->program, "DepthTex");
-
-            programPrivate->assetVersionLoaded = assetVersion;
+            continue;
         }
+        if (assetVersion > 1)
+        {
+            funcs->glDetachShader(programPrivate->program, programPrivate->fragmentShader);
+            funcs->glDetachShader(programPrivate->program, programPrivate->vertexShader);
+        }
+        Assets::Program *programAsset = assets.refProgram(programPrivate->assetInfo->hash);
+        helpers->updateShader(programPrivate->vertexShader, GL_VERTEX_SHADER,
+            programAsset->sourceByType[Assets::Program::VERTEX_SHADER]);
+        helpers->updateShader(programPrivate->fragmentShader, GL_FRAGMENT_SHADER,
+            programAsset->sourceByType[Assets::Program::FRAGMENT_SHADER]);
+        helpers->updateProgram(programPrivate, state->attrIndicesByName);
+
+        // TODO(martinmo): Use Uniform Buffer Objects to pass uniforms to shaders
+        programPrivate->uModelToWorldMatrix =
+            funcs->glGetUniformLocation(programPrivate->program, "ModelToWorldMatrix");
+        programPrivate->uModelToViewMatrix =
+            funcs->glGetUniformLocation(programPrivate->program, "ModelToViewMatrix");
+        programPrivate->uProjectionMatrix =
+            funcs->glGetUniformLocation(programPrivate->program, "ProjectionMatrix");
+        programPrivate->uDiffuseMul =
+            funcs->glGetUniformLocation(programPrivate->program, "DiffuseMul");
+        programPrivate->uAmbientAdd =
+            funcs->glGetUniformLocation(programPrivate->program, "AmbientAdd");
+        programPrivate->uRenderParams =
+            funcs->glGetUniformLocation(programPrivate->program, "RenderParams");
+        programPrivate->uColorTex =
+            funcs->glGetUniformLocation(programPrivate->program, "ColorTex");
+        programPrivate->uDepthTex =
+            funcs->glGetUniformLocation(programPrivate->program, "DepthTex");
+
+        programPrivate->uTexture0 =
+            funcs->glGetUniformLocation(programPrivate->program, "Texture0");
+        programPrivate->uTexture1 =
+            funcs->glGetUniformLocation(programPrivate->program, "Texture1");
+
+        funcs->glUseProgram(programPrivate->program);
+        if (programPrivate->uTexture0 >= 0) funcs->glUniform1i(programPrivate->uTexture0, 0);
+        if (programPrivate->uTexture1 >= 0) funcs->glUniform1i(programPrivate->uTexture1, 1);
+        funcs->glUseProgram(0);
+
+        // Query actual attribute locations for debugging purpose
+        std::map< std::string, GLint > actualAttrs;
+        for (auto &attrIndexMapEntry : state->attrIndicesByName)
+        {
+            GLint location = funcs->glGetAttribLocation(
+                programPrivate->program, attrIndexMapEntry.first.c_str());
+            if (location != -1) actualAttrs[attrIndexMapEntry.first] = location;
+        }
+
+        programPrivate->assetVersionLoaded = assetVersion;
+    }
+
+    // Prepare/update textures
+    auto textures = sdb.stateAll< Texture::Info >();
+    auto texturesPrivate = sdb.stateAll< Texture::PrivateInfo >();
+    for (auto texturePrivate : texturesPrivate)
+    {
+        if (!texturePrivate->assetInfo)
+        {
+            auto texture = textures.rel(texturesPrivate, texturePrivate);
+            texturePrivate->assetInfo = assets.info(texture->textureAsset);
+            COMMON_ASSERT(texturePrivate->assetInfo)
+            texturePrivate->asset = assets.refTexture(texture->textureAsset);
+        }
+        u32 assetVersion = texturePrivate->assetInfo->version;
+        if (texturePrivate->assetVersionLoaded == assetVersion)
+        {
+            continue;
+        }
+
+        if (!texturePrivate->texture) funcs->glGenTextures(1, &texturePrivate->texture);
+        funcs->glBindTexture(GL_TEXTURE_2D, texturePrivate->texture);
+        funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        funcs->glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        funcs->glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA,
+            texturePrivate->asset->width, texturePrivate->asset->height,
+            0, GL_RGBA, GL_UNSIGNED_BYTE, &texturePrivate->asset->pixels[0]);
+        funcs->glBindTexture(GL_TEXTURE_2D, 0);
+
+        texturePrivate->assetVersionLoaded = assetVersion;
     }
 
     auto defaultProgram      = sdb.state< Program::PrivateInfo >(state->defaultProgramHandle);
     auto emissionProgram     = sdb.state< Program::PrivateInfo >(state->emissionProgramHandle);
     auto emissionPostProgram = sdb.state< Program::PrivateInfo >(state->emissionPostProgramHandle);
 
-#if 0
-    // Default render pass
     {
         const float aspect = 16.0f / 9.0f;
         glm::fmat4 projection = glm::perspective(
@@ -619,9 +698,14 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         }
         glm::fvec4 renderParams = glm::fvec4(debugNormals ? 1.0f : 0.0f, 0.0, 0.0, 0.0);
 
-        funcs->glClearColor(0.15f, 0.15f, 0.15f, 1.0);
-        funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        renderPass(sdb, Group::DEFAULT, defaultProgram, projection, worldToView, renderParams);
+        // Fixed default pass
+        {
+            PROFILING_SECTION(PassDefault, glm::fvec3(1.0f, 0.0f, 0.0f))
+
+            funcs->glClearColor(0.15f, 0.15f, 0.15f, 1.0);
+            funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            renderPass(sdb, Group::DEFAULT, defaultProgram, projection, worldToView, renderParams);
+        }
 
         /*
         // Render transparent items with Z-writes off
@@ -635,62 +719,86 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         funcs->glDisable(GL_CULL_FACE);
         */
 
-        // Now render ambient as emissive into half-res FBO (will be blurred later...)
-        funcs->glBindFramebuffer(GL_FRAMEBUFFER, state->defFbo);
-        funcs->glClearColor(0.0f, 0.0f, 0.0f, 1.0);
-        funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        funcs->glViewport(0, 0, 400, 225);
-        renderPass(sdb, Group::DEFAULT | Group::DEFAULT_TRANSPARENT, emissionProgram, projection, worldToView, renderParams);
-        funcs->glViewport(0, 0, 800, 450);
-        funcs->glBindFramebuffer(GL_FRAMEBUFFER, 0);
-    }
-#endif
-
-#if 0
-    // Emission post-processing pass
-    if (!debugNormals)
-    {
-        glm::fmat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 450.0f, -10.0f, 10.0f);
-        glm::fmat4 worldToView;
-        glm::fvec4 renderParams = glm::fvec4(debugNormals ? 1.0f : 0.0f, 1.0, 0.0, 0.0);
-
-        funcs->glUseProgram(emissionPostProgram->program);
-        GLint colorTex = 0; GLint depthTex = 1;
-        if (emissionPostProgram->uColorTex >= 0) funcs->glUniform1i(emissionPostProgram->uColorTex, colorTex);
-        if (emissionPostProgram->uDepthTex >= 0) funcs->glUniform1i(emissionPostProgram->uDepthTex, depthTex);
-        funcs->glUseProgram(0);
-
-        funcs->glEnable(GL_BLEND);
-        funcs->glBlendFunc(GL_ONE, GL_ONE);
-        funcs->glActiveTexture(GL_TEXTURE0); funcs->glBindTexture(GL_TEXTURE_2D, state->colorTex);
-        funcs->glActiveTexture(GL_TEXTURE1); funcs->glBindTexture(GL_TEXTURE_2D, state->depthTex);
-        for (int repetitionIdx = 0; repetitionIdx < 1; ++repetitionIdx)
+        /*
+        // Fixed ambient as emission into half-res FBO pass
         {
-            renderPass(sdb, Group::DEFAULT_POST, emissionPostProgram, projection, worldToView, renderParams);
-        }
-        funcs->glActiveTexture(GL_TEXTURE1); funcs->glBindTexture(GL_TEXTURE_2D, 0);
-        funcs->glActiveTexture(GL_TEXTURE0); funcs->glBindTexture(GL_TEXTURE_2D, 0);
-        funcs->glDisable(GL_BLEND);
-    }
-#endif
+            PROFILING_SECTION(PassEmission, glm::fvec3(0.0f, 1.0f, 0.0f))
 
-    // UI render pass
+            funcs->glBindFramebuffer(GL_FRAMEBUFFER, state->defFbo);
+            funcs->glClearColor(0.0f, 0.0f, 0.0f, 1.0);
+            funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+            funcs->glViewport(0, 0, 400, 225);
+            renderPass(sdb, Group::DEFAULT | Group::DEFAULT_TRANSPARENT, emissionProgram, projection, worldToView, renderParams);
+            funcs->glViewport(0, 0, 800, 450);
+            funcs->glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        }
+        */
+    }
+
+    /*
+    // Fixed emission post-processing pass
     {
+        PROFILING_SECTION(PassEmissionPost, glm::fvec3(0.0f, 0.0f, 1.0f))
+        if (!debugNormals)
+        {
+            glm::fmat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 450.0f, -10.0f, 10.0f);
+            glm::fmat4 worldToView;
+            glm::fvec4 renderParams = glm::fvec4(debugNormals ? 1.0f : 0.0f, 1.0, 0.0, 0.0);
+
+            funcs->glUseProgram(emissionPostProgram->program);
+            GLint colorTex = 0; GLint depthTex = 1;
+            if (emissionPostProgram->uColorTex >= 0) funcs->glUniform1i(emissionPostProgram->uColorTex, colorTex);
+            if (emissionPostProgram->uDepthTex >= 0) funcs->glUniform1i(emissionPostProgram->uDepthTex, depthTex);
+            funcs->glUseProgram(0);
+
+            funcs->glEnable(GL_BLEND);
+            funcs->glBlendFunc(GL_ONE, GL_ONE);
+            funcs->glActiveTexture(GL_TEXTURE0); funcs->glBindTexture(GL_TEXTURE_2D, state->colorTex);
+            funcs->glActiveTexture(GL_TEXTURE1); funcs->glBindTexture(GL_TEXTURE_2D, state->depthTex);
+            for (int repetitionIdx = 0; repetitionIdx < 1; ++repetitionIdx)
+            {
+                renderPass(sdb, Group::DEFAULT_POST, emissionPostProgram, projection, worldToView, renderParams);
+            }
+            funcs->glActiveTexture(GL_TEXTURE1); funcs->glBindTexture(GL_TEXTURE_2D, 0);
+            funcs->glActiveTexture(GL_TEXTURE0); funcs->glBindTexture(GL_TEXTURE_2D, 0);
+            funcs->glDisable(GL_BLEND);
+        }
+    }
+    */
+
+    // Fixed UI render pass
+    {
+        PROFILING_SECTION(PassUi, glm::fvec3(1.0f, 1.0f, 0.0f))
+
         glm::fmat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 450.0f, -10.0f, 10.0f);
         glm::fmat4 worldToView;
         glm::fvec4 renderParams = glm::fvec4(debugNormals ? 1.0f : 0.0f, 1.0, 0.0, 0.0);
 
         funcs->glClear(GL_DEPTH_BUFFER_BIT);
-        renderPass(sdb, Group::DEFAULT_UI, defaultProgram, projection, worldToView, renderParams);
+        renderPass(sdb, Group::DEFAULT_GUI, defaultProgram, projection, worldToView, renderParams);
     }
 
-    // Seems like 'glFinish()' implicitly waits for V-sync on OS X
-#ifndef COMMON_OSX
+    // Custom/generalized render passes
     {
-        PROFILING_SECTION(FinishEnd, glm::fvec3(1.0f, 0.5f, 0.0f))
-        funcs->glFinish();
+        PROFILING_SECTION(PassCustom, glm::fvec3(0.0f, 1.0f, 1.0f))
+
+        auto passes = sdb.stateAll< Pass::Info >();
+        for (auto pass : passes)
+        {
+            auto program = sdb.state< Renderer::Program::PrivateInfo >(pass->programHandle);
+            if (!program) continue;
+            if (!(pass->flags & Pass::Flag::DEPTH_TEST)) funcs->glDisable(GL_DEPTH_TEST);
+            if ( (pass->flags & Pass::Flag::BLEND))
+            {
+                funcs->glEnable(GL_BLEND);
+                funcs->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            }
+            glm::fmat4 projection = glm::ortho(0.0f, 800.0f, 450.0f, 0.0f, -10.0f, 10.0f);
+            renderPass(sdb, pass->groups, program, projection);
+            if ( (pass->flags & Pass::Flag::BLEND))      funcs->glDisable(GL_BLEND);
+            if (!(pass->flags & Pass::Flag::DEPTH_TEST)) funcs->glEnable (GL_DEPTH_TEST);
+        }
     }
-#endif
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -723,10 +831,13 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         auto meshPrivate = meshesPrivate.rel(meshes, mesh);
         PrivateMesh *privateMesh = meshPrivate->privateMesh;
 
+        // FIXME(martinmo): Use asset version instead of dirty-flag to determine need for update
+        // FIXME(martinmo): and move update logic out of 'renderPass()' into 'update()'
+        // FIXME(martinmo): ==> We might be able to get rid of 'Mesh::PrivateInfo::flags' too
         if (privateMesh->flags & PrivateMesh::Flag::DIRTY)
         {
             // Update/define vertex buffer data
-            u64 vertexCount = privateMesh->model->vertexCount;
+            u64 vertexCount = privateMesh->asset->vertexCount;
             for (auto &vbosIt : privateMesh->vbosByInitialData)
             {
                 void *data = vbosIt.second.attrs[0]->data;
@@ -746,7 +857,7 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
             // Update/define index buffer data
             if (privateMesh->ibo)
             {
-                Assets::MAttr &indicesAttr = privateMesh->model->indicesAttr;
+                Assets::MAttr &indicesAttr = privateMesh->asset->indicesAttr;
                 void *data = indicesAttr.data;
                 u64 size = indicesAttr.count * attrSize[indicesAttr.type];
                 funcs->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, privateMesh->ibo);
@@ -796,16 +907,28 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         {
             if (privateMesh->ibo)
             {
-                for (auto &part : privateMesh->model->parts)
+                Texture::PrivateInfo *texture = nullptr;
+                for (auto &part : privateMesh->asset->parts)
                 {
+                    if (&part != &privateMesh->asset->parts[0]) continue;
+                    if (part.materialHint)
+                    {
+                        texture = sdb.state< Texture::PrivateInfo >(part.materialHint);
+                        if (texture) funcs->glBindTexture(GL_TEXTURE_2D, texture->texture);
+                    }
                     funcs->glDrawElements(GL_TRIANGLES, GLint(part.count),
                         privateMesh->iboGlType, (void *)part.offset);
+                    if (part.materialHint)
+                    {
+                        if (texture) funcs->glBindTexture(GL_TEXTURE_2D, 0);
+                    }
                 }
             }
             else
             {
-                for (auto &part : privateMesh->model->parts)
+                for (auto &part : privateMesh->asset->parts)
                 {
+                    // FIXME(martinmo): This ignores 'part.materialHint' for now...
                     funcs->glDrawArrays(GL_TRIANGLES, GLsizei(part.offset), GLint(part.count));
                 }
             }
@@ -814,8 +937,7 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         {
             if (privateMesh->ibo)
             {
-                funcs->glDrawElements(GL_TRIANGLES,
-                    GLsizei(privateMesh->uploadedIndexCount),
+                funcs->glDrawElements(GL_TRIANGLES, GLsizei(privateMesh->uploadedIndexCount),
                     privateMesh->iboGlType, (void *)0);
             }
             else

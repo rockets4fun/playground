@@ -59,10 +59,11 @@ struct Assets
             CompType type = CompType::FLOAT; // type of per-vertex component(s)
             u64 count = 3;                   // per-vertex component count
             u64 offsetInB = 0;               // offset into interleaved attribute array
+            bool normalize = false;          // normalize values when feeding into shader
 
             Attr(const std::string &nameInit = "", void *dataInit = nullptr,
                 CompType typeInit = CompType::FLOAT, u64 countInit = 3,
-                u64 strideInBInit = 0);
+                u64 offsetInBInit = 0, bool normalizeInit = false);
         };
 
         struct Part
@@ -70,7 +71,7 @@ struct Assets
             std::string name;
             u64 offset = 0;
             u64 count = 0;
-            u32 materialHint = 0;
+            u64 materialHint = 0;
         };
 
         // Default vertex attribute arrays
@@ -117,7 +118,9 @@ struct Assets
     virtual ~Assets();
 
     u32 asset(const std::string &name, u32 flags = 0);
-    const Info *assetInfo(u32 hash);
+
+    const Info *info(u32 hash);
+    u32 touch(u32 hash);
 
     Model *refModel(u32 hash);
     Program *refProgram(u32 hash);

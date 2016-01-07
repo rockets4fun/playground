@@ -27,7 +27,9 @@ public: // Application module interface
 
 private:
     std::vector< u64 > m_meshHandles;
-    u32 m_fontTextureAsset = 0;
+    u64 m_fontTextureHandle = 0;
+    u64 m_programHandle = 0;
+    u64 m_passHandle = 0;
 
     bool m_testWindowVisible = true;
 
