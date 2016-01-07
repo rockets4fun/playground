@@ -119,7 +119,7 @@ struct Renderer::PrivateFuncs
     PFNGLENABLEVERTEXATTRIBARRAYPROC  glEnableVertexAttribArray = nullptr;
     PFNGLDISABLEVERTEXATTRIBARRAYPROC glDisableVertexAttribArray = nullptr;
     // Drawing command functions
-    PFNGLDRAWARRAYSPROC glDrawArrays = nullptr;
+    PFNGLDRAWARRAYSPROC   glDrawArrays = nullptr;
     PFNGLDRAWELEMENTSPROC glDrawElements = nullptr;
     // ARB_debug_output (extension to 3.2 core)
     PFNGLDEBUGMESSAGECALLBACKARBPROC glDebugMessageCallbackARB = nullptr;
@@ -183,10 +183,12 @@ struct Renderer::PrivateMesh
     GLuint vao = 0;
     GLenum usage = GL_STATIC_DRAW;
 
-    u64 uploadedVertexCount = 0;
+    u64 vertexCountReserved = 0;
+    u64 vertexCount = 0;
     std::map< void *, VboInfo > vbosByInitialData;
 
-    u64 uploadedIndexCount = 0;
+    u64 indexCountReserved = 0;
+    u64 indexCount = 0;
     GLuint ibo = 0;
     GLenum iboGlType = GL_NONE;
 };
@@ -843,7 +845,7 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
                 void *data = vbosIt.second.attrs[0]->data;
                 u64 size = vertexCount * vbosIt.second.vertexStrideInB;
                 funcs->glBindBuffer(GL_ARRAY_BUFFER, vbosIt.second.vbo);
-                if (vertexCount != privateMesh->uploadedVertexCount)
+                if (vertexCount > privateMesh->vertexCountReserved)
                 {
                     funcs->glBufferData(GL_ARRAY_BUFFER, size, data, privateMesh->usage);
                 }
@@ -853,7 +855,11 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
                 }
                 funcs->glBindBuffer(GL_ARRAY_BUFFER, 0);
             }
-            privateMesh->uploadedVertexCount = vertexCount;
+            if (vertexCount > privateMesh->vertexCountReserved)
+            {
+                privateMesh->vertexCountReserved = vertexCount;
+            }
+            privateMesh->vertexCount = vertexCount;
             // Update/define index buffer data
             if (privateMesh->ibo)
             {
@@ -861,20 +867,21 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
                 void *data = indicesAttr.data;
                 u64 size = indicesAttr.count * attrSize[indicesAttr.type];
                 funcs->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, privateMesh->ibo);
-                if (indicesAttr.count != privateMesh->uploadedIndexCount)
+                if (indicesAttr.count > privateMesh->indexCountReserved)
                 {
                     funcs->glBufferData(GL_ELEMENT_ARRAY_BUFFER, size, data, privateMesh->usage);
+                    privateMesh->indexCountReserved = indicesAttr.count;
                 }
                 else
                 {
                     funcs->glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, size, data);
                 }
                 funcs->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-                privateMesh->uploadedIndexCount = indicesAttr.count;
+                privateMesh->indexCount = indicesAttr.count;
             }
             privateMesh->flags &= ~PrivateMesh::Flag::DIRTY;
         }
-        if (!privateMesh->uploadedVertexCount)
+        if (!privateMesh->vertexCount)
         {
             continue;
         }
@@ -937,12 +944,12 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         {
             if (privateMesh->ibo)
             {
-                funcs->glDrawElements(GL_TRIANGLES, GLsizei(privateMesh->uploadedIndexCount),
+                funcs->glDrawElements(GL_TRIANGLES, GLsizei(privateMesh->indexCount),
                     privateMesh->iboGlType, (void *)0);
             }
             else
             {
-                funcs->glDrawArrays(GL_TRIANGLES, 0, GLsizei(privateMesh->uploadedVertexCount));
+                funcs->glDrawArrays(GL_TRIANGLES, 0, GLsizei(privateMesh->vertexCount));
             }
         }
         if (privateMesh->ibo) funcs->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
