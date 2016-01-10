@@ -191,6 +191,7 @@ struct Renderer::PrivateMesh
     u64 indexCount = 0;
     GLuint ibo = 0;
     GLenum iboGlType = GL_NONE;
+    int iboAttrSize = 0;
 };
 
 // -------------------------------------------------------------------------------------------------
@@ -512,10 +513,12 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
 {
     PROFILING_SECTION(Renderer, glm::fvec3(0.0f, 0.0f, 1.0f))
 
+    /*
     {
         PROFILING_SECTION(FinishBegin, glm::fvec3(1.0f, 0.5f, 0.0f))
         funcs->glFinish();
     }
+    */
 
     // Prepare references to per-model private data
     auto meshes = sdb.stateAll< Mesh::Info >();
@@ -581,6 +584,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         {
             funcs->glGenBuffers(1, &privateMesh->ibo);
             privateMesh->iboGlType = attrGlType[privateMesh->asset->indicesAttr.type];
+            privateMesh->iboAttrSize = attrSize[privateMesh->asset->indicesAttr.type];
         }
         privateMesh->flags |= PrivateMesh::Flag::DIRTY;
     }
@@ -878,6 +882,15 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
                 }
                 funcs->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
                 privateMesh->indexCount = indicesAttr.count;
+#ifdef COMMON_DEBUG
+                // Validate indices for debugging purpose
+                u16 *index = (u16 *)indicesAttr.data;
+                for (int indexIdx = 0; indexIdx < indicesAttr.count; ++indexIdx)
+                {
+                    COMMON_ASSERT(index[indexIdx] < privateMesh->vertexCount);
+                    COMMON_ASSERT(index[indexIdx] >= 0);
+                }
+#endif
             }
             privateMesh->flags &= ~PrivateMesh::Flag::DIRTY;
         }
@@ -914,28 +927,28 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         {
             if (privateMesh->ibo)
             {
+                u64 activeMaterialHint = 0;
                 Texture::PrivateInfo *texture = nullptr;
                 for (auto &part : privateMesh->asset->parts)
                 {
-                    if (&part != &privateMesh->asset->parts[0]) continue;
-                    if (part.materialHint)
+                    if (activeMaterialHint != part.materialHint)
                     {
                         texture = sdb.state< Texture::PrivateInfo >(part.materialHint);
                         if (texture) funcs->glBindTexture(GL_TEXTURE_2D, texture->texture);
+                        else         funcs->glBindTexture(GL_TEXTURE_2D, 0);
+                        activeMaterialHint = part.materialHint;
                     }
-                    funcs->glDrawElements(GL_TRIANGLES, GLint(part.count),
-                        privateMesh->iboGlType, (void *)part.offset);
-                    if (part.materialHint)
-                    {
-                        if (texture) funcs->glBindTexture(GL_TEXTURE_2D, 0);
-                    }
+                    GLvoid *indices = (GLvoid *)(part.offset * privateMesh->iboAttrSize);
+                    funcs->glDrawElements(GL_TRIANGLES,
+                        GLint(part.count), privateMesh->iboGlType, indices);
                 }
+                if (texture) funcs->glBindTexture(GL_TEXTURE_2D, 0);
             }
             else
             {
                 for (auto &part : privateMesh->asset->parts)
                 {
-                    // FIXME(martinmo): This ignores 'part.materialHint' for now...
+                    // FIXME(martinmo): We need to respect 'part.materialHint' just like above...
                     funcs->glDrawArrays(GL_TRIANGLES, GLsizei(part.offset), GLint(part.count));
                 }
             }

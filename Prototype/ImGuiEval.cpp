@@ -104,6 +104,7 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
             ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiSetCond_FirstUseEver);
             ImGui::Begin("Test Window", &m_testWindowVisible);
             ImGui::Text("Hello, world!");
+            ImGui::Separator();
             ImGui::End();
         }
         ImGui::Render();
@@ -112,12 +113,16 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
     // (2) Retrieve render command buffers and transform/prepare for renderer
     {
         ImDrawData *drawData = ImGui::GetDrawData();
-        // Transform UI meshes into models and mesh references for renderer
+        // Get rid of meshes/reset models no longer used...
         while (m_meshHandles.size() > drawData->CmdListsCount)
         {
-            sdb.destroy(m_meshHandles.back());
+            u64 meshHandle = m_meshHandles.back();
+            auto mesh = sdb.state< Renderer::Mesh::Info >(meshHandle);
+            assets.refModel(mesh->modelAsset)->clear();
+            sdb.destroy(meshHandle);
             m_meshHandles.pop_back();
         }
+        // Transform UI meshes into models and mesh references for renderer
         for (int cmdListIdx = 0; cmdListIdx < drawData->CmdListsCount; ++cmdListIdx)
         {
             ImDrawList *cmdList = drawData->CmdLists[cmdListIdx];
@@ -155,10 +160,13 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
 
             u64 prevElemOffset = 0;
             int cmdCount = cmdList->CmdBuffer.size();
+            if (int(model->parts.size()) != cmdCount)
+            {
+                model->parts.resize(cmdCount);
+            }
             for (int cmdIdx = 0; cmdIdx < cmdCount; ++cmdIdx)
             {
                 ImDrawCmd &cmd = cmdList->CmdBuffer[cmdIdx];
-                if (cmdIdx >= int(model->parts.size())) model->parts.resize(cmdIdx + 1);
                 Assets::Model::Part &part = model->parts[cmdIdx];
                 part.materialHint = *(u64 *)cmd.TextureId;
                 part.offset = prevElemOffset;
