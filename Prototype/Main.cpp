@@ -62,10 +62,10 @@ int main(int argc, char *argv[])
         profileMask == SDL_GL_CONTEXT_PROFILE_CORE ? "core" : "non-core");
 
     {
-        Renderer renderer;
         Physics physics;
-        ImGuiEval imGuiEval;
         RocketScience rocketScience;
+        ImGuiEval imGuiEval;
+        Renderer renderer;
 
         StateDb sdb;
         Assets assets;
