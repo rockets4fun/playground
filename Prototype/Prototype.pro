@@ -99,10 +99,10 @@ macx {
     # Clone branch "master" from "https://github.com/bulletphysics/bullet3.git"
     # Use CMake to generate "Unix Makefiles" with "Use default native compilers"
     # "Configure", "Generate" and "make" from command line
-    INCLUDEPATH += $${THIRDPARTY}/Bullet3/src
-    LIBS += -L$${THIRDPARTY}/Bullet3/src/BulletCollision
-    LIBS += -L$${THIRDPARTY}/Bullet3/src/BulletDynamics
-    LIBS += -L$${THIRDPARTY}/Bullet3/src/LinearMath
+    INCLUDEPATH += $${THIRDPARTY}/Bullet/src
+    LIBS += -L$${THIRDPARTY}/Bullet/src/BulletCollision
+    LIBS += -L$${THIRDPARTY}/Bullet/src/BulletDynamics
+    LIBS += -L$${THIRDPARTY}/Bullet/src/LinearMath
     LIBS += -lBulletCollision -lBulletDynamics -lLinearMath
 }
 
