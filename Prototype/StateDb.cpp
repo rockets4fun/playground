@@ -142,6 +142,9 @@ u64 StateDb::registerState(u64 typeId, const std::string &name, u64 elemSize)
     m_stateIdsByName[internalName] = newState.id;
 
     m_stateValues.resize(newState.id + 1);
+    // FIXME(martinmo): If we want to support non-0 default values for state fields
+    // FIXME(martinmo): we would have to use placement new to construct elements here...
+    // FIXME(martinmo): ==> Better 'memcpy()' from default initialized 0-element?
     m_stateValues[newState.id].resize(newState.elemSize * (type.maxObjectCount + 1));
 
     return newState.id;
@@ -198,6 +201,9 @@ void StateDb::destroy(u64 objectHandle)
                 &m_stateValues[stateId][state.elemSize * idxToDestroy],
                 &m_stateValues[stateId][state.elemSize * type.objectCount], state.elemSize);
             // Zero previous state memory of swapped in object
+            // FIXME(martinmo): If we want to support non-0 default values for state fields
+            // FIXME(martinmo): we would have to use placement new to reset the element here...
+            // FIXME(martinmo): ==> Better 'memcpy()' from default initialized 0-element?
             memset(
                 &m_stateValues[stateId][state.elemSize * type.objectCount], 0, state.elemSize);
         }
@@ -207,6 +213,9 @@ void StateDb::destroy(u64 objectHandle)
     else
     {
         // Zero memory of destroyed object's states
+        // FIXME(martinmo): If we want to support non-0 default values for state fields
+        // FIXME(martinmo): we would have to use placement new to reset the element here...
+        // FIXME(martinmo): ==> Better 'memcpy()' from default initialized 0-element?
         for (u64 stateId : type.stateIds)
         {
             State &state = m_states[stateId];

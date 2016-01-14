@@ -206,9 +206,9 @@ struct Renderer::Program::PrivateInfo
     GLuint vertexShader = 0;
     GLuint fragmentShader = 0;
     GLuint program = 0;
+    // Uniforms
     // FIXME(martinmo): State DB does not support non-0 initial values...
     // FIXME(martinmo): ==> Value of -1 would be correct value (see below)
-    // Uniforms
     GLint uModelToWorldMatrix = -1;
     GLint uModelToViewMatrix = -1;
     GLint uProjectionMatrix = -1;
