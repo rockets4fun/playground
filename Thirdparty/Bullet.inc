@@ -1,6 +1,6 @@
 include(Common.inc)
 
-# =====  Bullet Physics Library = http://bulletphysics.org  =======================================
+# ===== Bullet Physics Library = http://bulletphysics.org  =========================================
 
 cloneAndClean(Bullet, https://github.com/bulletphysics/bullet3.git)
 

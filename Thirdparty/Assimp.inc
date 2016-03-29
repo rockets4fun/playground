@@ -1,6 +1,6 @@
 include(Common.inc)
 
-# =====  Open Asset Import Library = http://assimp.sf.net =========================================
+# ===== Open Asset Import Library = http://assimp.sf.net ===========================================
 
 cloneAndClean(Assimp, https://github.com/assimp/assimp.git)
 

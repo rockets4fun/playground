@@ -1,5 +1,5 @@
 include(Common.inc)
 
-# =====  ImGui - Bloat-free Immediate Mode GUI = https://github.com/ocornut/imgui  ================
+# ===== ImGui - Bloat-free Immediate Mode GUI = https://github.com/ocornut/imgui ===================
 
 cloneAndClean(ImGui, https://github.com/ocornut/imgui.git)
