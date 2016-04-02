@@ -1,0 +1,8 @@
+* Panels
+** Offset:    0.04
+** Extrusion: 0.04
+** Chamfer:   0.02 (rolling ball)
+
+* Negative panels
+** Offset:    0.04
+** Extrusion: 0.02
