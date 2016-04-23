@@ -1,3 +1,7 @@
+* Units
+** Model units: Meters
+** Absolute tolerance: 0.001
+
 * Panels
 ** Offset:    0.04
 ** Extrusion: 0.04
@@ -6,3 +10,8 @@
 * Negative panels
 ** Offset:    0.04
 ** Extrusion: 0.02
+
+* Cockpit windows
+** Offset:  0.02
+** Chamfer: 0.05
+** Loft window openings from inside to outside face

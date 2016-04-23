@@ -1,0 +1,3 @@
+aobaker --sizehint 256 --nsamples 256 --outmesh PusherFront_Result.obj --atlas PusherFront_Result.png PusherFront.obj
+
+aobaker --outmesh PusherFront_Result.obj --atlas PusherFront_Result.png PusherFront.obj

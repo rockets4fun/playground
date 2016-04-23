@@ -1,7 +1,7 @@
 h1. Current Coding Roadmap
 ----------------------------------------------------------------------------------------------------
 
-* Roadmap X-Mas 2015
+* Short-term roadmap
 ** Import model from blockified DAE and add block info to model asset parts info
 ** Pusher modeling (V-wings for front section, thrusters, details for section links)
 ** GUI prototype (multi-window experiments using @ocornut's ImGui)
@@ -12,7 +12,7 @@ h1. Current Coding Roadmap
 ** Sharing context data most likely means implicit synchronization of API calls...
 ** We need one render thread/context per window (main thread triggers all renderer updates)
 
-* Roadmap
+* Long-term Roadmap
 ** Improve bloom effect
 *** Gaussian/triangle/multipass (FBO ping-pong) blur
 *** Try separating horizontal and vertical blur steps
