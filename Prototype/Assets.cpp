@@ -264,13 +264,16 @@ void Assets::Model::setDefaultAttrs()
     COMMON_ASSERT(diffuse.size()   == vertexCount);
     COMMON_ASSERT(ambient.size()   == vertexCount);
 
-    attrs =
+    if (vertexCount > 0)
     {
-        MAttr("Position", &positions[0].x),
-        MAttr("Normal",   &normals  [0].x),
-        MAttr("Diffuse",  &diffuse  [0].r),
-        MAttr("Ambient",  &ambient  [0].r),
-    };
+        attrs =
+        {
+            MAttr("Position", &positions[0].x),
+            MAttr("Normal",   &normals  [0].x),
+            MAttr("Diffuse",  &diffuse  [0].r),
+            MAttr("Ambient",  &ambient  [0].r),
+        };
+    }
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -281,7 +284,8 @@ bool Assets::loadModel(const Info &info, Model &model)
 
     model.clear();
 
-    const aiScene *scene = m_privateState->importer.ReadFile(info.name, aiProcess_Triangulate);
+    const aiScene *scene = m_privateState->importer.ReadFile(
+        info.name, aiProcess_Triangulate/* | aiProcess_PreTransformVertices*/);
     if (!scene)
     {
         // FIXME(martinmo): Proper error message through platform abstraction
@@ -298,7 +302,7 @@ bool Assets::loadModel(const Info &info, Model &model)
         for (size_t childIdx = 0; childIdx < branch->mNumChildren; ++childIdx)
         {
             aiNode *child = branch->mChildren[childIdx];
-            if (child->mChildren)
+            if (child->mNumChildren)
             {
                 branches.push_back(child);
             }
@@ -309,15 +313,47 @@ bool Assets::loadModel(const Info &info, Model &model)
         }
     }
 
+    /*
+    for (size_t meshIdx = 0; meshIdx < scene->mNumMeshes; ++meshIdx)
+    {
+        const aiMesh *mesh = scene->mMeshes[meshIdx];
+        std::string meshName = mesh->mName.C_Str();
+        std::string partName = meshName;
+    }
+    */
+
     // Iterate over all faces of all meshes and append data
     model.parts.push_back(Model::Part());
     for (const auto &leaf : leafs)
     {
-        std::string partName = leaf->mName.C_Str();
+        if (!leaf->mNumMeshes)
+        {
+            continue;
+        }
+
+        aiMesh *firstMesh = scene->mMeshes[leaf->mMeshes[0]];
+        std::string firstMeshName = firstMesh->mName.C_Str();
+        std::string leafName = leaf->mName.C_Str();
+        std::string partName = leafName;
 
         Model::Part *currentPart = &model.parts.back();
         if (currentPart->name.empty()) currentPart->name = partName;
         if (partName == "defaultobject") partName = currentPart->name;
+
+        // Determine node transformation by walking from leaf up to root
+        aiMatrix4x4 xform;
+        aiNode *xformIter = leaf;
+        do
+        {
+            xform = xformIter->mTransformation * xform;
+            xformIter = xformIter->mParent;
+        }
+        while (xformIter);
+        glm::fmat4 xformGlm(
+            glm::fvec4(xform.m[0][0], xform.m[0][1], xform.m[0][2], xform.m[0][3]),
+            glm::fvec4(xform.m[1][0], xform.m[1][1], xform.m[1][2], xform.m[1][3]),
+            glm::fvec4(xform.m[2][0], xform.m[2][1], xform.m[2][2], xform.m[2][3]),
+            glm::fvec4(xform.m[3][0], xform.m[3][1], xform.m[3][2], xform.m[3][3]));
 
         for (size_t meshIdx = 0; meshIdx < leaf->mNumMeshes; ++meshIdx)
         {
@@ -355,14 +391,14 @@ bool Assets::loadModel(const Info &info, Model &model)
                 const aiFace *face = &mesh->mFaces[faceIdx];
                 for (size_t idx = 0; idx < face->mNumIndices; ++idx)
                 {
-                    model.positions.push_back(glm::fvec3(
+                    model.positions.push_back(glm::fvec3(glm::fvec4(
                         mesh->mVertices[face->mIndices[idx]].x,
                         mesh->mVertices[face->mIndices[idx]].y,
-                        mesh->mVertices[face->mIndices[idx]].z));
-                    model.normals.push_back(glm::fvec3(
+                        mesh->mVertices[face->mIndices[idx]].z, 1.0f) * xformGlm));
+                    model.normals.push_back(glm::fvec3(glm::fvec4(
                         mesh->mNormals[face->mIndices[idx]].x,
                         mesh->mNormals[face->mIndices[idx]].y,
-                        mesh->mNormals[face->mIndices[idx]].z));
+                        mesh->mNormals[face->mIndices[idx]].z, 1.0f) * xformGlm));
                     model.diffuse.push_back(diffuse);
                     model.ambient.push_back(ambient);
                 }
