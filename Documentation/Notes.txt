@@ -3,7 +3,7 @@ h1. Current Coding Roadmap
 
 * Short-term roadmap
 ** Import model from blockified DAE and add block info to model asset parts info
-** Pusher modeling (V-wings for front section, thrusters, details for section links)
+** Pusher modeling (details for section links/docking mechanism)
 ** GUI prototype (multi-window experiments using @ocornut's ImGui)
 ** Mouse interactivity (camera control, physics manipulation)
 ** FSM-based control logic and sensor fusion prototyping
