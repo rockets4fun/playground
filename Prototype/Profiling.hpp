@@ -14,8 +14,14 @@
 
 #include <glm/glm.hpp>
 
+#define PROFILING_ENABLE_REMOTERY
+
+#ifdef PROFILING_ENABLE_REMOTERY
+#   include <Remotery.h>
+#endif
+
 #ifdef COMMON_WINDOWS
-#   define PROFILING_ENABLE_BROFILER
+//#   define PROFILING_ENABLE_BROFILER
 #endif
 
 #ifdef PROFILING_ENABLE_BROFILER
@@ -95,17 +101,39 @@ private:
     double m_ticksPerMs = 0.0;
     u64 m_ticksFrameStart = 0;
 
+#ifdef PROFILING_ENABLE_REMOTERY
+    Remotery *m_remotery = nullptr;
+#endif
+
     u64 ticksSinceFrameStart() const;
 
 private:
     COMMON_DISABLE_COPY(Profiling)
 };
 
+// -------------------------------------------------------------------------------------------------
+
+#ifdef PROFILING_ENABLE_REMOTERY
+#   define PROFILING_REMOTERY_SECTION(name) \
+        rmt_ScopedCPUSample(name, 0);
+#else
+#   define PROFILING_REMOTERY_SECTION(name, color)
+#endif
+
+#ifdef PROFILING_ENABLE_REMOTERY
+#   define PROFILING_REMOTERY_THREAD(name) \
+        rmt_SetCurrentThreadName(#name);
+#else
+#   define PROFILING_REMOTERY_THREAD(name, color)
+#endif
+
+// -------------------------------------------------------------------------------------------------
+
 #ifdef PROFILING_ENABLE_BROFILER
-#   define PROFILING_BROFILER_CATEGORY(name, color) \
+#   define PROFILING_BROFILER_SECTION(name, color) \
         BROFILER_CATEGORY(#name, Profiling::toBrofilerColor(color))
 #else
-#   define PROFILING_BROFILER_CATEGORY(name, color)
+#   define PROFILING_BROFILER_SECTION(name, color)
 #endif
 
 #ifdef PROFILING_ENABLE_BROFILER
@@ -115,15 +143,19 @@ private:
 #   define PROFILING_BROFILER_THREAD(name, color)
 #endif
 
+// -------------------------------------------------------------------------------------------------
+
 #define PROFILING_SECTION(name, color) \
-    PROFILING_BROFILER_CATEGORY(name, color) \
     static Profiling::Section __section_##name(#name, color); \
-    Profiling::SectionGuard __section_guard_##name(__section_##name);
+    Profiling::SectionGuard __section_guard_##name(__section_##name); \
+    PROFILING_REMOTERY_SECTION(name) \
+    PROFILING_BROFILER_SECTION(name, color)
 
 #define PROFILING_THREAD(name, color) \
-    PROFILING_BROFILER_THREAD(name, color) \
     Profiling::instance()->frameReset(); \
     static Profiling::Section __section_##name(#name, color); \
-    Profiling::SectionGuard __section_guard_##name(__section_##name);
+    Profiling::SectionGuard __section_guard_##name(__section_##name); \
+    PROFILING_REMOTERY_THREAD(name) \
+    PROFILING_BROFILER_THREAD(name, color)
 
 #endif

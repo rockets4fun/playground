@@ -47,13 +47,18 @@ macx {
 
 THIRDPARTY = ../Thirdparty
 
-# Profiling using "Brofiler" on Windows
+# =====  Brofiler - C++ Profiler for Games = http://brofiler.com/ ==================================
 win32 {
     INCLUDEPATH += $${THIRDPARTY}/Brofiler
     LIBS += $${THIRDPARTY}/Brofiler/ProfilerCore64.lib
 }
 
-# SDL
+# ===== Remotery - A realtime CPU/GPU profiler = https://github.com/Celtoys/Remotery ===============
+INCLUDEPATH += $${THIRDPARTY}/Remotery/lib
+HEADERS += $${THIRDPARTY}/Remotery/lib/Remotery.h
+SOURCES += $${THIRDPARTY}/Remotery/lib/Remotery.c
+
+# =====  Simple Direct-Media Layer (SDL) = http://libsdl.org/ ======================================
 win32 {
     INCLUDEPATH += $${THIRDPARTY}/Sdl/include
     win32:contains(QMAKE_HOST.arch, x86_64) {
@@ -70,13 +75,13 @@ macx {
     LIBS += -framework SDL2
 }
 
-# =====  OpenGL Mathematics (GLM) = http://glm.g-truc.net =========================================
+# =====  OpenGL Mathematics (GLM) = http://glm.g-truc.net ==========================================
 win32 | unix {
     # Clone branch "0.9.6" from "https://github.com/g-truc/glm.git"
     INCLUDEPATH += $${THIRDPARTY}/Glm
 }
 
-# =====  Bullet Physics Library = http://bulletphysics.org  =======================================
+# =====  Bullet Physics Library = http://bulletphysics.org  ========================================
 win32 {
     # Check "USE_MSVC_RUNTIME_LIBRARY_DLL" before pressing "Generate"
     INCLUDEPATH += $${THIRDPARTY}/Bullet/src
@@ -106,7 +111,7 @@ macx {
     LIBS += -lBulletCollision -lBulletDynamics -lLinearMath
 }
 
-# =====  Open Asset Import Library = http://assimp.sf.net =========================================
+# =====  Open Asset Import Library = http://assimp.sf.net ==========================================
 win32 {
     INCLUDEPATH += $${THIRDPARTY}/assimp/include
     win32:contains(QMAKE_HOST.arch, x86_64) {
@@ -129,13 +134,14 @@ macx {
     LIBS += -lassimp -lz
 }
 
-# =====  ImGui - Bloat-free Immediate Mode GUI = https://github.com/ocornut/imgui  ================
+# =====  ImGui - Bloat-free Immediate Mode GUI = https://github.com/ocornut/imgui  =================
 INCLUDEPATH += $${THIRDPARTY}/ImGui
+HEADERS += $${THIRDPARTY}/ImGui/imgui.h
 SOURCES += \
     $${THIRDPARTY}/ImGui/imgui.cpp \
     $${THIRDPARTY}/ImGui/imgui_draw.cpp
 
-# =================================================================================================
+# ==================================================================================================
 
 HEADERS += \
     Template.hpp \

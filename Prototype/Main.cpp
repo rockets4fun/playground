@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
             }
 
             {
-                PROFILING_SECTION(ReleadAssets, glm::fvec3(1.0f, 0.0f, 0.5f));
+                PROFILING_SECTION(ReloadAssets, glm::fvec3(1.0f, 0.0f, 0.5f));
                 assets.reloadModifiedAssets();
             }
 

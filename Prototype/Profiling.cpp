@@ -12,11 +12,18 @@ Profiling::Profiling()
 {
     m_ticksPerS = SDL_GetPerformanceFrequency();
     m_ticksPerMs = double(m_ticksPerS) / 1000.0;
+
+#ifdef PROFILING_ENABLE_REMOTERY
+    rmt_CreateGlobalInstance(&m_remotery);
+#endif
 }
 
 // -------------------------------------------------------------------------------------------------
 Profiling::~Profiling()
 {
+#ifdef PROFILING_ENABLE_REMOTERY
+    rmt_DestroyGlobalInstance(m_remotery);
+#endif
 }
 
 // -------------------------------------------------------------------------------------------------
