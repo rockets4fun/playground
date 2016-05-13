@@ -3,38 +3,38 @@
 /// @date 14.09.2015
 // -------------------------------------------------------------------------------------------------
 
-#include "Profiling.hpp"
+#include "Profiler.hpp"
 
 #include <SDL.h>
 
 // -------------------------------------------------------------------------------------------------
-Profiling::Profiling()
+Profiler::Profiler()
 {
     m_ticksPerS = SDL_GetPerformanceFrequency();
     m_ticksPerMs = double(m_ticksPerS) / 1000.0;
 
-#ifdef PROFILING_ENABLE_REMOTERY
+#ifdef PROFILER_ENABLE_REMOTERY
     rmt_CreateGlobalInstance(&m_remotery);
 #endif
 }
 
 // -------------------------------------------------------------------------------------------------
-Profiling::~Profiling()
+Profiler::~Profiler()
 {
-#ifdef PROFILING_ENABLE_REMOTERY
+#ifdef PROFILER_ENABLE_REMOTERY
     rmt_DestroyGlobalInstance(m_remotery);
 #endif
 }
 
 // -------------------------------------------------------------------------------------------------
-Profiling *Profiling::instance()
+Profiler *Profiler::instance()
 {
-    static Profiling profiling;
+    static Profiler profiling;
     return &profiling;
 }
 
 // -------------------------------------------------------------------------------------------------
-Profiling::Thread *Profiling::mainThreadPrevFrame()
+Profiler::Thread *Profiler::mainThreadPrevFrame()
 {
     if (m_threadsPrevFrame.empty())
     {
@@ -44,7 +44,7 @@ Profiling::Thread *Profiling::mainThreadPrevFrame()
 }
 
 // -------------------------------------------------------------------------------------------------
-void Profiling::frameReset()
+void Profiler::frameReset()
 {
     m_threadsPrevFrame = m_threads;
     for (auto &threadMapIter : m_threads)
@@ -56,7 +56,7 @@ void Profiling::frameReset()
 }
 
 // -------------------------------------------------------------------------------------------------
-double Profiling::ticksToMs(u64 ticks) const
+double Profiler::ticksToMs(u64 ticks) const
 {
     u64 seconds = ticks / m_ticksPerS;
     u64 ticksRemaining = ticks % m_ticksPerS;
@@ -65,8 +65,8 @@ double Profiling::ticksToMs(u64 ticks) const
 }
 
 // -------------------------------------------------------------------------------------------------
-#ifdef PROFILING_ENABLE_BROFILER
-u32 Profiling::toBrofilerColor(const glm::fvec3 &color)
+#ifdef PROFILER_ENABLE_BROFILER
+u32 Profiler::toBrofilerColor(const glm::fvec3 &color)
 {
     return 0xFF000000
         | u8(glm::round(glm::clamp(color.r, 0.0f, 1.0f) * 255.0)) << 16
@@ -76,10 +76,10 @@ u32 Profiling::toBrofilerColor(const glm::fvec3 &color)
 #endif
 
 // -------------------------------------------------------------------------------------------------
-Profiling::Section::Section(const std::string &nameInit, const glm::fvec3 &colorInit) :
+Profiler::Section::Section(const std::string &nameInit, const glm::fvec3 &colorInit) :
     name(nameInit), color(colorInit)
 {
-    m_profiling = Profiling::instance();
+    m_profiling = Profiler::instance();
     u64 currentThreadId = u64(SDL_ThreadID());
     m_thread = &m_profiling->m_threads[currentThreadId];
     if (!m_thread->id)
@@ -90,7 +90,7 @@ Profiling::Section::Section(const std::string &nameInit, const glm::fvec3 &color
 }
 
 // -------------------------------------------------------------------------------------------------
-void Profiling::Section::enter()
+void Profiler::Section::enter()
 {
     u64 ticksEnter = m_profiling->ticksSinceFrameStart();
 
@@ -104,7 +104,7 @@ void Profiling::Section::enter()
 }
 
 // -------------------------------------------------------------------------------------------------
-void Profiling::Section::exit()
+void Profiler::Section::exit()
 {
     u64 ticksExit = m_profiling->ticksSinceFrameStart();
 
@@ -119,19 +119,19 @@ void Profiling::Section::exit()
 }
 
 // -------------------------------------------------------------------------------------------------
-Profiling::SectionGuard::SectionGuard(Section &section) : m_section(section)
+Profiler::SectionGuard::SectionGuard(Section &section) : m_section(section)
 {
     m_section.enter();
 }
 
 // -------------------------------------------------------------------------------------------------
-Profiling::SectionGuard::~SectionGuard()
+Profiler::SectionGuard::~SectionGuard()
 {
     m_section.exit();
 }
 
 // -------------------------------------------------------------------------------------------------
-u64 Profiling::ticksSinceFrameStart() const
+u64 Profiler::ticksSinceFrameStart() const
 {
     u64 ticksPassed = SDL_GetPerformanceCounter() - m_ticksFrameStart;
     return ticksPassed;

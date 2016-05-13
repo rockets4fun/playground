@@ -20,7 +20,7 @@
 #include "ImGuiEval.hpp"
 #include "RocketScience.hpp"
 
-#include "Profiling.hpp"
+#include "Profiler.hpp"
 
 // -------------------------------------------------------------------------------------------------
 int main(int argc, char *argv[])
@@ -96,7 +96,7 @@ int main(int argc, char *argv[])
         SDL_Event event;
         while (running)
         {
-            PROFILING_THREAD(Main, glm::fvec3(0.5f, 0.5f, 0.5f))
+            PROFILER_THREAD(Main, glm::fvec3(0.5f, 0.5f, 0.5f))
 
             while (SDL_PollEvent(&event))
             {
@@ -113,7 +113,7 @@ int main(int argc, char *argv[])
             }
 
             {
-                PROFILING_SECTION(ReloadAssets, glm::fvec3(1.0f, 0.0f, 0.5f));
+                PROFILER_SECTION(ReloadAssets, glm::fvec3(1.0f, 0.0f, 0.5f));
                 assets.reloadModifiedAssets();
             }
 

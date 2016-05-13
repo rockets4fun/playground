@@ -17,7 +17,7 @@
 #include <glm/gtc/type_ptr.hpp>
 
 #include "Logging.hpp"
-#include "Profiling.hpp"
+#include "Profiler.hpp"
 
 #include "StateDb.hpp"
 #include "Assets.hpp"
@@ -511,11 +511,11 @@ void Renderer::shutdown(StateDb &sdb)
 // -------------------------------------------------------------------------------------------------
 void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS)
 {
-    PROFILING_SECTION(Renderer, glm::fvec3(0.0f, 0.0f, 1.0f))
+    PROFILER_SECTION(Renderer, glm::fvec3(0.0f, 0.0f, 1.0f))
 
     /*
     {
-        PROFILING_SECTION(FinishBegin, glm::fvec3(1.0f, 0.5f, 0.0f))
+        PROFILER_SECTION(FinishBegin, glm::fvec3(1.0f, 0.5f, 0.0f))
         funcs->glFinish();
     }
     */
@@ -706,7 +706,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
 
         // Fixed default pass
         {
-            PROFILING_SECTION(PassDefault, glm::fvec3(1.0f, 0.0f, 0.0f))
+            PROFILER_SECTION(PassDefault, glm::fvec3(1.0f, 0.0f, 0.0f))
 
             funcs->glClearColor(0.15f, 0.15f, 0.15f, 1.0);
             funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -728,7 +728,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         /*
         // Fixed ambient as emission into half-res FBO pass
         {
-            PROFILING_SECTION(PassEmission, glm::fvec3(0.0f, 1.0f, 0.0f))
+            PROFILER_SECTION(PassEmission, glm::fvec3(0.0f, 1.0f, 0.0f))
 
             funcs->glBindFramebuffer(GL_FRAMEBUFFER, state->defFbo);
             funcs->glClearColor(0.0f, 0.0f, 0.0f, 1.0);
@@ -744,7 +744,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
     /*
     // Fixed emission post-processing pass
     {
-        PROFILING_SECTION(PassEmissionPost, glm::fvec3(0.0f, 0.0f, 1.0f))
+        PROFILER_SECTION(PassEmissionPost, glm::fvec3(0.0f, 0.0f, 1.0f))
         if (!debugNormals)
         {
             glm::fmat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 450.0f, -10.0f, 10.0f);
@@ -774,7 +774,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
 
     // Fixed UI render pass
     {
-        PROFILING_SECTION(PassUi, glm::fvec3(1.0f, 1.0f, 0.0f))
+        PROFILER_SECTION(PassUi, glm::fvec3(1.0f, 1.0f, 0.0f))
 
         glm::fmat4 projection = glm::ortho(0.0f, 800.0f, 0.0f, 450.0f, -10.0f, 10.0f);
         glm::fmat4 worldToView;
@@ -786,7 +786,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
 
     // Custom/generalized render passes
     {
-        PROFILING_SECTION(PassCustom, glm::fvec3(0.0f, 1.0f, 1.0f))
+        PROFILER_SECTION(PassCustom, glm::fvec3(0.0f, 1.0f, 1.0f))
 
         auto passes = sdb.stateAll< Pass::Info >();
         for (auto pass : passes)

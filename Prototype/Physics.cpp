@@ -12,7 +12,7 @@
 #include <btBulletDynamicsCommon.h>
 
 #include "Logging.hpp"
-#include "Profiling.hpp"
+#include "Profiler.hpp"
 
 #include "StateDb.hpp"
 #include "Assets.hpp"
@@ -489,7 +489,7 @@ void trackDestructions(StateDb &sdb,
 // -------------------------------------------------------------------------------------------------
 void Physics::update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS)
 {
-    PROFILING_SECTION(Physics, glm::fvec3(1.0f, 0.0f, 0.0f))
+    PROFILER_SECTION(Physics, glm::fvec3(1.0f, 0.0f, 0.0f))
 
     // Check for newly created rigid bodies
     trackCreations< RigidBody >(sdb, state->privateRigidBodies, *state.get());
@@ -516,7 +516,7 @@ void Physics::update(StateDb &sdb, Assets &assets, Renderer &renderer, double de
 
     // Update rigid body physics simulation
     {
-        PROFILING_SECTION(StepSim, glm::fvec3(1.0f, 0.5f, 0.0f))
+        PROFILER_SECTION(StepSim, glm::fvec3(1.0f, 0.5f, 0.0f))
         state->dynamicsWorld->stepSimulation(btScalar(deltaTimeInS), 5, btScalar(1.0 / 60));
     }
 

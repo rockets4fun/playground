@@ -157,7 +157,7 @@ HEADERS += \
     ImGuiEval.hpp \
     Physics.hpp \
     Platform.hpp \
-    Profiling.hpp \
+    Profiler.hpp \
     Logging.hpp \
     Math.hpp \
     Renderer.hpp \
@@ -169,7 +169,7 @@ SOURCES += \
     ImGuiEval.cpp \
     Physics.cpp \
     Platform.cpp \
-    Profiling.cpp \
+    Profiler.cpp \
     Logging.cpp \
     Math.cpp \
     Renderer.cpp \

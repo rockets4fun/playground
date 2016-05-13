@@ -17,7 +17,7 @@
 
 #include "Math.hpp"
 #include "Logging.hpp"
-#include "Profiling.hpp"
+#include "Profiler.hpp"
 
 #include "StateDb.hpp"
 #include "Assets.hpp"
@@ -261,13 +261,13 @@ void RocketScience::shutdown(StateDb &sdb)
 // -------------------------------------------------------------------------------------------------
 void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS)
 {
-    PROFILING_SECTION(RocketScience, glm::fvec3(0.0f, 1.0f, 0.0f))
+    PROFILER_SECTION(RocketScience, glm::fvec3(0.0f, 1.0f, 0.0f))
 
     m_timeInS += deltaTimeInS;
 
     // Update tileable dynamic ocean model
     {
-        PROFILING_SECTION(UpdateOcean, glm::fvec3(0.0f, 1.0f, 1.0f))
+        PROFILER_SECTION(UpdateOcean, glm::fvec3(0.0f, 1.0f, 1.0f))
 
         Assets::Model *model = assets.refModel(m_oceanModelAsset);
         int vertexCount = int(model->positions.size());
@@ -540,14 +540,14 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 
     // Update profiling UI
     {
-        PROFILING_SECTION(UpdateUi, glm::fvec3(1.0f, 0.0f, 1.0f))
+        PROFILER_SECTION(UpdateUi, glm::fvec3(1.0f, 0.0f, 1.0f))
 
         auto uiModel = assets.refModel(m_uiModelAsset);
 
         uiModel->clear();
 
-        Profiling *profiling = Profiling::instance();
-        Profiling::Thread *mainThread = profiling->mainThreadPrevFrame();
+        Profiler *profiling = Profiler::instance();
+        Profiler::Thread *mainThread = profiling->mainThreadPrevFrame();
 
         float offsPx   = 15.0f;
         float msPx     = 30.0f;
@@ -565,7 +565,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 
         if (mainThread)
         {
-            for (Profiling::SectionSample &sample : mainThread->samples)
+            for (Profiler::SectionSample &sample : mainThread->samples)
             {
                 float enterMs   = float(profiling->ticksToMs(sample.ticksEnter));
                 float exitMs    = float(profiling->ticksToMs(sample.ticksExit));
