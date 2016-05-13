@@ -16,7 +16,7 @@
 #include <glm/gtx/fast_trigonometry.hpp>
 
 #include "Math.hpp"
-#include "Logging.hpp"
+#include "Logger.hpp"
 #include "Profiler.hpp"
 
 #include "StateDb.hpp"
@@ -429,7 +429,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
         // Emergency motors off...
         double errorAngleInDeg = glm::degrees(
             glm::angle(Math::rotateFromTo(nominalDir, actualDir)));
-        //Logging::debug("errorAngleInDeg: %5.2f", errorAngleInDeg);
+        //Logger::debug("errorAngleInDeg: %5.2f", errorAngleInDeg);
         if (glm::abs(errorAngleInDeg) > 20.0f)
         {
             sdb.destroy(m_pusherAffectorHandle);

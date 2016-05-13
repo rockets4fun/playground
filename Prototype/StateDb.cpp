@@ -5,7 +5,7 @@
 
 #include "StateDb.hpp"
 
-#include "Logging.hpp"
+#include "Logger.hpp"
 
 // -------------------------------------------------------------------------------------------------
 StateDb::StateDb()
@@ -21,7 +21,7 @@ StateDb::~StateDb()
     {
         if (type.objectCount > 0)
         {
-            Logging::debug("WARNING: Detected %d active \"%s\"-objects",
+            Logger::debug("WARNING: Detected %d active \"%s\"-objects",
                 type.objectCount, type.name.c_str());
         }
     }

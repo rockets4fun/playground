@@ -158,7 +158,7 @@ HEADERS += \
     Physics.hpp \
     Platform.hpp \
     Profiler.hpp \
-    Logging.hpp \
+    Logger.hpp \
     Math.hpp \
     Renderer.hpp \
     RocketScience.hpp \
@@ -170,7 +170,7 @@ SOURCES += \
     Physics.cpp \
     Platform.cpp \
     Profiler.cpp \
-    Logging.cpp \
+    Logger.cpp \
     Math.cpp \
     Renderer.cpp \
     RocketScience.cpp \

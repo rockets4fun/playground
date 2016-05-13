@@ -3,17 +3,17 @@
 /// @date 28.08.2015
 // -------------------------------------------------------------------------------------------------
 
-#ifndef LOGGING_HPP
-#define LOGGING_HPP
+#ifndef LOGGER_HPP
+#define LOGGER_HPP
 
 #include "Common.hpp"
 
 // -------------------------------------------------------------------------------------------------
-/// @brief Logging module
-struct Logging
+/// @brief Logger module
+struct Logger
 {
-    Logging();
-    virtual ~Logging();
+    Logger();
+    virtual ~Logger();
 
 public:
     enum MsgType
@@ -27,7 +27,7 @@ public:
     static void debug(const char *format, ...);
 
 private:
-    COMMON_DISABLE_COPY(Logging)
+    COMMON_DISABLE_COPY(Logger)
 };
 
 #endif

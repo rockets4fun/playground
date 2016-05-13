@@ -11,7 +11,7 @@
 
 #include <btBulletDynamicsCommon.h>
 
-#include "Logging.hpp"
+#include "Logger.hpp"
 #include "Profiler.hpp"
 
 #include "StateDb.hpp"
@@ -200,7 +200,7 @@ Physics::PrivateRigidBody::PrivateRigidBody(
         }
         else
         {
-            Logging::debug("WARNING: Debug collision shape fallback");
+            Logger::debug("WARNING: Debug collision shape fallback");
             collisionShape = state.cubeShape.get();
         }
         if (collisionShape != state.cubeShape.get())
@@ -454,7 +454,7 @@ void trackCreations(StateDb &sdb,
             dstStorage.push_back(std::make_shared< DstType >(userData, src));
             srcPrivate->state = dstStorage.back().get();
             srcPrivate->state->handle = sdb.handleFromState(src);
-            Logging::debug("Creation of \"%s\" (%d instances tracked)",
+            Logger::debug("Creation of \"%s\" (%d instances tracked)",
                 sdb.handleTypeName(srcPrivate->state->handle).c_str(),
                 int(dstStorage.size()));
         }
@@ -480,7 +480,7 @@ void trackDestructions(StateDb &sdb,
     {
         dstStorage.erase(deletions.back());
         deletions.pop_back();
-        Logging::debug("Destruction of \"%s\" (%d instances tracked)",
+        Logger::debug("Destruction of \"%s\" (%d instances tracked)",
             sdb.handleTypeName(dstStorageIter->get()->handle).c_str(),
             int(dstStorage.size()));
     }

@@ -16,7 +16,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
-#include "Logging.hpp"
+#include "Logger.hpp"
 #include "Profiler.hpp"
 
 #include "StateDb.hpp"
@@ -274,7 +274,7 @@ bool Renderer::PrivateHelpers::updateShader(
         shader = funcs->glCreateShader(type);
         if (!shader)
         {
-            Logging::debug("ERROR: Failed to create shader object");
+            Logger::debug("ERROR: Failed to create shader object");
             return false;
         }
     }
@@ -290,7 +290,7 @@ bool Renderer::PrivateHelpers::updateShader(
     funcs->glGetShaderiv(shader, GL_COMPILE_STATUS, &compileStatus);
     if (compileStatus == GL_FALSE)
     {
-        Logging::debug("ERROR: Failed to compile shader");
+        Logger::debug("ERROR: Failed to compile shader");
         return false;
     }
 
@@ -306,7 +306,7 @@ bool Renderer::PrivateHelpers::updateProgram(Program::PrivateInfo *privateInfo,
         privateInfo->program = funcs->glCreateProgram();
         if (!privateInfo->program)
         {
-            Logging::debug("ERROR: Failed to create program object");
+            Logger::debug("ERROR: Failed to create program object");
             return false;
         }
     }
@@ -330,7 +330,7 @@ bool Renderer::PrivateHelpers::updateProgram(Program::PrivateInfo *privateInfo,
     funcs->glGetProgramiv(privateInfo->program, GL_LINK_STATUS, &linkStatus);
     if (linkStatus == GL_FALSE)
     {
-        Logging::debug("ERROR: Failed to link program");
+        Logger::debug("ERROR: Failed to link program");
         return false;
     }
 
@@ -348,9 +348,9 @@ void Renderer::PrivateHelpers::printInfoLog(
     {
         std::string infoLog(infoLogLength, 'x');
         infoLogProc(object, GLsizei(infoLog.length()), nullptr, &infoLog[0]);
-        Logging::debug("----------------------------------------");
-        Logging::debug("%s", infoLog.c_str());
-        Logging::debug("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
+        Logger::debug("----------------------------------------");
+        Logger::debug("%s", infoLog.c_str());
+        Logger::debug("^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^");
     }
 }
 
@@ -358,7 +358,7 @@ void Renderer::PrivateHelpers::printInfoLog(
 void APIENTRY debugMessageCallback(GLenum source, GLenum type, GLuint id, GLenum severity,
     GLsizei length, const GLchar *message, const void *userParam)
 {
-    Logging::debug("GL: %s", message);
+    Logger::debug("GL: %s", message);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -459,7 +459,7 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
             GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, state->depthTex, 0);
         if (funcs->glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
         {
-            Logging::debug("ERROR: Default FBO is incomplete");
+            Logger::debug("ERROR: Default FBO is incomplete");
         }
         funcs->glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
@@ -989,7 +989,7 @@ void Renderer::updateTransforms(StateDb &sdb)
         funcs->Name = (decltype(funcs->Name))(SDL_GL_GetProcAddress(#Name)); \
         if (funcs->Name == nullptr) \
         { \
-            Logging::debug("ERROR: Failed to resolve '%s'", #Name); \
+            Logger::debug("ERROR: Failed to resolve '%s'", #Name); \
             return false; \
         } \
     }

@@ -13,7 +13,7 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 
-#include "Logging.hpp"
+#include "Logger.hpp"
 #include "Platform.hpp"
 
 struct Assets::PrivateState
@@ -101,20 +101,20 @@ Assets::Model *Assets::refModel(u32 hash)
     // This is the first time the model is referenced...
     if (!ref.second->flags & Flag::PROCEDURAL)
     {
-        Logging::debug("Loading model \"%s\"...", ref.second->name.c_str());
+        Logger::debug("Loading model \"%s\"...", ref.second->name.c_str());
         if (loadModel(*ref.second, *ref.first))
         {
             ++ref.second->version;
             for (auto &part : ref.first->parts)
             {
-                Logging::debug("  Part \"%s\" (%d triangles)", part.name.c_str(), part.count / 3);
+                Logger::debug("  Part \"%s\" (%d triangles)", part.name.c_str(), part.count / 3);
             }
-            Logging::debug("Successfully loaded model with %d triangles",
+            Logger::debug("Successfully loaded model with %d triangles",
                 int(ref.first->positions.size() / 3));
         }
         else
         {
-            Logging::debug("ERROR: Failed to load model \"%s\"", ref.second->name.c_str());
+            Logger::debug("ERROR: Failed to load model \"%s\"", ref.second->name.c_str());
             // TODO(martinmo): Default to unit cube if we fail to load?
         }
     }
@@ -141,11 +141,11 @@ Assets::Program *Assets::refProgram(u32 hash)
         if (loadProgram(*ref.second, *ref.first))
         {
             ++ref.second->version;
-            Logging::debug("Program \"%s\" loaded", ref.second->name.c_str());
+            Logger::debug("Program \"%s\" loaded", ref.second->name.c_str());
         }
         else
         {
-            Logging::debug("ERROR: Failed to load program \"%s\"", ref.second->name.c_str());
+            Logger::debug("ERROR: Failed to load program \"%s\"", ref.second->name.c_str());
         }
     }
 
@@ -188,7 +188,7 @@ void Assets::reloadModifiedAssets()
         {
             continue;
         }
-        Logging::debug("File \"%s\" changed on disc", filename.c_str());
+        Logger::debug("File \"%s\" changed on disc", filename.c_str());
         for (auto hash : dep.second.hashes) toBeUpdated.insert(hash);
         dep.second.modificationTime = newModificationTime;
     }
@@ -206,7 +206,7 @@ bool Assets::loadFileIntoString(const std::string &filename, std::string &conten
     std::ifstream in(filename.c_str(), std::ios::in | std::ios::binary);
     if (!in)
     {
-        Logging::debug("ERROR: Failed to load file into string \"%s\"", filename.c_str());
+        Logger::debug("ERROR: Failed to load file into string \"%s\"", filename.c_str());
         return false;
     }
     in.seekg(0, std::ios::end);
@@ -362,7 +362,7 @@ bool Assets::loadModel(const Info &info, Model &model)
             // TODO(martinmo): Support more than just triangles...
             if (mesh->mPrimitiveTypes != aiPrimitiveType_TRIANGLE)
             {
-                Logging::debug("WARNING: Skipping mesh in %s (non-triangle)", partName.c_str());
+                Logger::debug("WARNING: Skipping mesh in %s (non-triangle)", partName.c_str());
                 continue;
             }
 
@@ -483,11 +483,11 @@ bool Assets::loadProgram(const Info &info, Program &program)
         std::string includeSource;
         if (!loadFileIntoString(includeFilename, includeSource))
         {
-            Logging::debug("WARNING: Failed to load include \"%s\"", includeFilename.c_str());
+            Logger::debug("WARNING: Failed to load include \"%s\"", includeFilename.c_str());
         }
         else
         {
-            Logging::debug("Included \"%s\" into \"%s\" (%d B)",
+            Logger::debug("Included \"%s\" into \"%s\" (%d B)",
                 includeFilename.c_str(), filename.c_str(), int(includeSource.length()));
         }
         preprocessedSource += includeSource;

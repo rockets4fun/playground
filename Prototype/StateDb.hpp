@@ -12,7 +12,7 @@
 #include <map>
 #include <string>
 
-#include "Logging.hpp"
+#include "Logger.hpp"
 
 // -------------------------------------------------------------------------------------------------
 /// @brief State database implementation
@@ -112,7 +112,7 @@ struct StateDb
         Type &type = m_types[typeId];
         if (type.objectCount >= type.maxObjectCount)
         {
-            Logging::debug("WARNING: Out of memory for type \"%s\"", type.name.c_str());
+            Logger::debug("WARNING: Out of memory for type \"%s\"", type.name.c_str());
             createdObjectHandle = 0;
             return nullptr;
         }
