@@ -210,7 +210,7 @@ h2. Assets Module
 * Static assets all in memory - renderer reload triggers redefinition for GL only
 * Allow direct access to mesh data using asset ID (which is a hash on the name)
 
-h2. Profiling Module
+h2. Profiler Module
 
 * Overwrite "operator new" to collect allocation stats
 * "m"-key prints state DB memory stats (e.g. per object mem. usage)
@@ -233,6 +233,7 @@ h2. Abstraction Layers
 ** Graphics API
 ** Memory management
 ** Profiling
+** Logging
 ** Plugin handling
 ** Filesystem (incl. queued/overlapped/memory mapped IO)
 ** Networking
@@ -246,7 +247,7 @@ h2. Abstraction Layers
 ** Physics
 ** Sound output
 ** Networking
-** Profiling
+** Engine level profiling
 ** State database
 
 * Application logic (dynamic code)
