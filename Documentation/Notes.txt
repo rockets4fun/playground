@@ -2,9 +2,9 @@ h1. Current Coding Roadmap
 ----------------------------------------------------------------------------------------------------
 
 * Short-term roadmap
+** Custom Python-based OBJ exporter for Rhino (auto-mesh, blocks/type and hierarchy)
+** Import models from new OBJ-format and add block/type info to model asset parts info
 ** StateDb: Add support for default values (memcpy from template instead of memset)
-** Import model from blockified DAE and add block info to model asset parts info
-** Pusher modeling (details for section links/docking mechanism)
 ** GUI prototype (multi-window experiments using @ocornut's ImGui)
 ** Mouse interactivity (camera control, physics manipulation)
 ** FSM-based control logic and sensor fusion prototyping
