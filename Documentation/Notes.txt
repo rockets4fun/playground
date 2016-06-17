@@ -1,9 +1,17 @@
 h1. Current Coding Roadmap
 ----------------------------------------------------------------------------------------------------
 
+* Custom Python-based OBJ exporter for Rhino
+** Based on selection
+** Export polysurfaces only
+** Point named "origin" resets export origin
+** Auto-mesh and mesh-reduce using fixed settings
+** Encode block/type and hierarchy into exported mesh name
+
 * Short-term roadmap
-** Custom Python-based OBJ exporter for Rhino (auto-mesh, blocks/type and hierarchy)
+** Custom Python-based OBJ exporter for Rhino
 ** Import models from new OBJ-format and add block/type info to model asset parts info
+** Support for simple texturing of models (experiment with using baked-AO for rendering)
 ** StateDb: Add support for default values (memcpy from template instead of memset)
 ** GUI prototype (multi-window experiments using @ocornut's ImGui)
 ** Mouse interactivity (camera control, physics manipulation)
