@@ -1,7 +1,7 @@
 h1. Game Notes
 ----------------------------------------------------------------------------------------------------
 
-* Low-tec space battles
+* Low-tech space battles
 ** WW2/"Wing Commander Movie" style...
 ** Dumb torpedos for attacking capital ships (aim before release)
 *** Think about torpedo tubes that can be rotated
@@ -18,7 +18,7 @@ h1. Game Notes
 ** Torpedo impact/explosion influences ships impulse/speed/acceleration
 
 * Visual style/look and feel
-** Comic-style similar to clone wars but less realistic (e.g. no dirt textures)
+** Comic-style similar to Clone Wars but less realistic (e.g. no dirt textures)
 ** Low-poly (fracturing/breaking!) with some mechanical details
 *** Opening/closing slot/silo doors
 *** Visible thrust vectoring
