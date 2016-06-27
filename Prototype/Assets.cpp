@@ -350,10 +350,10 @@ bool Assets::loadModel(const Info &info, Model &model)
         }
         while (xformIter);
         glm::fmat4 xformGlm(
-            glm::fvec4(xform.m[0][0], xform.m[0][1], xform.m[0][2], xform.m[0][3]),
-            glm::fvec4(xform.m[1][0], xform.m[1][1], xform.m[1][2], xform.m[1][3]),
-            glm::fvec4(xform.m[2][0], xform.m[2][1], xform.m[2][2], xform.m[2][3]),
-            glm::fvec4(xform.m[3][0], xform.m[3][1], xform.m[3][2], xform.m[3][3]));
+            glm::fvec4(xform[0][0], xform[0][1], xform[0][2], xform[0][3]),
+            glm::fvec4(xform[1][0], xform[1][1], xform[1][2], xform[1][3]),
+            glm::fvec4(xform[2][0], xform[2][1], xform[2][2], xform[2][3]),
+            glm::fvec4(xform[3][0], xform[3][1], xform[3][2], xform[3][3]));
 
         for (size_t meshIdx = 0; meshIdx < leaf->mNumMeshes; ++meshIdx)
         {
