@@ -569,7 +569,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             {
                 float enterMs   = float(profiling->ticksToMs(sample.ticksEnter));
                 float exitMs    = float(profiling->ticksToMs(sample.ticksExit));
-                float callDepth = float(sample.callDepth - 1);
+                float callDepth = float(sample.callDepth);
 
                 glm::fvec2 ll(offsPx + msPx * enterMs, offsPx         + shrinkPx * callDepth);
                 glm::fvec2 ur(offsPx + msPx * exitMs , offsPx + barPx - shrinkPx * callDepth);

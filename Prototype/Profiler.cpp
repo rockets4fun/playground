@@ -46,11 +46,18 @@ Profiler::Thread *Profiler::mainThreadPrevFrame()
 // -------------------------------------------------------------------------------------------------
 void Profiler::frameReset()
 {
+    /*
+    // FIXME(martinmo): Swap to make sure raw pointers into samples vectors still valid
+    m_threadsPrevFrame.swap(m_threads);
+    m_threads = m_threadsPrevFrame;
+    */
+
     m_threadsPrevFrame = m_threads;
     for (auto &threadMapIter : m_threads)
     {
         COMMON_ASSERT(threadMapIter.second.callDepth == 0);
         threadMapIter.second.samples.clear();
+        threadMapIter.second.samplesStack.clear();
     }
     m_ticksFrameStart = SDL_GetPerformanceCounter();
 }
@@ -84,7 +91,9 @@ Profiler::Section::Section(const std::string &nameInit, const glm::fvec3 &colorI
     m_thread = &m_profiling->m_threads[currentThreadId];
     if (!m_thread->id)
     {
+        COMMON_ASSERT(currentThreadId);
         m_thread->id = currentThreadId;
+        m_thread->samples.reserve(Thread::MAX_SAMPLE_COUNT);
     }
     COMMON_ASSERT(m_thread->id == currentThreadId);
 }
@@ -94,28 +103,37 @@ void Profiler::Section::enter()
 {
     u64 ticksEnter = m_profiling->ticksSinceFrameStart();
 
-    ++m_thread->callDepth;
-    m_frames.push_back(SectionSample());
+    // We have to make sure that we are not re-allocating 'Thread::samples' because we
+    // are storing pointers into that vector in 'Thread::samplesStack' and 'SectionSample::parent'
+    COMMON_ASSERT(m_thread->samples.size() < Thread::MAX_SAMPLE_COUNT);
+    m_thread->samples.push_back(SectionSample());
+    SectionSample *sample = &m_thread->samples.back();
 
-    SectionSample &sample = m_frames.back();
-    sample.section = this;
-    sample.callDepth = m_thread->callDepth;
-    sample.ticksEnter = ticksEnter;
+    sample->section = this;
+    sample->callDepth = m_thread->callDepth;
+    sample->ticksEnter = ticksEnter;
+    /*
+    if (!m_thread->samplesStack.empty())
+    {
+        sample->parent = m_thread->samplesStack.back();
+    }
+    */
+
+    ++m_thread->callDepth;
+    m_thread->samplesStack.push_back(sample);
 }
 
 // -------------------------------------------------------------------------------------------------
 void Profiler::Section::exit()
 {
-    u64 ticksExit = m_profiling->ticksSinceFrameStart();
+    SectionSample *sample = m_thread->samplesStack.back();
 
-    SectionSample &sample = m_frames.back();
-    sample.ticksExit = ticksExit;
-    m_thread->samples.push_back(sample);
-
-    COMMON_ASSERT(sample.callDepth == m_thread->callDepth);
-
-    m_frames.pop_back();
+    m_thread->samplesStack.pop_back();
     --m_thread->callDepth;
+
+    COMMON_ASSERT(m_thread->callDepth == sample->callDepth);
+
+    sample->ticksExit = m_profiling->ticksSinceFrameStart();
 }
 
 // -------------------------------------------------------------------------------------------------

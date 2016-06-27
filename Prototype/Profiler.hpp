@@ -39,15 +39,18 @@ struct Profiler
         u64 ticksEnter = 0;
         u64 ticksExit = 0;
         const Section *section = nullptr;
-        u32 callDepth = 0;
+        s32 callDepth = 0;
     };
 
     struct Thread
     {
+        static const int MAX_SAMPLE_COUNT = 256;
+
         u64 id = 0;
         std::string name = "unknown";
-        u32 callDepth = 0;
+        s32 callDepth = 0;
         std::vector< SectionSample > samples;
+        std::vector< SectionSample * > samplesStack;
     };
 
 public:
@@ -79,7 +82,6 @@ public:
     private:
         Thread *m_thread = nullptr;
         Profiler *m_profiling = nullptr;
-        std::vector< SectionSample > m_frames;
     };
 
     struct SectionGuard
