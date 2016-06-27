@@ -31,7 +31,8 @@ private:
     u64 m_programHandle = 0;
     u64 m_passHandle = 0;
 
-    bool m_testWindowVisible = true;
+    bool m_metricsVisible = true;
+    bool m_profilerVisible = true;
 
 private:
     COMMON_DISABLE_COPY(ImGuiEval)

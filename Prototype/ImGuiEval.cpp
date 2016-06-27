@@ -11,6 +11,7 @@
 #include "Assets.hpp"
 #include "StateDb.hpp"
 #include "Renderer.hpp"
+#include "Profiler.hpp"
 
 struct Str
 {
@@ -99,12 +100,55 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
     // (1) Immediate mode style UI definition
     {
         ImGui::NewFrame();
-        if (m_testWindowVisible)
+        ImGui::ShowMetricsWindow(&m_metricsVisible);
+        if (m_profilerVisible)
         {
             ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiSetCond_FirstUseEver);
-            ImGui::Begin("Test Window", &m_testWindowVisible);
-            ImGui::Text("Hello, world!");
-            ImGui::Separator();
+            ImGui::Begin("Profiler", &m_profilerVisible);
+
+            Profiler *profiling = Profiler::instance();
+            Profiler::Thread *mainThread = profiling->mainThreadPrevFrame();
+
+            if (mainThread)
+            {
+                int maxCallDepth = -1;
+                int prevCallDepth = -1;
+                for (Profiler::SectionSample &sample : mainThread->samples)
+                {
+                    float enterMs   = float(profiling->ticksToMs(sample.ticksEnter));
+                    float exitMs    = float(profiling->ticksToMs(sample.ticksExit));
+                    if (maxCallDepth >= 0)
+                    {
+                        if (sample.callDepth > maxCallDepth)
+                        {
+                            continue;
+                        }
+                        maxCallDepth = -1;
+                    }
+                    while (prevCallDepth >= sample.callDepth)
+                    {
+                        ImGui::TreePop();
+                        --prevCallDepth;
+                    }
+                    if (!ImGui::TreeNode(sample.section->name.c_str()))
+                    {
+                        maxCallDepth = sample.callDepth;
+                    }
+                    ImGui::SameLine(200);
+                    ImGui::Text("%6.0f us", Profiler::instance()->ticksToMs(
+                        sample.ticksExit - sample.ticksEnter) * 1000.0f);
+                    if (maxCallDepth >= 0)
+                    {
+                        continue;
+                    }
+                    prevCallDepth = sample.callDepth;
+                }
+                while (prevCallDepth-- >= 0)
+                {
+                    ImGui::TreePop();
+                }
+            }
+
             ImGui::End();
         }
         ImGui::Render();
@@ -179,7 +223,7 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
         }
     }
 
-    // (3) Read input state via SDL and provide to ImGui
+    // (3) Read input state via SDL and pass on to ImGui
     {
         int mouseX = -1, mouseY = -1;
         Uint32 mouseMask = SDL_GetMouseState(&mouseX, &mouseY);
