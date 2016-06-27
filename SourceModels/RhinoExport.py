@@ -35,6 +35,7 @@ def processObject(object, parents, types):
 
     if type == rs.filter.instance:
         type = rs.BlockInstanceName(object)
+        transform = rs.BlockInstanceXform(object)
         subObjects = rs.ExplodeBlockInstance(object)
         for subObject in subObjects:
             processObject(subObject, parents + [name], types + [type])
