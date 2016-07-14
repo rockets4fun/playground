@@ -285,7 +285,8 @@ bool Assets::loadModel(const Info &info, Model &model)
     model.clear();
 
     const aiScene *scene = m_privateState->importer.ReadFile(
-        info.name, aiProcess_Triangulate/* | aiProcess_PreTransformVertices*/);
+        info.name, aiProcess_Triangulate | aiProcess_FixInfacingNormals
+        /*| aiProcess_PreTransformVertices*/);
     if (!scene)
     {
         // FIXME(martinmo): Proper error message through platform abstraction
@@ -544,7 +545,7 @@ u32 Assets::krHash(const char *data, size_t size)
 {
     // Inspired by:
     // http://www.irrelevantconclusion.com/2013/07/hashing-file-paths/
-    // Kernigan & Ritchie "The C Programming Language" hash
+    // Kernighan & Ritchie "The C Programming Language" hash
     u32 hash = 0;
     while (size-- > 0)
     {
