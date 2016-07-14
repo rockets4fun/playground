@@ -1,7 +1,8 @@
 h1. Current Coding Roadmap
 ----------------------------------------------------------------------------------------------------
 
-* Try exporting FBX from Rhino and see whether needed information is there...
+* Try exporting FBX from Rhino and see whether needed information is there
+** Exported data contains object names but still no block/type name information
 
 * Custom Python-based model asset exporter for Rhino
 ** Based on current selection
