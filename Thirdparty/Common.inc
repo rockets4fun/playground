@@ -4,9 +4,23 @@ CONFIG -= debug_and_release
 defineTest(cloneAndClean) {
     DIRECTORY = $${1}
     REPOSITORY = $${2}
+    CHECKOUT = $${3}
 
     !exists($${DIRECTORY}) {
         system(git clone $${REPOSITORY} $${DIRECTORY})
+        !isEmpty(CHECKOUT) {
+            MESSAGE = Checking out $${CHECKOUT}
+            COMMAND = cd $${DIRECTORY} && git checkout $${CHECKOUT}
+            contains(CHECKOUT, ".*tags/.*") {
+                BRANCH = $$replace(CHECKOUT, "tags/", "branch_")
+            }
+            !isEmpty(BRANCH) {
+                MESSAGE += into $${BRANCH}
+                COMMAND += -b $$BRANCH
+            }
+            message($${MESSAGE})
+            system($${COMMAND})
+        }
     }
 
     system(cd $${DIRECTORY} && git clean -dffx)

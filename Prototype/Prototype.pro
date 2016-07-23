@@ -28,6 +28,9 @@ win32 {
     QMAKE_CXXFLAGS_WARN_ON += /wd4512
     # 'function': This function or variable may be unsafe
     QMAKE_CXXFLAGS_WARN_ON += /wd4996
+
+    LIBS += Winmm.lib
+    LIBS += version.lib
 }
 unix {
     # Treat .c files as CPP targets
@@ -48,10 +51,10 @@ macx {
 THIRDPARTY = ../Thirdparty
 
 # =====  Brofiler - C++ Profiler for Games = http://brofiler.com/ ==================================
-win32 {
-    INCLUDEPATH += $${THIRDPARTY}/Brofiler
-    LIBS += $${THIRDPARTY}/Brofiler/ProfilerCore64.lib
-}
+#win32 {
+#    INCLUDEPATH += $${THIRDPARTY}/Brofiler
+#    LIBS += $${THIRDPARTY}/Brofiler/ProfilerCore64.lib
+#}
 
 # ===== Remotery - A realtime CPU/GPU profiler = https://github.com/Celtoys/Remotery ===============
 INCLUDEPATH += $${THIRDPARTY}/Remotery/lib
@@ -62,15 +65,20 @@ SOURCES += $${THIRDPARTY}/Remotery/lib/Remotery.c
 win32 {
     INCLUDEPATH += $${THIRDPARTY}/Sdl/include
     win32:contains(QMAKE_HOST.arch, x86_64) {
-        LIBS += -L$${THIRDPARTY}/Sdl/lib/x64
+        CONFIG(debug, debug|release) {
+            LIBS += $${THIRDPARTY}/Sdl/Build/SDL2_Debug.lib
+            LIBS += $${THIRDPARTY}/Sdl/Build/SDL2main_Debug.lib
+        }
+        CONFIG(release, debug|release) {
+            LIBS += $${THIRDPARTY}/Sdl/Build/SDL2.lib
+            LIBS += $${THIRDPARTY}/Sdl/Build/SDL2main.lib
+        }
     }
     else {
-        LIBS += -L$${THIRDPARTY}/Sdl/lib/x86
     }
-    LIBS += SDL2.lib SDL2main.lib
 }
 macx {
-    # Install framwork from "http://libsdl.org/release/SDL2-2.0.3.dmg"
+    # Install framework from "http://libsdl.org/release/SDL2-2.0.3.dmg"
     INCLUDEPATH += /Library/Frameworks/SDL2.framework/Headers
     LIBS += -framework SDL2
 }

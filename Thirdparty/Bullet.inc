@@ -2,7 +2,7 @@ include(Common.inc)
 
 # ===== Bullet Physics Library = http://bulletphysics.org  =========================================
 
-cloneAndClean(Bullet, https://github.com/bulletphysics/bullet3.git)
+cloneAndClean(Bullet, https://github.com/bulletphysics/bullet3.git, tags/2.38.7)
 
 PARAMS  = -DUSE_MSVC_RUNTIME_LIBRARY_DLL=ON
 PARAMS += -DBUILD_SHARED_LIBS=OFF
