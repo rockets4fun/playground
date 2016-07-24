@@ -3,6 +3,7 @@ import sys
 import Rhino as rc
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
+import struct
 
 typeStr = \
 {
@@ -29,6 +30,26 @@ typeStr = \
 g_meshParams = rc.Geometry.MeshingParameters.Smooth
 g_instances = []
 g_parts = []
+g_indent = "    "
+
+def floatsToHex(floats):
+    result = ""
+    for float in floats:
+        part = hex(struct.unpack("<I", struct.pack("<f", float))[0])
+        part = part.lstrip("0x")
+        part = part.rstrip("L")
+        part = part.ljust(8, "0")
+        result += part + " "
+    return result
+
+def formatHexFloats(floats):
+    result = ""
+    result += floatsToHex(floats)
+    result += "# [";
+    for float in floats:
+        result += format("%6.2f" % float)
+    result += " ]";
+    return result
 
 def processObject(object, parentInstances):
     global g_parts
@@ -39,16 +60,16 @@ def processObject(object, parentInstances):
 
     if type == rs.filter.instance:
         type = rs.BlockInstanceName(object)
-        transform = rs.BlockInstanceXform(object)
+        xform = rs.BlockInstanceXform(object)
         subObjects = rs.ExplodeBlockInstance(object)
 
         instance = \
         {
-            "name" : name,
-            "type" : type,
-            "blockInstance" : object,
+               "name" : name,
+               "type" : type,
+              "xform" : xform,
             "parents" : list(parentInstances),
-            "parts" : [],
+              "parts" : [],
         }
         global g_instances
         g_instances.append(instance)
@@ -85,8 +106,8 @@ def processObject(object, parentInstances):
 
         part = \
         {
-            "name" : name,
-            "mesh" : joinedMesh,
+                "name" : name,
+                "mesh" : joinedMesh,
             "instance" : parentInstances[-1],
         }
         parentInstances[-1]["parts"].append(part)
@@ -97,11 +118,12 @@ def processObject(object, parentInstances):
 def main():
     global g_instances
     global g_parts
+    global g_indent
 
     #dlg = rc.UI.SaveFileDialog()
     #if not dlg.ShowSaveDialog() : return None
 
-    #print sys.version_info
+    #print(sys.version_info) # (2, 7, 0, 'beta', 0)
 
     selectedObjects = rs.SelectedObjects()
 
@@ -122,11 +144,11 @@ def main():
 
     rootInstance = \
     {
-        "name" : "",
-        "type" : "",
+                 "name" : "",
+                 "type" : "",
         "blockInstance" : None,
-        "parents" : [],
-        "parts" : [],
+              "parents" : [],
+                "parts" : [],
     }
 
     g_instances.append(rootInstance)
@@ -139,10 +161,28 @@ def main():
         parentCount = len(instance["parents"])
         if parentCount < 1:
             continue
-        indent = "    " * (parentCount - 1)
-        print "i " + indent + instance["name"] + ":" + instance["type"]
+
+        faceCount = 0
+        for part in instance["parts"]:
+            mesh = part["mesh"]
+            faceCount += mesh.Faces.Count;
+
+        indent = g_indent * (parentCount - 1)
+        print("i " + indent + instance["name"]
+            + ":" + instance["type"] + " " + str(faceCount))
+
+        indent += "  "
+        xform = instance["xform"]
+        print("x " + indent +
+            formatHexFloats([xform.M00, xform.M01, xform.M02, xform.M03]))
+        print("x " + indent +
+            formatHexFloats([xform.M10, xform.M11, xform.M12, xform.M13]))
+        print("x " + indent +
+            formatHexFloats([xform.M20, xform.M21, xform.M22, xform.M23]))
 
     for part in g_parts:
-        print "p " + part["name"]
+        mesh = part["mesh"]
+        faces = mesh.Faces;
+        print("p " + part["name"] + " " + str(faces.Count))
 
 main()
