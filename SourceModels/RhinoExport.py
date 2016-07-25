@@ -1,4 +1,5 @@
 import sys
+import os
 
 import Rhino as rc
 import rhinoscriptsyntax as rs
@@ -28,8 +29,10 @@ typeStr = \
 }
 
 g_meshParams = rc.Geometry.MeshingParameters.Smooth
+
 g_instances = []
 g_parts = []
+
 g_indent = "    "
 
 def floatsToHex(floats) :
@@ -39,17 +42,18 @@ def floatsToHex(floats) :
         part = part.lstrip("0x")
         part = part.rstrip("L")
         part = part.rjust(8, "0")
-        result += part + " "
+        if len(result) :
+            part = " " + part
+        result += part
     return result
 
 def formatHexFloats(floats, comment=False) :
     result = ""
     result += floatsToHex(floats)
     if comment :
-        result += "# [";
+        result += " #";
         for float in floats :
             result += format("%6.2f" % float)
-        result += " ]";
     return result
 
 def processObject(object, parentInstances) :
@@ -121,10 +125,15 @@ def main() :
     global g_parts
     global g_indent
 
-    #dlg = rc.UI.SaveFileDialog()
-    #if not dlg.ShowSaveDialog() : return None
-
     #print(sys.version_info) # (2, 7, 0, 'beta', 0)
+
+    dlg = rc.UI.SaveFileDialog()
+    dlg.DefaultExt = "model"
+    dlg.Filter = "RocketScience 3D Model (*.model)"
+    dlg.InitialDirectory = os.path.dirname(sc.doc.Path)
+    if not dlg.ShowSaveDialog() : return None
+
+    output = open(dlg.FileName, "w")
 
     selectedObjects = rs.SelectedObjects()
 
@@ -167,34 +176,35 @@ def main() :
             faceCount += mesh.Faces.Count;
 
         indent = g_indent * (parentCount - 1)
-        print("i " + indent + instance["name"]
-            + ":" + instance["type"] + " f " + str(faceCount))
+        output.write("i " + indent + instance["name"]
+            + ":" + instance["type"] + " f " + str(faceCount) + "\n")
 
         if parentCount < 1 :
             continue
 
         indent += "  "
         xform = instance["xform"]
-        print("x " + indent +
-            formatHexFloats([xform.M00, xform.M01, xform.M02, xform.M03], True))
-        print("x " + indent +
-            formatHexFloats([xform.M10, xform.M11, xform.M12, xform.M13], True))
-        print("x " + indent +
-            formatHexFloats([xform.M20, xform.M21, xform.M22, xform.M23], True))
+        output.write("x " + indent + formatHexFloats(
+            [xform.M00, xform.M01, xform.M02, xform.M03], True) + "\n")
+        output.write("x " + indent + formatHexFloats(
+            [xform.M10, xform.M11, xform.M12, xform.M13], True) + "\n")
+        output.write("x " + indent + formatHexFloats(
+            [xform.M20, xform.M21, xform.M22, xform.M23], True) + "\n")
 
     for part in g_parts :
         mesh = part["mesh"]
-        print("p " + part["name"] + " v " +
-            str(mesh.Vertices.Count) + " f " + str(mesh.Faces.Count))
+        output.write("p " + part["name"]
+            + " v " + str(mesh.Vertices.Count)
+            + " f " + str(mesh.Faces.Count) + "\n")
 
         indent = "  "
 
         for vertexIdx in range(0, mesh.Vertices.Count - 1) :
             vertex = mesh.Vertices[vertexIdx]
             normal = mesh.Normals[vertexIdx]
-            print("v " + indent + formatHexFloats([
+            output.write("v " + indent + formatHexFloats([
                 vertex.X, vertex.Y, vertex.Z,
-                normal.X, normal.Y, normal.Z]))
+                normal.X, normal.Y, normal.Z]) + "\n")
 
         line = ""
         faces = mesh.Faces.ToIntArray(True)
@@ -202,12 +212,16 @@ def main() :
         for faceIdx in range(0, faceCount - 1) :
             if not line :
                 line = "f " + indent
-            line += format(" %d %d %d" %
+            else :
+                line += " "
+            line += format("%d %d %d" %
                 (faces[faceIdx + 0], faces[faceIdx + 1], faces[faceIdx + 2]))
             if len(line) > 50 :
-                print(line)
+                output.write(line + "\n")
                 line = ""
         if len(line) > 0 :
-            print(line)
+            output.write(line + "\n")
+
+    output.close()
 
 main()
