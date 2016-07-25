@@ -32,33 +32,34 @@ g_instances = []
 g_parts = []
 g_indent = "    "
 
-def floatsToHex(floats):
+def floatsToHex(floats) :
     result = ""
-    for float in floats:
+    for float in floats :
         part = hex(struct.unpack("<I", struct.pack("<f", float))[0])
         part = part.lstrip("0x")
         part = part.rstrip("L")
-        part = part.ljust(8, "0")
+        part = part.rjust(8, "0")
         result += part + " "
     return result
 
-def formatHexFloats(floats):
+def formatHexFloats(floats, comment=False) :
     result = ""
     result += floatsToHex(floats)
-    result += "# [";
-    for float in floats:
-        result += format("%6.2f" % float)
-    result += " ]";
+    if comment :
+        result += "# [";
+        for float in floats :
+            result += format("%6.2f" % float)
+        result += " ]";
     return result
 
-def processObject(object, parentInstances):
+def processObject(object, parentInstances) :
     global g_parts
 
     name = rs.ObjectName(object)
     type = rs.ObjectType(object)
     layer = rs.ObjectLayer(object)
 
-    if type == rs.filter.instance:
+    if type == rs.filter.instance :
         type = rs.BlockInstanceName(object)
         xform = rs.BlockInstanceXform(object)
         subObjects = rs.ExplodeBlockInstance(object)
@@ -74,29 +75,29 @@ def processObject(object, parentInstances):
         global g_instances
         g_instances.append(instance)
 
-        for subObject in subObjects:
+        for subObject in subObjects :
             processObject(subObject, parentInstances + [instance])
         return
 
     skipReason = None
-    if rs.LayerLocked(layer):
+    if rs.LayerLocked(layer) :
         skipReason = "layer locked"
-    elif not rs.LayerVisible(layer):
+    elif not rs.LayerVisible(layer) :
         skipReason = "layer hidden"
-    elif type != rs.filter.polysurface:
+    elif type != rs.filter.polysurface :
         skipReason = "bad type - " + typeStr[type]
-    elif not name:
+    elif not name :
         skipReason = "no name"
 
     if skipReason :
         # make sure we can delete object by moving to current layer
         rs.ObjectLayer(object, rs.CurrentLayer())
         print("WARNING: Skipping %s (%s)" % (str(object), skipReason))
-    elif type == rs.filter.polysurface:
+    elif type == rs.filter.polysurface :
         brep = rs.coercebrep(object)
         meshes = rc.Geometry.Mesh.CreateFromBrep(brep, g_meshParams)
         joinedMesh = rc.Geometry.Mesh()
-        for mesh in meshes:
+        for mesh in meshes :
             joinedMesh.Append(mesh)
         joinedMesh.Reduce(0, False, 10, False)
         joinedMeshGuid = sc.doc.Objects.AddMesh(joinedMesh)
@@ -115,7 +116,7 @@ def processObject(object, parentInstances):
 
     rs.DeleteObject(object)
 
-def main():
+def main() :
     global g_instances
     global g_parts
     global g_indent
@@ -130,13 +131,13 @@ def main():
     objects = []
     origin = [0,0,0]
 
-    for object in selectedObjects:
+    for object in selectedObjects :
         name = rs.ObjectName(object)
         type = rs.ObjectType(object)
-        if type == rs.filter.point:
-            if name == "Origin":
+        if type == rs.filter.point :
+            if name == "Origin" :
                 origin = rs.PointCoordinates(object)
-        else:
+        else :
             objects.append(object)
 
     print("Processing " + str(len(objects)) + " object(s)")
@@ -144,8 +145,8 @@ def main():
 
     rootInstance = \
     {
-                 "name" : "",
-                 "type" : "",
+                 "name" : "Root",
+                 "type" : "None",
         "blockInstance" : None,
               "parents" : [],
                 "parts" : [],
@@ -154,35 +155,59 @@ def main():
     g_instances.append(rootInstance)
 
     objectsCopied = rs.CopyObjects(objects, rs.VectorScale(origin, -1))
-    for object in objectsCopied:
+    for object in objectsCopied :
         processObject(object, [rootInstance])
 
-    for instance in g_instances:
+    for instance in g_instances :
         parentCount = len(instance["parents"])
-        if parentCount < 1:
-            continue
 
         faceCount = 0
-        for part in instance["parts"]:
+        for part in instance["parts"] :
             mesh = part["mesh"]
             faceCount += mesh.Faces.Count;
 
         indent = g_indent * (parentCount - 1)
         print("i " + indent + instance["name"]
-            + ":" + instance["type"] + " " + str(faceCount))
+            + ":" + instance["type"] + " f " + str(faceCount))
+
+        if parentCount < 1 :
+            continue
 
         indent += "  "
         xform = instance["xform"]
         print("x " + indent +
-            formatHexFloats([xform.M00, xform.M01, xform.M02, xform.M03]))
+            formatHexFloats([xform.M00, xform.M01, xform.M02, xform.M03], True))
         print("x " + indent +
-            formatHexFloats([xform.M10, xform.M11, xform.M12, xform.M13]))
+            formatHexFloats([xform.M10, xform.M11, xform.M12, xform.M13], True))
         print("x " + indent +
-            formatHexFloats([xform.M20, xform.M21, xform.M22, xform.M23]))
+            formatHexFloats([xform.M20, xform.M21, xform.M22, xform.M23], True))
 
-    for part in g_parts:
+    for part in g_parts :
         mesh = part["mesh"]
-        faces = mesh.Faces;
-        print("p " + part["name"] + " " + str(faces.Count))
+        print("p " + part["name"] + " v " +
+            str(mesh.Vertices.Count) + " f " + str(mesh.Faces.Count))
+
+        indent = "  "
+
+        for vertexIdx in range(0, mesh.Vertices.Count - 1) :
+            vertex = mesh.Vertices[vertexIdx]
+            normal = mesh.Normals[vertexIdx]
+            print("v " + indent + formatHexFloats([
+                vertex.X, vertex.Y, vertex.Z,
+                normal.X, normal.Y, normal.Z]))
+
+        line = ""
+        faces = mesh.Faces.ToIntArray(True)
+        faceCount = len(faces) // 3
+        for faceIdx in range(0, faceCount - 1) :
+            if not line :
+                line = "f " + indent
+            line += format(" %d %d %d" %
+                (faces[faceIdx + 0], faces[faceIdx + 1], faces[faceIdx + 2]))
+            if len(line) > 50 :
+                print(line)
+                line = ""
+        if len(line) > 0 :
+            print(line)
 
 main()
