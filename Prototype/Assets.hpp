@@ -74,6 +74,13 @@ struct Assets
             u64 materialHint = 0;
         };
 
+        struct Instance
+        {
+            std::string type;
+            std::string name;
+            glm::fmat4 xform;
+        };
+
         // Default vertex attribute arrays
         std::vector< glm::fvec3 > positions;
         std::vector< glm::fvec3 > normals;
@@ -86,6 +93,7 @@ struct Assets
         Attr indicesAttr = Attr("", nullptr, Attr::U32, 0);
 
         std::vector< Part > parts;
+        std::vector< Instance > instances;
 
         u64 vertexCount = 0;
 
@@ -166,9 +174,9 @@ private:
         return ref;
     }
 
-    static bool loadFileIntoString(const std::string &filename, std::string &contents);
-
     bool loadModel(const Info &info, Model &model);
+    bool loadModelCustom(const Info &info, Model &model);
+    bool loadModelAssimp(const Info &info, Model &model);
     bool loadProgram(const Info &info, Program &model);
 
     void registerDep(u32 hash, const std::string &filename);

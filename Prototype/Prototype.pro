@@ -170,7 +170,8 @@ HEADERS += \
     Math.hpp \
     Renderer.hpp \
     RocketScience.hpp \
-    StateDb.hpp
+    StateDb.hpp \
+    Str.hpp
 
 SOURCES += \
     Assets.cpp \
@@ -182,7 +183,8 @@ SOURCES += \
     Math.cpp \
     Renderer.cpp \
     RocketScience.cpp \
-    StateDb.cpp
+    StateDb.cpp \
+    Str.cpp
 
 OTHER_FILES += \
     ../Assets/Programs/Default.program \

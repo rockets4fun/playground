@@ -6,7 +6,6 @@
 #include "Assets.hpp"
 
 #include <list>
-#include <fstream>
 #include <regex>
 
 #include <assimp/Importer.hpp>
@@ -15,6 +14,7 @@
 
 #include "Logger.hpp"
 #include "Platform.hpp"
+#include "Str.hpp"
 
 struct Assets::PrivateState
 {
@@ -201,23 +201,6 @@ void Assets::reloadModifiedAssets()
 }
 
 // -------------------------------------------------------------------------------------------------
-bool Assets::loadFileIntoString(const std::string &filename, std::string &contents)
-{
-    std::ifstream in(filename.c_str(), std::ios::in | std::ios::binary);
-    if (!in)
-    {
-        Logger::debug("ERROR: Failed to load file into string \"%s\"", filename.c_str());
-        return false;
-    }
-    in.seekg(0, std::ios::end);
-    contents.resize(in.tellg());
-    in.seekg(0, std::ios::beg);
-    in.read(&contents[0], contents.size());
-    in.close();
-    return true;
-}
-
-// -------------------------------------------------------------------------------------------------
 void Assets::Model::clear()
 {
     vertexCount = 0;
@@ -283,13 +266,278 @@ bool Assets::loadModel(const Info &info, Model &model)
     registerDep(info.hash, info.name);
 
     model.clear();
+    std::string loader;
+    if (loadModelCustom(info, model))
+    {
+        loader = "custom";
+    }
+    else if (loadModelAssimp(info, model))
+    {
+        loader = "assimp";
+    }
+    else
+    {
+        model.clear();
+        Logger::debug("ERROR: Failed to load model \"%s\"", info.name.c_str());
+        return false;
+    }
+    model.setDefaultAttrs();
 
+    Logger::debug("Success loading model \"%s\" using <%s> loader",
+        info.name.c_str(), loader.c_str());
+
+    return true;
+}
+
+struct Parser
+{
+    void init(const std::string &data)
+    {
+        if (charTypes.empty())
+        {
+            charTypes.resize(256, CharType::OTHER);
+            charTypes[' ']  = CharType::WHITESPACE;
+            charTypes['\t'] = CharType::WHITESPACE;
+            charTypes['\r'] = CharType::EOL;
+            charTypes['\n'] = CharType::EOL;
+        }
+
+        *this = Parser();
+
+        begin = data.c_str();
+        end = data.c_str() + data.length();
+    };
+
+    bool advance()
+    {
+        if (!begin)
+        {
+            Logger::debug("ERROR: Failed to advance parser (not initialized)");
+            return false;
+        }
+        if (isEof())
+        {
+            Logger::debug("ERROR: Failed to advance parser (at <eof>)");
+            return false;
+        }
+
+        if (!tokenBegin) tokenBegin = begin;
+        else tokenBegin = tokenEnd;
+
+        while (charTypes[*tokenBegin] == CharType::WHITESPACE && tokenBegin < end) ++tokenBegin;
+
+        tokenEnd = tokenBegin;
+        tokenCharType = charTypes[*tokenBegin];
+        while (charTypes[*tokenEnd] == tokenCharType && tokenEnd < end) ++tokenEnd;
+
+        //Logger::debug("@ %s", isEof() ? "<eof>" : isEol() ? "<eol>" : str().c_str());
+
+        return true;
+    }
+
+    bool isEol()
+    {
+        return tokenCharType == CharType::EOL;
+    }
+
+    bool isEof()
+    {
+        return tokenEnd == end;
+    }
+
+    char chr()
+    {
+        return *tokenBegin;
+    }
+
+    std::string str()
+    {
+        return std::string(tokenBegin, tokenEnd - tokenBegin);
+    }
+
+    bool hexFloat(float &value)
+    {
+        u64 size = tokenEnd - tokenBegin;
+        if (size != 8) return false;
+        u32 valueInt = 0;
+        while (size > 0)
+        {
+            u8 nibble = *(tokenBegin + (8 - size));
+            if      (nibble >= '0' && nibble <= '9') nibble = nibble - '0';
+            else if (nibble >= 'a' && nibble <= 'f') nibble = nibble - 'a' + 10;
+            else return false;
+            valueInt = (valueInt << 4) | nibble;
+            --size;
+        }
+        value = *(float *)&valueInt;
+        return true;
+    }
+
+    bool uint32(u32 &value)
+    {
+        u32 result = 0;
+        u32 multiplier = 1;
+        const char *cursor = tokenEnd - 1;
+        while (cursor >= tokenBegin)
+        {
+            if (*cursor < '0' || *cursor > '9')
+            {
+                return false;
+            }
+            result += (*cursor - '0') * multiplier;
+            multiplier *= 10;
+            --cursor;
+        }
+        value = result;
+        return true;
+    }
+
+private:
+    enum CharType
+    {
+        NONE = 0,
+        WHITESPACE,
+        EOL,
+        OTHER
+    };
+
+    static std::vector< CharType > charTypes;
+
+    const char *begin = nullptr;
+    const char *end = nullptr;
+
+    const char *tokenBegin = nullptr;
+    const char *tokenEnd = nullptr;
+    CharType tokenCharType = CharType::NONE;
+};
+
+std::vector< Parser::CharType > Parser::charTypes;
+
+// -------------------------------------------------------------------------------------------------
+bool Assets::loadModelCustom(const Info &info, Model &model)
+{
+    if (!Str::endsWith(info.name, ".model"))
+    {
+        return false;
+    }
+    std::string data;
+    if (!Str::fromFile(info.name, data))
+    {
+        return false;
+    }
+
+    Parser parser;
+    parser.init(data);
+    parser.advance();
+
+    // parse instance information
+    while (parser.chr() == 'i')
+    {
+        Model::Instance instance;
+
+        parser.advance(); instance.type = parser.str();
+        parser.advance(); instance.name = parser.str();
+
+        while (parser.chr() != 'x') parser.advance();
+        parser.advance(); if (!parser.hexFloat(instance.xform[0].x)) break;
+        parser.advance(); if (!parser.hexFloat(instance.xform[1].x)) break;
+        parser.advance(); if (!parser.hexFloat(instance.xform[2].x)) break;
+        parser.advance(); if (!parser.hexFloat(instance.xform[3].x)) break;
+        while (parser.chr() != 'x') parser.advance();
+        parser.advance(); if (!parser.hexFloat(instance.xform[0].y)) break;
+        parser.advance(); if (!parser.hexFloat(instance.xform[1].y)) break;
+        parser.advance(); if (!parser.hexFloat(instance.xform[2].y)) break;
+        parser.advance(); if (!parser.hexFloat(instance.xform[3].y)) break;
+        while (parser.chr() != 'x') parser.advance();
+        parser.advance(); if (!parser.hexFloat(instance.xform[0].z)) break;
+        parser.advance(); if (!parser.hexFloat(instance.xform[1].z)) break;
+        parser.advance(); if (!parser.hexFloat(instance.xform[2].z)) break;
+        parser.advance(); if (!parser.hexFloat(instance.xform[3].z)) break;
+        instance.xform[0].w = 0.0;
+        instance.xform[0].w = 0.0;
+        instance.xform[0].w = 0.0;
+        instance.xform[0].w = 1.0;
+
+        model.instances.push_back(instance);
+
+        while (!parser.isEol()) parser.advance();
+        parser.advance();
+    }
+
+    // parse parts including vertices and triangles
+    while (parser.chr() == 'p')
+    {
+        Model::Part part;
+
+        part.offset = model.positions.size();
+        parser.advance(); part.name = parser.str();
+
+        u32 vertexCount = 0;
+        parser.advance(); parser.uint32(vertexCount);
+
+        u32 triCount = 0;
+        parser.advance(); parser.uint32(triCount);
+
+        std::vector< glm::fvec3 > positions(vertexCount);
+        std::vector< glm::fvec3 > normals(vertexCount);
+        for (u32 vertexIdx = 0; vertexIdx < vertexCount; ++vertexIdx)
+        {
+            while (parser.chr() != 'v') parser.advance();
+            glm::fvec3 &position = positions[vertexIdx];
+            parser.advance(); parser.hexFloat(position.x);
+            parser.advance(); parser.hexFloat(position.y);
+            parser.advance(); parser.hexFloat(position.z);
+            glm::fvec3 &normal = normals[vertexIdx];
+            parser.advance(); parser.hexFloat(normal.x);
+            parser.advance(); parser.hexFloat(normal.y);
+            parser.advance(); parser.hexFloat(normal.z);
+            //Logger::debug("Vertex %d/%d", vertexIdx + 1, vertexCount);
+        }
+
+        while (parser.chr() != 't') parser.advance();
+        for (u32 triIdx = 0; triIdx < triCount; ++triIdx)
+        {
+            u32 a = 0, b = 0, c = 0;
+            parser.advance();
+            if (parser.isEol())
+            {
+                parser.advance(); // skip <eol>
+                parser.advance(); // skip 't'
+            }
+            parser.uint32(a);
+            parser.advance(); parser.uint32(b);
+            parser.advance(); parser.uint32(c);
+            model.positions.push_back(positions[a]);
+            model.positions.push_back(positions[b]);
+            model.positions.push_back(positions[c]);
+            model.normals.push_back(normals[a]);
+            model.normals.push_back(normals[b]);
+            model.normals.push_back(normals[c]);
+            //Logger::debug("Triangle %d/%d", triIdx + 1, triCount);
+        }
+
+        part.count = model.positions.size() - part.offset;
+        model.parts.push_back(part);
+
+        parser.advance();
+        COMMON_ASSERT(parser.isEol());
+        if (!parser.isEof()) parser.advance();
+    }
+
+    model.diffuse.resize(model.positions.size(), glm::fvec3(1.0, 1.0, 1.0));
+    model.ambient.resize(model.positions.size(), glm::fvec3(0.2, 0.0, 0.0));
+
+    return true;
+}
+
+// -------------------------------------------------------------------------------------------------
+bool Assets::loadModelAssimp(const Info &info, Model &model)
+{
     const aiScene *scene = m_privateState->importer.ReadFile(
         info.name, aiProcess_Triangulate | aiProcess_FixInfacingNormals
         /*| aiProcess_PreTransformVertices*/);
     if (!scene)
     {
-        // FIXME(martinmo): Proper error message through platform abstraction
         return false;
     }
 
@@ -413,8 +661,7 @@ bool Assets::loadModel(const Info &info, Model &model)
             model.parts.push_back(newPart);
             currentPart = &model.parts.back();
         }
-        model.vertexCount = model.positions.size();
-        currentPart->count = model.vertexCount - currentPart->offset;
+        currentPart->count = model.positions.size() - currentPart->offset;
     }
 
     /*
@@ -439,8 +686,6 @@ bool Assets::loadModel(const Info &info, Model &model)
     }
     */
 
-    model.setDefaultAttrs();
-
     return true;
 }
 
@@ -456,7 +701,7 @@ bool Assets::loadProgram(const Info &info, Program &program)
     std::string filepath = filename.substr(0, filename.find_last_of("/") + 1);
 
     std::string source;
-    if (!loadFileIntoString(filename.c_str(), source))
+    if (!Str::fromFile(filename.c_str(), source))
     {
         return false;
     }
@@ -482,7 +727,7 @@ bool Assets::loadProgram(const Info &info, Program &program)
         registerDep(info.hash, includeFilename);
 
         std::string includeSource;
-        if (!loadFileIntoString(includeFilename, includeSource))
+        if (!Str::fromFile(includeFilename, includeSource))
         {
             Logger::debug("WARNING: Failed to load include \"%s\"", includeFilename.c_str());
         }
