@@ -168,6 +168,7 @@ HEADERS += \
     Profiler.hpp \
     Logger.hpp \
     Math.hpp \
+    Parser.hpp \
     Renderer.hpp \
     RocketScience.hpp \
     StateDb.hpp \
@@ -181,6 +182,7 @@ SOURCES += \
     Profiler.cpp \
     Logger.cpp \
     Math.cpp \
+    Parser.cpp \
     Renderer.cpp \
     RocketScience.cpp \
     StateDb.cpp \

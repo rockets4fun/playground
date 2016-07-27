@@ -15,6 +15,7 @@
 #include "Logger.hpp"
 #include "Platform.hpp"
 #include "Str.hpp"
+#include "Parser.hpp"
 
 struct Assets::PrivateState
 {
@@ -289,130 +290,6 @@ bool Assets::loadModel(const Info &info, Model &model)
     return true;
 }
 
-struct Parser
-{
-    void init(const std::string &data)
-    {
-        if (charTypes.empty())
-        {
-            charTypes.resize(256, CharType::OTHER);
-            charTypes[' ']  = CharType::WHITESPACE;
-            charTypes['\t'] = CharType::WHITESPACE;
-            charTypes['\r'] = CharType::EOL;
-            charTypes['\n'] = CharType::EOL;
-        }
-
-        *this = Parser();
-
-        begin = data.c_str();
-        end = data.c_str() + data.length();
-    };
-
-    bool advance()
-    {
-        if (!begin)
-        {
-            Logger::debug("ERROR: Failed to advance parser (not initialized)");
-            return false;
-        }
-        if (isEof())
-        {
-            Logger::debug("ERROR: Failed to advance parser (at <eof>)");
-            return false;
-        }
-
-        if (!tokenBegin) tokenBegin = begin;
-        else tokenBegin = tokenEnd;
-
-        while (charTypes[*tokenBegin] == CharType::WHITESPACE && tokenBegin < end) ++tokenBegin;
-
-        tokenEnd = tokenBegin;
-        tokenCharType = charTypes[*tokenBegin];
-        while (charTypes[*tokenEnd] == tokenCharType && tokenEnd < end) ++tokenEnd;
-
-        //Logger::debug("@ %s", isEof() ? "<eof>" : isEol() ? "<eol>" : str().c_str());
-
-        return true;
-    }
-
-    bool isEol()
-    {
-        return tokenCharType == CharType::EOL;
-    }
-
-    bool isEof()
-    {
-        return tokenEnd == end;
-    }
-
-    char chr()
-    {
-        return *tokenBegin;
-    }
-
-    std::string str()
-    {
-        return std::string(tokenBegin, tokenEnd - tokenBegin);
-    }
-
-    bool hexFloat(float &value)
-    {
-        u64 size = tokenEnd - tokenBegin;
-        if (size != 8) return false;
-        u32 valueInt = 0;
-        while (size > 0)
-        {
-            u8 nibble = *(tokenBegin + (8 - size));
-            if      (nibble >= '0' && nibble <= '9') nibble = nibble - '0';
-            else if (nibble >= 'a' && nibble <= 'f') nibble = nibble - 'a' + 10;
-            else return false;
-            valueInt = (valueInt << 4) | nibble;
-            --size;
-        }
-        value = *(float *)&valueInt;
-        return true;
-    }
-
-    bool uint32(u32 &value)
-    {
-        u32 result = 0;
-        u32 multiplier = 1;
-        const char *cursor = tokenEnd - 1;
-        while (cursor >= tokenBegin)
-        {
-            if (*cursor < '0' || *cursor > '9')
-            {
-                return false;
-            }
-            result += (*cursor - '0') * multiplier;
-            multiplier *= 10;
-            --cursor;
-        }
-        value = result;
-        return true;
-    }
-
-private:
-    enum CharType
-    {
-        NONE = 0,
-        WHITESPACE,
-        EOL,
-        OTHER
-    };
-
-    static std::vector< CharType > charTypes;
-
-    const char *begin = nullptr;
-    const char *end = nullptr;
-
-    const char *tokenBegin = nullptr;
-    const char *tokenEnd = nullptr;
-    CharType tokenCharType = CharType::NONE;
-};
-
-std::vector< Parser::CharType > Parser::charTypes;
-
 // -------------------------------------------------------------------------------------------------
 bool Assets::loadModelCustom(const Info &info, Model &model)
 {
@@ -430,7 +307,7 @@ bool Assets::loadModelCustom(const Info &info, Model &model)
     parser.init(data);
     parser.advance();
 
-    // parse instance information
+    // Parse instance information
     while (parser.chr() == 'i')
     {
         Model::Instance instance;
@@ -464,7 +341,7 @@ bool Assets::loadModelCustom(const Info &info, Model &model)
         parser.advance();
     }
 
-    // parse parts including vertices and triangles
+    // Parse parts including vertices and triangles
     while (parser.chr() == 'p')
     {
         Model::Part part;
