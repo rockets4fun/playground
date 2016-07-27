@@ -104,6 +104,11 @@ def processObject(object, parentInstances) :
         for mesh in meshes :
             joinedMesh.Append(mesh)
         joinedMesh.Reduce(0, False, 10, False)
+        if not joinedMesh.Faces.ConvertQuadsToTriangles() :
+            print("WARNING: Failed to convert quads to tris for %s" % (str(object)))
+        if not joinedMesh.Compact() :
+            print("WARNING: Failed to compact %s" % (str(object)))
+
         joinedMeshGuid = sc.doc.Objects.AddMesh(joinedMesh)
         rs.ObjectName(joinedMeshGuid, name)
         rs.ObjectMaterialSource(joinedMeshGuid, 1)
@@ -170,20 +175,18 @@ def main() :
     for instance in g_instances :
         parentCount = len(instance["parents"])
 
-        faceCount = 0
-        for part in instance["parts"] :
-            mesh = part["mesh"]
-            faceCount += mesh.Faces.Count;
-
         indent = g_indent * (parentCount - 1)
-        output.write("i " + indent + instance["name"]
-            + ":" + instance["type"] + " f " + str(faceCount) + "\n")
+        line = ("i " + indent
+            + instance["type"] + " " + instance["name"])
+        output.write(line + "\n")
+        print(line)
 
         if parentCount < 1 :
-            continue
+            xform = rc.Geometry.Transform(1.0)
+        else :
+            xform = instance["xform"]
 
         indent += "  "
-        xform = instance["xform"]
         output.write("x " + indent + formatHexFloats(
             [xform.M00, xform.M01, xform.M02, xform.M03], True) + "\n")
         output.write("x " + indent + formatHexFloats(
@@ -193,13 +196,17 @@ def main() :
 
     for part in g_parts :
         mesh = part["mesh"]
-        output.write("p " + part["name"]
-            + " v " + str(mesh.Vertices.Count)
-            + " f " + str(mesh.Faces.Count) + "\n")
+
+        line = ("p " + part["name"]
+            + " " + str(mesh.Vertices.Count)
+            + " " + str(mesh.Faces.Count))
+
+        output.write(line + "\n")
+        print(line)
 
         indent = "  "
 
-        for vertexIdx in range(0, mesh.Vertices.Count - 1) :
+        for vertexIdx in range(0, mesh.Vertices.Count) :
             vertex = mesh.Vertices[vertexIdx]
             normal = mesh.Normals[vertexIdx]
             output.write("v " + indent + formatHexFloats([
@@ -207,15 +214,15 @@ def main() :
                 normal.X, normal.Y, normal.Z]) + "\n")
 
         line = ""
-        faces = mesh.Faces.ToIntArray(True)
-        faceCount = len(faces) // 3
-        for faceIdx in range(0, faceCount - 1) :
+        for faceIdx in range(0, mesh.Faces.Count) :
             if not line :
-                line = "f " + indent
+                line = "t " + indent
             else :
                 line += " "
-            line += format("%d %d %d" %
-                (faces[faceIdx + 0], faces[faceIdx + 1], faces[faceIdx + 2]))
+            face = mesh.Faces[faceIdx]
+            if not face.IsTriangle :
+                print("WARNING: Non-triangle face %d" % (faceIdx))
+            line += format("%d %d %d" % (face.A, face.B, face.C))
             if len(line) > 50 :
                 output.write(line + "\n")
                 line = ""
