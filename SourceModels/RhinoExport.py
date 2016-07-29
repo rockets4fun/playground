@@ -31,6 +31,8 @@ typeStr = \
 g_meshParams = rc.Geometry.MeshingParameters.Smooth
 
 g_instances = []
+g_instancesByName = {}
+
 g_parts = []
 
 g_indent = "    "
@@ -57,6 +59,8 @@ def formatHexFloats(floats, comment=False) :
     return result
 
 def processObject(object, parentInstances) :
+    global g_instances
+    global g_instancesByName
     global g_parts
 
     name = rs.ObjectName(object)
@@ -68,16 +72,31 @@ def processObject(object, parentInstances) :
         xform = rs.BlockInstanceXform(object)
         subObjects = rs.ExplodeBlockInstance(object)
 
+        fullName = name
+        if len(parentInstances) > 1 :
+            for parent in parentInstances[1:] :
+                fullName = parent["name"] + "." + fullName
+        originalFullName = fullName
+
+        appendixCtr = 1
+        while fullName in g_instancesByName :
+            fullName = format("%s+%d" % (originalFullName, appendixCtr))
+            appendixCtr += 1
+        if fullName != originalFullName :
+            print("WARNING: Renamed %s => %s" %
+                (originalFullName, fullName))
+
         instance = \
         {
                "name" : name,
+           "fullName" : fullName,
                "type" : type,
               "xform" : xform,
             "parents" : list(parentInstances),
               "parts" : [],
         }
-        global g_instances
         g_instances.append(instance)
+        g_instancesByName[fullName] = instance
 
         for subObject in subObjects :
             processObject(subObject, parentInstances + [instance])
@@ -96,7 +115,7 @@ def processObject(object, parentInstances) :
     if skipReason :
         # make sure we can delete object by moving to current layer
         rs.ObjectLayer(object, rs.CurrentLayer())
-        print("WARNING: Skipping %s (%s)" % (str(object), skipReason))
+        print("Skipping %s (%s)" % (str(object), skipReason))
     elif type == rs.filter.polysurface :
         brep = rs.coercebrep(object)
         meshes = rc.Geometry.Mesh.CreateFromBrep(brep, g_meshParams)
@@ -159,9 +178,10 @@ def main() :
 
     rootInstance = \
     {
-                 "name" : "Root",
-                 "type" : "None",
-        "blockInstance" : None,
+                 "name" : "*",
+             "fullName" : "*",
+                 "type" : "*",
+                "xform" : None,
               "parents" : [],
                 "parts" : [],
     }
@@ -176,8 +196,13 @@ def main() :
         parentCount = len(instance["parents"])
 
         indent = g_indent * (parentCount - 1)
-        line = ("i " + indent
-            + instance["type"] + " " + instance["name"])
+
+        parentName = "*"
+        if instance["parents"] :
+            parentName = instance["parents"][-1]["name"]
+        line = format("i%s %s %s %s" % (indent,
+            instance["type"], instance["fullName"], parentName))
+
         output.write(line + "\n")
         print(line)
 
@@ -197,9 +222,9 @@ def main() :
     for part in g_parts :
         mesh = part["mesh"]
 
-        line = ("p " + part["name"]
-            + " " + str(mesh.Vertices.Count)
-            + " " + str(mesh.Faces.Count))
+        line = format("p %s %s %d %d" % (
+            part["name"], part["instance"]["fullName"],
+            mesh.Vertices.Count, mesh.Faces.Count))
 
         output.write(line + "\n")
         print(line)

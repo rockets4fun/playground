@@ -69,6 +69,7 @@ struct Assets
         struct Part
         {
             std::string name;
+            std::string instance;
             u64 offset = 0;
             u64 count = 0;
             u64 materialHint = 0;
@@ -78,6 +79,7 @@ struct Assets
         {
             std::string type;
             std::string name;
+            std::string parent;
             glm::fmat4 xform;
         };
 

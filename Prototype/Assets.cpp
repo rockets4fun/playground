@@ -314,6 +314,7 @@ bool Assets::loadModelCustom(const Info &info, Model &model)
 
         parser.advance(); instance.type = parser.str();
         parser.advance(); instance.name = parser.str();
+        parser.advance(); instance.parent = parser.str();
 
         while (parser.chr() != 'x') parser.advance();
         parser.advance(); if (!parser.hexFloat(instance.xform[0].x)) break;
@@ -348,6 +349,7 @@ bool Assets::loadModelCustom(const Info &info, Model &model)
 
         part.offset = model.positions.size();
         parser.advance(); part.name = parser.str();
+        parser.advance(); part.instance = parser.str();
 
         u32 vertexCount = 0;
         parser.advance(); parser.uint32(vertexCount);
