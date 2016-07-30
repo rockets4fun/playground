@@ -66,21 +66,30 @@ struct Assets
                 u64 offsetInBInit = 0, bool normalizeInit = false);
         };
 
-        struct Part
-        {
-            std::string name;
-            std::string instance;
-            u64 offset = 0;
-            u64 count = 0;
-            u64 materialHint = 0;
-        };
-
         struct Instance
         {
             std::string type;
             std::string name;
             std::string parent;
             glm::fmat4 xform;
+        };
+
+        struct Material
+        {
+            std::string name;
+            glm::fvec4 ambient;
+            glm::fvec4 diffuse;
+            glm::fvec4 emission;
+        };
+
+        struct Part
+        {
+            std::string name;
+            std::string instance;
+            std::string material;
+            u64 offset = 0;
+            u64 count = 0;
+            u64 materialHint = 0;
         };
 
         // Default vertex attribute arrays
@@ -94,8 +103,9 @@ struct Assets
         std::vector< Attr > attrs;
         Attr indicesAttr = Attr("", nullptr, Attr::U32, 0);
 
-        std::vector< Part > parts;
         std::vector< Instance > instances;
+        std::vector< Material > materials;
+        std::vector< Part > parts;
 
         u64 vertexCount = 0;
 

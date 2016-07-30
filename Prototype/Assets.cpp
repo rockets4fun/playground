@@ -307,7 +307,7 @@ bool Assets::loadModelCustom(const Info &info, Model &model)
     parser.init(data);
     parser.advance();
 
-    // Parse instance information
+    // Parse instances
     while (parser.chr() == 'i')
     {
         Model::Instance instance;
@@ -317,20 +317,20 @@ bool Assets::loadModelCustom(const Info &info, Model &model)
         parser.advance(); instance.parent = parser.str();
 
         while (parser.chr() != 'x') parser.advance();
-        parser.advance(); if (!parser.hexFloat(instance.xform[0].x)) break;
-        parser.advance(); if (!parser.hexFloat(instance.xform[1].x)) break;
-        parser.advance(); if (!parser.hexFloat(instance.xform[2].x)) break;
-        parser.advance(); if (!parser.hexFloat(instance.xform[3].x)) break;
+        parser.advance(); if (!parser.floatHex(instance.xform[0].x)) break;
+        parser.advance(); if (!parser.floatHex(instance.xform[1].x)) break;
+        parser.advance(); if (!parser.floatHex(instance.xform[2].x)) break;
+        parser.advance(); if (!parser.floatHex(instance.xform[3].x)) break;
         while (parser.chr() != 'x') parser.advance();
-        parser.advance(); if (!parser.hexFloat(instance.xform[0].y)) break;
-        parser.advance(); if (!parser.hexFloat(instance.xform[1].y)) break;
-        parser.advance(); if (!parser.hexFloat(instance.xform[2].y)) break;
-        parser.advance(); if (!parser.hexFloat(instance.xform[3].y)) break;
+        parser.advance(); if (!parser.floatHex(instance.xform[0].y)) break;
+        parser.advance(); if (!parser.floatHex(instance.xform[1].y)) break;
+        parser.advance(); if (!parser.floatHex(instance.xform[2].y)) break;
+        parser.advance(); if (!parser.floatHex(instance.xform[3].y)) break;
         while (parser.chr() != 'x') parser.advance();
-        parser.advance(); if (!parser.hexFloat(instance.xform[0].z)) break;
-        parser.advance(); if (!parser.hexFloat(instance.xform[1].z)) break;
-        parser.advance(); if (!parser.hexFloat(instance.xform[2].z)) break;
-        parser.advance(); if (!parser.hexFloat(instance.xform[3].z)) break;
+        parser.advance(); if (!parser.floatHex(instance.xform[0].z)) break;
+        parser.advance(); if (!parser.floatHex(instance.xform[1].z)) break;
+        parser.advance(); if (!parser.floatHex(instance.xform[2].z)) break;
+        parser.advance(); if (!parser.floatHex(instance.xform[3].z)) break;
         instance.xform[0].w = 0.0;
         instance.xform[0].w = 0.0;
         instance.xform[0].w = 0.0;
@@ -342,6 +342,35 @@ bool Assets::loadModelCustom(const Info &info, Model &model)
         parser.advance();
     }
 
+    // Parse materials
+    while (parser.chr() == 'm')
+    {
+        Model::Material material;
+        parser.advance(); material.name = parser.str();
+        u32 color = 0;
+        parser.advance(); parser.uint32Hex(color);
+        material.ambient = glm::fvec4(
+            float((color >> 24) & 0xff) / 255.0f, float((color >> 16) & 0xff) / 255.0f,
+            float((color >>  8) & 0xff) / 255.0f, float((color      ) & 0xff) / 255.0f);
+        parser.advance(); parser.uint32Hex(color);
+        material.diffuse = glm::fvec4(
+            float((color >> 24) & 0xff) / 255.0f, float((color >> 16) & 0xff) / 255.0f,
+            float((color >>  8) & 0xff) / 255.0f, float((color      ) & 0xff) / 255.0f);
+        parser.advance(); parser.uint32Hex(color);
+        material.emission = glm::fvec4(
+            float((color >> 24) & 0xff) / 255.0f, float((color >> 16) & 0xff) / 255.0f,
+            float((color >>  8) & 0xff) / 255.0f, float((color      ) & 0xff) / 255.0f);
+        parser.advance(); parser.uint32Hex(color);
+        parser.advance(); // Parse EOL
+        model.materials.push_back(material);
+    }
+    std::map< std::string, const Model::Material * > materialsByName;
+    for (const Model::Material &material : model.materials)
+    {
+        materialsByName[material.name] = &material;
+    }
+    Model::Material defaultMaterial;
+
     // Parse parts including vertices and triangles
     while (parser.chr() == 'p')
     {
@@ -350,6 +379,10 @@ bool Assets::loadModelCustom(const Info &info, Model &model)
         part.offset = model.positions.size();
         parser.advance(); part.name = parser.str();
         parser.advance(); part.instance = parser.str();
+        parser.advance(); part.material = parser.str();
+
+        const Model::Material *material = materialsByName[part.material];
+        if (!material) material = &defaultMaterial;
 
         u32 vertexCount = 0;
         parser.advance(); parser.uint32(vertexCount);
@@ -363,13 +396,13 @@ bool Assets::loadModelCustom(const Info &info, Model &model)
         {
             while (parser.chr() != 'v') parser.advance();
             glm::fvec3 &position = positions[vertexIdx];
-            parser.advance(); parser.hexFloat(position.x);
-            parser.advance(); parser.hexFloat(position.y);
-            parser.advance(); parser.hexFloat(position.z);
+            parser.advance(); parser.floatHex(position.x);
+            parser.advance(); parser.floatHex(position.y);
+            parser.advance(); parser.floatHex(position.z);
             glm::fvec3 &normal = normals[vertexIdx];
-            parser.advance(); parser.hexFloat(normal.x);
-            parser.advance(); parser.hexFloat(normal.y);
-            parser.advance(); parser.hexFloat(normal.z);
+            parser.advance(); parser.floatHex(normal.x);
+            parser.advance(); parser.floatHex(normal.y);
+            parser.advance(); parser.floatHex(normal.z);
             //Logger::debug("Vertex %d/%d", vertexIdx + 1, vertexCount);
         }
 
@@ -392,6 +425,12 @@ bool Assets::loadModelCustom(const Info &info, Model &model)
             model.normals.push_back(normals[a]);
             model.normals.push_back(normals[b]);
             model.normals.push_back(normals[c]);
+            model.ambient.push_back(glm::fvec3(material->ambient));
+            model.ambient.push_back(glm::fvec3(material->ambient));
+            model.ambient.push_back(glm::fvec3(material->ambient));
+            model.diffuse.push_back(glm::fvec3(material->diffuse));
+            model.diffuse.push_back(glm::fvec3(material->diffuse));
+            model.diffuse.push_back(glm::fvec3(material->diffuse));
             //Logger::debug("Triangle %d/%d", triIdx + 1, triCount);
         }
 
@@ -402,9 +441,6 @@ bool Assets::loadModelCustom(const Info &info, Model &model)
         COMMON_ASSERT(parser.isEol());
         if (!parser.isEof()) parser.advance();
     }
-
-    model.diffuse.resize(model.positions.size(), glm::fvec3(1.0, 1.0, 1.0));
-    model.ambient.resize(model.positions.size(), glm::fvec3(0.2, 0.0, 0.0));
 
     return true;
 }

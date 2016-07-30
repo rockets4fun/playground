@@ -81,25 +81,6 @@ std::string Parser::str()
 }
 
 // -------------------------------------------------------------------------------------------------
-bool Parser::hexFloat(float &value)
-{
-    u64 size = m_tokenEnd - m_tokenBegin;
-    if (size != 8) return false;
-    u32 valueInt = 0;
-    while (size > 0)
-    {
-        u8 nibble = *(m_tokenBegin + (8 - size));
-        if      (nibble >= '0' && nibble <= '9') nibble = nibble - '0';
-        else if (nibble >= 'a' && nibble <= 'f') nibble = nibble - 'a' + 10;
-        else return false;
-        valueInt = (valueInt << 4) | nibble;
-        --size;
-    }
-    value = *(float *)&valueInt;
-    return true;
-}
-
-// -------------------------------------------------------------------------------------------------
 bool Parser::uint32(u32 &value)
 {
     u32 result = 0;
@@ -116,5 +97,36 @@ bool Parser::uint32(u32 &value)
         --cursor;
     }
     value = result;
+    return true;
+}
+
+// -------------------------------------------------------------------------------------------------
+bool Parser::uint32Hex(u32 &value)
+{
+    u64 size = m_tokenEnd - m_tokenBegin;
+    if (size != 8) return false;
+    u32 result = 0;
+    while (size > 0)
+    {
+        u8 nibble = *(m_tokenBegin + (8 - size));
+        if      (nibble >= '0' && nibble <= '9') nibble = nibble - '0';
+        else if (nibble >= 'a' && nibble <= 'f') nibble = nibble - 'a' + 10;
+        else return false;
+        result = (result << 4) | nibble;
+        --size;
+    }
+    value = result;
+    return true;
+}
+
+// -------------------------------------------------------------------------------------------------
+bool Parser::floatHex(float &value)
+{
+    u32 valueInt = 0;
+    if (!uint32Hex(valueInt))
+    {
+        return false;
+    }
+    value = *(float *)&valueInt;
     return true;
 }

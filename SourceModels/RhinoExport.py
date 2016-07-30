@@ -4,7 +4,9 @@ import os
 import Rhino as rc
 import rhinoscriptsyntax as rs
 import scriptcontext as sc
+
 import struct
+import System
 
 typeStr = \
 {
@@ -32,13 +34,15 @@ g_meshParams = rc.Geometry.MeshingParameters.Smooth
 
 g_instances = []
 g_instancesByName = {}
-
 g_parts = []
+
+g_materials = {}
 
 g_indent = "    "
 
-def floatsToHex(floats) :
+def formatHexFloats(floats, comment=False) :
     result = ""
+
     for float in floats :
         part = hex(struct.unpack("<I", struct.pack("<f", float))[0])
         part = part.lstrip("0x")
@@ -47,21 +51,31 @@ def floatsToHex(floats) :
         if len(result) :
             part = " " + part
         result += part
-    return result
 
-def formatHexFloats(floats, comment=False) :
-    result = ""
-    result += floatsToHex(floats)
     if comment :
         result += " #";
         for float in floats :
             result += format("%6.2f" % float)
+
+    return result
+
+def formatColors(colors) :
+    result = ""
+
+    for color in colors :
+        part = format("%08x" % (2**32 + color.ToArgb()))
+        part = part[2:] + part[0:2]
+        if len(result) :
+            part = " " + part
+        result += part
+
     return result
 
 def processObject(object, parentInstances) :
     global g_instances
     global g_instancesByName
     global g_parts
+    global g_materials
 
     name = rs.ObjectName(object)
     type = rs.ObjectType(object)
@@ -94,6 +108,7 @@ def processObject(object, parentInstances) :
               "xform" : xform,
             "parents" : list(parentInstances),
               "parts" : [],
+            "touched" : False,
         }
         g_instances.append(instance)
         g_instancesByName[fullName] = instance
@@ -128,18 +143,26 @@ def processObject(object, parentInstances) :
         if not joinedMesh.Compact() :
             print("WARNING: Failed to compact %s" % (str(object)))
 
+        materialIdx = rs.LayerMaterialIndex(layer)
+        material = rs.MaterialName(materialIdx)
+        g_materials[material] = materialIdx
+
         joinedMeshGuid = sc.doc.Objects.AddMesh(joinedMesh)
         rs.ObjectName(joinedMeshGuid, name)
         rs.ObjectMaterialSource(joinedMeshGuid, 1)
-        rs.ObjectMaterialIndex(joinedMeshGuid, rs.LayerMaterialIndex(layer))
+        rs.ObjectMaterialIndex(joinedMeshGuid, materialIdx)
 
         part = \
         {
                 "name" : name,
                 "mesh" : joinedMesh,
             "instance" : parentInstances[-1],
+            "material" : material,
         }
         parentInstances[-1]["parts"].append(part)
+        if not parentInstances[-1]["touched"] :
+            for parentInstance in parentInstances :
+                parentInstance["touched"] = True
         g_parts.append(part)
 
     rs.DeleteObject(object)
@@ -148,6 +171,7 @@ def main() :
     global g_instances
     global g_parts
     global g_indent
+    global g_materials
 
     #print(sys.version_info) # (2, 7, 0, 'beta', 0)
 
@@ -156,8 +180,6 @@ def main() :
     dlg.Filter = "RocketScience 3D Model (*.model)"
     dlg.InitialDirectory = os.path.dirname(sc.doc.Path)
     if not dlg.ShowSaveDialog() : return None
-
-    output = open(dlg.FileName, "w")
 
     selectedObjects = rs.SelectedObjects()
 
@@ -184,6 +206,7 @@ def main() :
                 "xform" : None,
               "parents" : [],
                 "parts" : [],
+              "touched" : False,
     }
 
     g_instances.append(rootInstance)
@@ -191,6 +214,20 @@ def main() :
     objectsCopied = rs.CopyObjects(objects, rs.VectorScale(origin, -1))
     for object in objectsCopied :
         processObject(object, [rootInstance])
+
+    output = open(dlg.FileName, "w")
+
+    #output.write("# i <instance-type> <instance-name> "
+    #    "<parent-instance-name>\n")
+    #output.write("# x <x-axis-x> <y-axis-x> <z-axis-x> <translation-x>\n")
+    #output.write("# x <x-axis-y> <y-axis-y> <z-axis-y> <translation-y>\n")
+    #output.write("# x <x-axis-z> <y-axis-z> <z-axis-z> <translation-z>\n")
+    #output.write("# m <material-name> <ambient> <diffuse> <emission>\n")
+    #output.write("# p <part-name> <instance-name> <material-name> "
+    #    "<vertices> <triangles>\n")
+    #output.write("# v <pos-x> <pos-y> <pox-z> <norm-x> <norm-y> <norm-z>\n")
+    #output.write("# t <vertex-1> <vertex-2> <vertex-3>\n")
+    #output.write("\n")
 
     for instance in g_instances :
         parentCount = len(instance["parents"])
@@ -203,8 +240,8 @@ def main() :
         line = format("i%s %s %s %s" % (indent,
             instance["type"], instance["fullName"], parentName))
 
-        output.write(line + "\n")
         print(line)
+        output.write(line + "\n")
 
         if parentCount < 1 :
             xform = rc.Geometry.Transform(1.0)
@@ -219,15 +256,28 @@ def main() :
         output.write("x " + indent + formatHexFloats(
             [xform.M20, xform.M21, xform.M22, xform.M23], True) + "\n")
 
+    for materialName, materialIdx in g_materials.iteritems() :
+        material = sc.doc.Materials[materialIdx]
+
+        ambient = material.AmbientColor;
+        diffuse = material.DiffuseColor;
+        emission = material.EmissionColor;
+
+        line = format("m %s %s" % (materialName,
+            formatColors([ambient, diffuse, emission])))
+
+        print(line)
+        output.write(line + "\n")
+
     for part in g_parts :
         mesh = part["mesh"]
 
-        line = format("p %s %s %d %d" % (
-            part["name"], part["instance"]["fullName"],
+        line = format("p %s %s %s %d %d" % (
+            part["name"], part["instance"]["fullName"], part["material"],
             mesh.Vertices.Count, mesh.Faces.Count))
 
-        output.write(line + "\n")
         print(line)
+        output.write(line + "\n")
 
         indent = "  "
 
@@ -238,19 +288,16 @@ def main() :
                 vertex.X, vertex.Y, vertex.Z,
                 normal.X, normal.Y, normal.Z]) + "\n")
 
-        line = ""
+        line = lineInit = "t" + indent
         for faceIdx in range(0, mesh.Faces.Count) :
-            if not line :
-                line = "t " + indent
-            else :
-                line += " "
             face = mesh.Faces[faceIdx]
             if not face.IsTriangle :
                 print("WARNING: Non-triangle face %d" % (faceIdx))
-            line += format("%d %d %d" % (face.A, face.B, face.C))
-            if len(line) > 50 :
+            part = format(" %d %d %d" % (face.A, face.B, face.C))
+            if len(line) + len(part) > 100 :
                 output.write(line + "\n")
-                line = ""
+                line = lineInit
+            line += part
         if len(line) > 0 :
             output.write(line + "\n")
 

@@ -24,8 +24,11 @@ struct Parser
 
     char chr();
     std::string str();
-    bool hexFloat(float &value);
+
     bool uint32(u32 &value);
+    bool uint32Hex(u32 &value);
+
+    bool floatHex(float &value);
 
 private:
     enum CharType
