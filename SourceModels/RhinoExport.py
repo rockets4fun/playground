@@ -122,7 +122,7 @@ def processObject(object, parentInstances) :
         skipReason = "layer locked"
     elif not rs.LayerVisible(layer) :
         skipReason = "layer hidden"
-    elif type != rs.filter.polysurface :
+    elif type != rs.filter.polysurface and type != rs.filter.surface :
         skipReason = "bad type - " + typeStr[type]
     elif not name :
         skipReason = "no name"
@@ -131,7 +131,7 @@ def processObject(object, parentInstances) :
         # make sure we can delete object by moving to current layer
         rs.ObjectLayer(object, rs.CurrentLayer())
         print("Skipping %s (%s)" % (str(object), skipReason))
-    elif type == rs.filter.polysurface :
+    else :
         brep = rs.coercebrep(object)
         meshes = rc.Geometry.Mesh.CreateFromBrep(brep, g_meshParams)
         joinedMesh = rc.Geometry.Mesh()
@@ -143,7 +143,7 @@ def processObject(object, parentInstances) :
         if not joinedMesh.Compact() :
             print("WARNING: Failed to compact %s" % (str(object)))
 
-        materialIdx = rs.LayerMaterialIndex(layer)
+        materialIdx = rs.ObjectMaterialIndex(object)
         material = rs.MaterialName(materialIdx)
         g_materials[material] = materialIdx
 
@@ -200,13 +200,13 @@ def main() :
 
     rootInstance = \
     {
-                 "name" : "*",
-             "fullName" : "*",
-                 "type" : "*",
-                "xform" : None,
-              "parents" : [],
-                "parts" : [],
-              "touched" : False,
+            "name" : "*",
+        "fullName" : "*",
+            "type" : "*",
+           "xform" : None,
+         "parents" : [],
+           "parts" : [],
+         "touched" : False,
     }
 
     g_instances.append(rootInstance)
