@@ -14,6 +14,7 @@
 /// @brief String routines
 struct Str
 {
+    static bool startsWith(const std::string &str, const std::string &prefix);
     static bool endsWith(const std::string &str, const std::string &suffix);
     static bool fromFile(const std::string &filename, std::string &contents);
 

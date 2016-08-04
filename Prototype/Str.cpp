@@ -10,6 +10,17 @@
 #include "Logger.hpp"
 
 // -------------------------------------------------------------------------------------------------
+bool Str::startsWith(const std::string &str, const std::string &prefix)
+{
+    if (prefix.length() > str.length())
+    {
+        return false;
+    }
+    std::string::size_type pos = str.find(prefix);
+    return pos == 0;
+}
+
+// -------------------------------------------------------------------------------------------------
 bool Str::endsWith(const std::string &str, const std::string &suffix)
 {
     if (suffix.length() > str.length())
