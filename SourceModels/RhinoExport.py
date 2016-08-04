@@ -143,7 +143,12 @@ def processObject(object, parentInstances) :
         if not joinedMesh.Compact() :
             print("WARNING: Failed to compact %s" % (str(object)))
 
-        materialIdx = rs.ObjectMaterialIndex(object)
+        materialSrc = rs.ObjectMaterialSource(object)
+        if materialSrc == 0 :
+            materialIdx = rs.LayerMaterialIndex(rs.ObjectLayer(object))
+        else :
+            materialIdx = rs.ObjectMaterialIndex(object)
+
         material = rs.MaterialName(materialIdx)
         g_materials[material] = materialIdx
 
