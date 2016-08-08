@@ -332,9 +332,9 @@ bool Assets::loadModelCustom(const Info &info, Model &model)
         parser.advance(); if (!parser.floatHex(instance.xform[2].z)) break;
         parser.advance(); if (!parser.floatHex(instance.xform[3].z)) break;
         instance.xform[0].w = 0.0;
-        instance.xform[0].w = 0.0;
-        instance.xform[0].w = 0.0;
-        instance.xform[0].w = 1.0;
+        instance.xform[1].w = 0.0;
+        instance.xform[2].w = 0.0;
+        instance.xform[3].w = 1.0;
 
         model.instances.push_back(instance);
 
