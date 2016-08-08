@@ -79,12 +79,21 @@ def processObject(object, parentInstances) :
     global g_materials
 
     name = rs.ObjectName(object)
+    if not name :
+        name = "Unnamed"
     type = rs.ObjectType(object)
     layer = rs.ObjectLayer(object)
 
     if type == rs.filter.instance :
         type = rs.BlockInstanceName(object)
+
         xform = rs.BlockInstanceXform(object)
+
+        # Seems like transforms are in global frame already
+        # --> Probably due to exploding the block hierarchies...
+        #for parent in reversed(parentInstances[1:]) :
+        #    xform = parent["xform"] * xform
+
         subObjects = rs.ExplodeBlockInstance(object)
 
         fullName = name
@@ -125,8 +134,6 @@ def processObject(object, parentInstances) :
         skipReason = "layer hidden"
     elif type != rs.filter.polysurface and type != rs.filter.surface :
         skipReason = "bad type - " + typeStr[type]
-    elif not name :
-        skipReason = "no name"
 
     if skipReason :
         # make sure we can delete object by moving to current layer
