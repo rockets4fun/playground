@@ -55,7 +55,7 @@ struct Renderer : public ModuleIf
             static u64 STATE;
             glm::fvec3 translation;
             glm::fquat rotation;
-            float uniformScale = 0.0f;
+            glm::fvec3 scale;
             glm::fvec4 diffuseMul;
             glm::fvec4 ambientAdd;
             u32 modelAsset = 0;

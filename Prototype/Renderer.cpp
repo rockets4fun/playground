@@ -899,13 +899,16 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
             continue;
         }
 
-        glm::fmat4 modelToWorld;
-        modelToWorld = glm::translate(glm::fmat4(), mesh->translation);
-        modelToWorld = modelToWorld * glm::mat4_cast(mesh->rotation);
+        glm::fmat4 translation = glm::translate(glm::fmat4(), mesh->translation);
+        glm::fmat4 rotation = glm::mat4_cast(mesh->rotation);
+
+        glm::fmat4 modelToWorld = translation * rotation;
         if (mesh->flags & Mesh::Flag::SCALED)
         {
-            modelToWorld = glm::scale(modelToWorld, glm::fvec3(mesh->uniformScale));
+            glm::fmat4 scale = glm::scale(glm::fmat4(), mesh->scale);
+            modelToWorld = modelToWorld * scale;
         }
+
         funcs->glUniformMatrix4fv(
             program->uModelToWorldMatrix, 1, GL_FALSE, glm::value_ptr(modelToWorld));
 
