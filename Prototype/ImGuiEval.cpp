@@ -130,7 +130,9 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
                         ImGui::TreePop();
                         --prevCallDepth;
                     }
-                    if (!ImGui::TreeNode(sample.section->name.c_str()))
+                    int flags = 0;
+                    // TODO: Set 'ImGuiTreeNodeFlags_Leaf' if leaf node...
+                    if (!ImGui::TreeNodeEx(sample.section->name.c_str(), flags))
                     {
                         maxCallDepth = sample.callDepth;
                     }
