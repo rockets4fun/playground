@@ -12,6 +12,7 @@
 #include <vector>
 
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 
 #include "ModuleIf.hpp"
 
@@ -49,14 +50,31 @@ private:
         };
     };
 
+    struct Thruster
+    {
+        static u64 TYPE;
+        struct Info
+        {
+            static u64 STATE;
+            u64 shipMeshHandle = 0;
+            u32 shipMeshInstanceNr = 0;
+            glm::fvec3 translation;
+            glm::fquat rotation;
+            glm::fvec3 scale;
+            u64 debugMeshHandle = 0;
+        };
+    };
+
     u64 m_cameraHandle = 0;
+    u64 m_pusherAffectorHandle = 0;
+
+    u64 m_debugMeshHandle = 0;
+    u64 m_arrowMeshHandle = 0;
 
     u32 m_oceanModelAsset = 0;
     u32 m_uiModelAsset = 0;
     u32 m_postModelAsset = 0;
-
-    u64 m_arrowMeshHandle = 0;
-    u64 m_pusherAffectorHandle = 0;
+    u32 m_rocketModelAsset = 0;
 
     std::list< u64 > m_sleepingMeshHandles;
     std::list< u64 > m_buoyancyAffectorHandles;

@@ -13,11 +13,13 @@
 #include <glm/gtc/random.hpp>
 #include <glm/gtc/noise.hpp>
 
+#include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/fast_trigonometry.hpp>
 
 #include "Math.hpp"
 #include "Logger.hpp"
 #include "Profiler.hpp"
+#include "Str.hpp"
 
 #include "StateDb.hpp"
 #include "Assets.hpp"
@@ -37,6 +39,10 @@ u64 RocketScience::Particle::TYPE = 0;
 u64 RocketScience::Particle::Info::STATE = 0;
 
 // -------------------------------------------------------------------------------------------------
+u64 RocketScience::Thruster::TYPE = 0;
+u64 RocketScience::Thruster::Info::STATE = 0;
+
+// -------------------------------------------------------------------------------------------------
 RocketScience::RocketScience()
 {
 }
@@ -51,6 +57,9 @@ void RocketScience::registerTypesAndStates(StateDb &sdb)
 {
     Particle::TYPE = sdb.registerType("Particle", 512);
     Particle::Info::STATE = sdb.registerState(Particle::TYPE, "Info", sizeof(Particle::Info));
+
+    Thruster::TYPE = sdb.registerType("Thruster", 64);
+    Thruster::Info::STATE = sdb.registerState(Thruster::TYPE, "Info", sizeof(Thruster::Info));
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -224,8 +233,107 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
         if (enableRocket && meshIdx == 0)
         {
             mesh->translation = glm::fvec3(0.0f, 0.0f, 10.0f);
-            mesh->rotation = glm::angleAxis(glm::radians(90.0f), glm::fvec3(1.0f, 0.0f, 0.0f));
-            mesh->modelAsset = assets.asset("Assets/Models/Pusher.obj");
+            //mesh->rotation = glm::angleAxis(glm::radians(90.0f), glm::fvec3(1.0f, 0.0f, 0.0f));
+            mesh->rotation = glm::fquat(1.0, 0.0, 0.0, 0.0);
+
+            //mesh->modelAsset = assets.asset("Assets/Models/Pusher.model");
+            //mesh->modelAsset = assets.asset("Assets/Models/PusherFront.model");
+            mesh->modelAsset = assets.asset("Assets/Models/InstanceTest.model");
+
+            m_rocketModelAsset = mesh->modelAsset;
+
+            // FIXME(MARTINMO): Mesh transformation debugging only...
+            {
+                auto debugMesh = sdb.create< Renderer::Mesh::Info >(m_debugMeshHandle);
+                debugMesh->modelAsset = assets.asset("Assets/Models/AxesXYZ.model");
+                debugMesh->groups = Renderer::Group::DEFAULT;
+                debugMesh->translation = glm::fvec3(0.0f, 0.0f, 5.0f);
+
+                int debug = 100;
+            }
+
+            // Create thrusters according to instances in model
+            const Assets::Model *model = assets.refModel(mesh->modelAsset);
+            for (const Assets::Model::Instance &instance : model->instances)
+            {
+                if (!Str::startsWith(instance.type, "Engine"))
+                {
+                    continue;
+                }
+
+                bool mirrored = Str::startsWith(instance.name, "Mirrored");
+
+                auto thruster = sdb.create< Thruster::Info >();
+                thruster->shipMeshHandle = meshHandle;
+                thruster->shipMeshInstanceNr = u32(&instance - &model->instances[0]) + 1;
+
+                glm::fmat4 xform = instance.xform;
+                if (mirrored)
+                {
+                    glm::fmat3 xformInv = glm::fmat3(glm::inverse(xform));
+                    glm::fvec3 x = xformInv * glm::fvec3(xform[0]);
+                    glm::fvec3 y = xformInv * glm::fvec3(xform[1]);
+                    glm::fvec3 z = xformInv * glm::fvec3(xform[2]);
+
+                    glm::fvec3 scale = glm::fvec3(
+                        glm::dot(x, glm::fvec3(1.0f, 0.0f, 0.0f)),
+                        glm::dot(y, glm::fvec3(0.0f, 1.0f, 0.0f)),
+                        glm::dot(z, glm::fvec3(0.0f, 0.0f, 1.0f)));
+
+                    glm::fquat rotation = glm::quat_cast(xform);
+
+                    int debug = 0;
+                }
+
+                glm::fvec3 ignoreSkew;
+                glm::fvec4 ignorePerspective;
+                bool decomposeResult = glm::decompose(xform,
+                    thruster->scale, thruster->rotation, thruster->translation,
+                    ignoreSkew, ignorePerspective);
+                COMMON_ASSERT(decomposeResult == true);
+
+                // FIXME(MARTINMO): 'glm::decompose' seems to invert rotations...
+                //if (!mirrored)
+                {
+                    thruster->rotation = glm::quat_cast(xform);
+                }
+                /*
+                else
+                {
+                    // FIXME(MARTINMO): Why do we have to negate the rotation here?
+                    thruster->rotation = glm::inverse(thruster->rotation);
+                }
+                */
+
+                /*
+                // FIXME(MARTINMO): Properly handle 'mirror' scale...
+                if (thruster->scale.x < 0.0f
+                 || thruster->scale.y < 0.0f
+                 || thruster->scale.z < 0.0f)
+                {
+                    thruster->rotation.x *= thruster->scale.x;
+                    thruster->rotation.y *= thruster->scale.y;
+                    thruster->rotation.z *= thruster->scale.z;
+                }
+                */
+
+                auto debugMesh = sdb.create< Renderer::Mesh::Info >(thruster->debugMeshHandle);
+                debugMesh->modelAsset = assets.asset("Assets/Models/AxesXYZ.model");
+                debugMesh->groups = Renderer::Group::DEFAULT;
+                //debugMesh->flags = Renderer::Mesh::Flag::SCALED;
+
+                if (Str::startsWith(instance.name, "NonMirrored-1"))
+                {
+                    debugMesh->ambientAdd = glm::fvec4(0.5f, 0.5f, 0.5f, 0.0f);
+                    debugMesh->flags |= Renderer::Mesh::Flag::AMBIENT_ADD;
+
+                    glm::fquat rotation = glm::quat_cast(instance.xform);
+                    auto globalDebugMesh = sdb.state< Renderer::Mesh::Info >(m_debugMeshHandle);
+                    globalDebugMesh->rotation = rotation;
+
+                    int debug = 1;
+                }
+            }
 
             /*
             // For debugging the bloom effect...
@@ -264,6 +372,20 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
     PROFILER_SECTION(RocketScience, glm::fvec3(0.0f, 1.0f, 0.0f))
 
     m_timeInS += deltaTimeInS;
+
+    // Update thruster debug meshes
+    {
+        auto thrusters = sdb.stateAll< Thruster::Info >();
+        for (auto thruster : thrusters)
+        {
+            auto shipMesh  = sdb.state< Renderer::Mesh::Info >(thruster->shipMeshHandle);
+            auto debugMesh = sdb.state< Renderer::Mesh::Info >(thruster->debugMeshHandle);
+            debugMesh->translation = shipMesh->translation
+                + shipMesh->rotation * thruster->translation;
+            debugMesh->rotation = /*shipMesh->rotation * */thruster->rotation;
+            debugMesh->scale = thruster->scale;
+        }
+    }
 
     // Update tileable dynamic ocean model
     {
@@ -354,7 +476,8 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 
         auto mesh = sdb.state< Renderer::Mesh::Info >(meshHandle);
 
-        if (mesh->modelAsset == assets.asset("Assets/Models/Pusher.obj"))
+        //if (mesh->modelAsset == m_rocketModelAsset)
+        if (mesh->modelAsset == assets.asset("Assets/Models/Pusher.model"))
         {
             rigidBody->collisionShape = Physics::RigidBody::CollisionShape::CONVEX_HULL_COMPOUND;
             rigidBody->mass = 5.0f;
@@ -495,9 +618,10 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             const float life = glm::clamp(float(particle->ageInS) / maxAgeInS, 0.0f, 1.0f);
             const float grow   = 0.30f;
             const float shrink = 0.25f;
+            float uniformScale = 1.0f;
             if (life >= 1.0f - shrink)
             {
-                mesh->uniformScale = (1.0f - glm::smoothstep(1.0f - shrink, 1.0f, life))
+                uniformScale = (1.0f - glm::smoothstep(1.0f - shrink, 1.0f, life))
                         * (particle->maxSize - particle->minSize);
                 mesh->diffuseMul = glm::mix(
                     glm::fvec4(0.8, 0.8, 0.8, 1.0), glm::fvec4(0.1, 0.1, 0.1, 1.0),
@@ -505,7 +629,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             }
             else if (life <= grow)
             {
-                mesh->uniformScale = particle->minSize
+                uniformScale = particle->minSize
                         + glm::smoothstep(0.0f, grow, life)
                         * (particle->maxSize - particle->minSize);
                 mesh->diffuseMul = glm::mix(
@@ -517,13 +641,14 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             }
             else
             {
-                mesh->uniformScale = particle->maxSize
+                uniformScale = particle->maxSize
                         - glm::smoothstep(grow, 1.0f - shrink, life)
                         * particle->minSize;
             }
+            mesh->scale = glm::fvec3(uniformScale);
 
             float oceanHeight = oceanEquation(mesh->translation.xy(), m_timeInS);
-            float minHeight = 0.3f * mesh->uniformScale + oceanHeight;
+            float minHeight = 0.3f * uniformScale + oceanHeight;
             if (mesh->translation.z < minHeight)
             {
                 particle->velocity.z = 0.0f;
