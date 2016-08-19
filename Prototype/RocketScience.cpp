@@ -102,21 +102,21 @@ void pushRectOutline2d(Assets::Model *model, double t,
 void decomposeTransform(const glm::fmat4 &xform,
     glm::fvec3 &translation, glm::fquat &rotation, glm::vec3 &scale)
 {
-    // translation
+    // Translation
     {
         translation = glm::fvec3(xform[3]);
     }
-    // rotation
+    // Rotation
     glm::fmat3 xform3 = glm::fmat3(xform);
     {
-        // normalize X, Y base vectors
+        // Normalize X, Y base vectors
         xform3[0] = glm::normalize(xform3[0]);
         xform3[1] = glm::normalize(xform3[1]);
         // Z from cross product to get ortho-normal base
         xform3[2] = glm::cross(xform3[0], xform3[1]);
         rotation = glm::quat_cast(xform3);
     }
-    // scale
+    // Scale
     {
         scale.x = glm::length(xform3[0]);
         scale.y = glm::length(xform3[1]);
