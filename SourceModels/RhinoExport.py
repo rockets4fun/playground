@@ -158,6 +158,8 @@ def processObject(object, parentInstances) :
             materialIdx = rs.ObjectMaterialIndex(object)
 
         material = rs.MaterialName(materialIdx)
+        if not material :
+            material = "None"
         g_materials[material] = materialIdx
 
         joinedMeshGuid = sc.doc.Objects.AddMesh(joinedMesh)
