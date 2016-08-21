@@ -205,7 +205,7 @@ def main() :
         name = rs.ObjectName(object)
         type = rs.ObjectType(object)
         if type == rs.filter.point :
-            if name == "Origin" :
+            if name.startswith("Origin") :
                 origin = rs.PointCoordinates(object)
         else :
             objects.append(object)
