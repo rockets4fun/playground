@@ -1,43 +1,11 @@
 h1. Current Coding Roadmap
 ----------------------------------------------------------------------------------------------------
 
-* Try exporting FBX from Rhino and see whether needed information is there
-** Exported data contains object names but still no block/type name information
-
-* Custom Python-based model asset exporter for Rhino
-** Based on current selection
-** Export polysurfaces and meshes with block hierarchies and transforms
-** Point named "origin" resets export origin
-** Auto-mesh and mesh-reduce polysurfaces using fixed settings
-
-* Custom memory-mappable binary data format
-** We cannot use Wavefront OBJ because...
-*** Object names are mangled on export (cannot use to encode sub-mesh type/transform)
-*** No other way to properly represent hierarchies
-** Easy transformation into 'Assets::Model' data representation
-** Watch Per Vognsen's related YouTube live coding session
-*** "A memory mappable, zero-copy asset format for real-time graphics"
-*** https://www.youtube.com/watch?v=qZM2B4D7hZs
-
 * Short-term roadmap
-** Import models from new format and add block/type info to model asset parts info
-** Support for simple texturing of models (experiment with using baked-AO for rendering)
-** StateDb: Add support for default values (memcpy from template instead of memset)
-** GUI prototype (multi-window experiments using @ocornut's ImGui)
 ** Mouse interactivity (camera control, physics manipulation)
 ** FSM-based control logic and sensor fusion prototyping
-
-* Notes on multiple windows with OpenGL output
-** Sharing context data most likely means implicit synchronization of API calls...
-** We need one render thread/context per window (main thread triggers all renderer updates)
-
-* Long-term Roadmap
-** Improve bloom effect
-*** Gaussian/triangle/multipass (FBO ping-pong) blur
-*** Try separating horizontal and vertical blur steps
-*** State-based generalization of rendering passes/techniques
-** Improve sphere-based smoke effect
-*** Smoothed particle speed/creation rate according to velocity
+** GUI prototype (multi-window experiments using @ocornut's ImGui)
+** StateDb: Add support for default values (memcpy from template instead of memset)
 ** Proper instanced rendering for meshes
 *** Decide per-instance attribute approach
 **** Approach 1: Attribute divisor
@@ -45,6 +13,29 @@ h1. Current Coding Roadmap
 **** Approach 3: Buffer texture
 **** Approach 4: nD-texture
 *** Simply make all public mesh data available as per-instance data
+
+* Long-term Roadmap
+** Support for simple texturing of models (experiment with using baked-AO for rendering)
+** Improve bloom effect
+*** Gaussian/triangle/multipass (FBO ping-pong) blur
+*** Try separating horizontal and vertical blur steps
+*** State-based generalization of rendering passes/techniques
+** Improve sphere-based smoke effect
+*** Smoothed particle speed/creation rate according to velocity
+
+----------------------------------------------------------------------------------------------------
+
+* Change docking mechanism to be more like International Docking System Standard (IDSS)
+** No distinction between male/female adapters (androgynous)
+
+* Make custom 3D model format's data representation binary and memory-mappable
+** Watch Per Vognsen's related YouTube live coding session
+*** "A memory mappable, zero-copy asset format for real-time graphics"
+*** https://www.youtube.com/watch?v=qZM2B4D7hZs
+
+* Notes on multiple windows with OpenGL output
+** Sharing context data most likely means implicit synchronization of API calls...
+** We need one render thread/context per window (main thread triggers all renderer updates)
 
 * Rocket drone ship landing
 ** Basic rocket control
