@@ -102,6 +102,8 @@ void pushRectOutline2d(Assets::Model *model, double t,
 void decomposeTransform(const glm::fmat4 &xform,
     glm::fvec3 &translation, glm::fquat &rotation, glm::vec3 &scale)
 {
+    // TODO(MARTINMO): Make sure base is orthogonal and return error otherwise
+
     // Translation
     {
         translation = glm::fvec3(xform[3]);
@@ -142,7 +144,7 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
     {
         auto mesh = sdb.create< Renderer::Mesh::Info >(m_arrowMeshHandle);
         mesh->modelAsset = assets.asset("Assets/Models/AxesY.model");
-        mesh->groups = Renderer::Group::DEFAULT;
+        //mesh->groups = Renderer::Group::DEFAULT;
     }
     {
         auto mesh = sdb.create< Renderer::Mesh::Info >();
@@ -261,9 +263,9 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
             mesh->translation = glm::fvec3(0.0f, 0.0f, 10.0f);
             mesh->rotation = glm::angleAxis(glm::radians(90.0f), glm::fvec3(1.0f, 0.0f, 0.0f));
 
-            mesh->modelAsset = assets.asset("Assets/Models/Pusher.model");
+            //mesh->modelAsset = assets.asset("Assets/Models/Pusher.model");
             //mesh->modelAsset = assets.asset("Assets/Models/PusherFront.model");
-            //mesh->modelAsset = assets.asset("Assets/Models/InstanceTest.model");
+            mesh->modelAsset = assets.asset("Assets/Models/Test.model");
 
             m_rocketModelAsset = mesh->modelAsset;
 
@@ -437,8 +439,8 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 
         auto mesh = sdb.state< Renderer::Mesh::Info >(meshHandle);
 
-        //if (mesh->modelAsset == m_rocketModelAsset)
-        if (mesh->modelAsset == assets.asset("Assets/Models/Pusher.model"))
+        if (mesh->modelAsset == m_rocketModelAsset)
+        //if (mesh->modelAsset == assets.asset("Assets/Models/Pusher.model"))
         {
             rigidBody->collisionShape = Physics::RigidBody::CollisionShape::CONVEX_HULL_COMPOUND;
             rigidBody->mass = 5.0f;
@@ -457,7 +459,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
             rigidBody->collisionShape = Physics::RigidBody::CollisionShape::BOUNDING_SPHERE;
             addBuoyancyAffector(sdb, glm::fvec3(0.0, 0.0, 0.0), rigidBodyHandle);
         }
-        else
+        else/* if (mesh->modelAsset == assets.asset("Assets/Models/MaterialCube.model"))*/
         {
             addBuoyancyAffector(sdb, glm::fvec3(-0.5, -0.5, +0.0), rigidBodyHandle);
             addBuoyancyAffector(sdb, glm::fvec3(-0.5, +0.5, +0.0), rigidBodyHandle);
