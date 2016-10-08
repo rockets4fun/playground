@@ -161,6 +161,7 @@ SOURCES += \
     Main.cpp
 
 HEADERS += \
+    AppShipLanding.hpp \
     Assets.hpp \
     ImGuiEval.hpp \
     Physics.hpp \
@@ -170,11 +171,11 @@ HEADERS += \
     Math.hpp \
     Parser.hpp \
     Renderer.hpp \
-    RocketScience.hpp \
     StateDb.hpp \
     Str.hpp
 
 SOURCES += \
+    AppShipLanding.cpp \
     Assets.cpp \
     ImGuiEval.cpp \
     Physics.cpp \
@@ -184,7 +185,6 @@ SOURCES += \
     Math.cpp \
     Parser.cpp \
     Renderer.cpp \
-    RocketScience.cpp \
     StateDb.cpp \
     Str.cpp
 

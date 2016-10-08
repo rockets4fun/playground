@@ -3,8 +3,8 @@
 /// @date 05.01.2015
 // -------------------------------------------------------------------------------------------------
 
-#ifndef ROCKETSCIENCE_HPP
-#define ROCKETSCIENCE_HPP
+#ifndef APPSHIPLANDING_HPP
+#define APPSHIPLANDING_HPP
 
 #include "Common.hpp"
 
