@@ -18,7 +18,9 @@
 #include "Renderer.hpp"
 #include "Physics.hpp"
 #include "ImGuiEval.hpp"
+
 #include "AppShipLanding.hpp"
+#include "AppSpaceThrusters.hpp"
 
 #include "Profiler.hpp"
 
@@ -65,16 +67,18 @@ int main(int argc, char *argv[])
 
     {
         Physics physics;
-        AppShipLanding appShipLanding;
         ImGuiEval imGuiEval;
         Renderer renderer;
+
+        //AppShipLanding app;
+        AppSpaceThrusters app;
 
         StateDb sdb;
         Assets assets;
 
         std::vector< ModuleIf * > modules =
         {
-            &physics, &appShipLanding, &imGuiEval, &renderer
+            &physics, &app, &imGuiEval, &renderer
         };
 
         std::vector< ModuleIf * > modulesReversed = modules;

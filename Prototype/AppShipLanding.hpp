@@ -23,7 +23,7 @@ struct AppShipLanding : public ModuleIf
     AppShipLanding();
     virtual ~AppShipLanding();
 
-public: // Implementation of module interface
+public: // Application module interface implementation
     virtual void registerTypesAndStates(StateDb &sdb);
     virtual bool initialize(StateDb &sdb, Assets &assets);
     virtual void shutdown(StateDb &sdb);

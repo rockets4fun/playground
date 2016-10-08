@@ -162,6 +162,7 @@ SOURCES += \
 
 HEADERS += \
     AppShipLanding.hpp \
+    AppSpaceThrusters.hpp \
     Assets.hpp \
     ImGuiEval.hpp \
     Physics.hpp \
@@ -176,6 +177,7 @@ HEADERS += \
 
 SOURCES += \
     AppShipLanding.cpp \
+    AppSpaceThrusters.cpp \
     Assets.cpp \
     ImGuiEval.cpp \
     Physics.cpp \
