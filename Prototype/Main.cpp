@@ -18,7 +18,7 @@
 #include "Renderer.hpp"
 #include "Physics.hpp"
 #include "ImGuiEval.hpp"
-#include "RocketScience.hpp"
+#include "AppShipLanding.hpp"
 
 #include "Profiler.hpp"
 
@@ -47,7 +47,7 @@ int main(int argc, char *argv[])
 
     // TODO(martinmo): Implement properly resizable window (propagate to renderer)
     SDL_Window *window = SDL_CreateWindow(
-        "RocketScience Prototype",
+        "Rocket Science Playground",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         800, 450, SDL_WINDOW_OPENGL);
 
@@ -65,7 +65,7 @@ int main(int argc, char *argv[])
 
     {
         Physics physics;
-        RocketScience rocketScience;
+        AppShipLanding appShipLanding;
         ImGuiEval imGuiEval;
         Renderer renderer;
 
@@ -74,7 +74,7 @@ int main(int argc, char *argv[])
 
         std::vector< ModuleIf * > modules =
         {
-            &physics, &rocketScience, &imGuiEval, &renderer
+            &physics, &appShipLanding, &imGuiEval, &renderer
         };
 
         std::vector< ModuleIf * > modulesReversed = modules;

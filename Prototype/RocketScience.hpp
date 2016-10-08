@@ -18,10 +18,10 @@
 
 // -------------------------------------------------------------------------------------------------
 /// @brief Rocket science prototype logic module
-struct RocketScience : public ModuleIf
+struct AppShipLanding : public ModuleIf
 {
-    RocketScience();
-    virtual ~RocketScience();
+    AppShipLanding();
+    virtual ~AppShipLanding();
 
 public: // Implementation of module interface
     virtual void registerTypesAndStates(StateDb &sdb);
@@ -92,7 +92,7 @@ private:
     void updateBuoyancyAffectors(StateDb &sdb, double timeInS);
 
 private:
-    COMMON_DISABLE_COPY(RocketScience)
+    COMMON_DISABLE_COPY(AppShipLanding)
 };
 
 #endif

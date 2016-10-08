@@ -5,7 +5,7 @@
 
 #define GLM_SWIZZLE
 
-#include "RocketScience.hpp"
+#include "AppShipLanding.hpp"
 
 #include <SDL.h>
 
@@ -26,33 +26,33 @@
 #include "Renderer.hpp"
 #include "Physics.hpp"
 
-const int RocketScience::OCEAN_TILE_VERTEX_COUNT = 32;
-const glm::fvec2 RocketScience::OCEAN_TILE_UNIT_SIZE =
+const int AppShipLanding::OCEAN_TILE_VERTEX_COUNT = 32;
+const glm::fvec2 AppShipLanding::OCEAN_TILE_UNIT_SIZE =
     glm::fvec2((OCEAN_TILE_VERTEX_COUNT - 1) * OCEAN_TILE_VERTEX_DIST);
-const float RocketScience::OCEAN_TILE_VERTEX_DIST = 1.0f;
+const float AppShipLanding::OCEAN_TILE_VERTEX_DIST = 1.0f;
 
-const int RocketScience::PLATFORM_SPHERE_COUNT = 4;
-
-// -------------------------------------------------------------------------------------------------
-u64 RocketScience::Particle::TYPE = 0;
-u64 RocketScience::Particle::Info::STATE = 0;
+const int AppShipLanding::PLATFORM_SPHERE_COUNT = 4;
 
 // -------------------------------------------------------------------------------------------------
-u64 RocketScience::Thruster::TYPE = 0;
-u64 RocketScience::Thruster::Info::STATE = 0;
+u64 AppShipLanding::Particle::TYPE = 0;
+u64 AppShipLanding::Particle::Info::STATE = 0;
 
 // -------------------------------------------------------------------------------------------------
-RocketScience::RocketScience()
+u64 AppShipLanding::Thruster::TYPE = 0;
+u64 AppShipLanding::Thruster::Info::STATE = 0;
+
+// -------------------------------------------------------------------------------------------------
+AppShipLanding::AppShipLanding()
 {
 }
 
 // -------------------------------------------------------------------------------------------------
-RocketScience::~RocketScience()
+AppShipLanding::~AppShipLanding()
 {
 }
 
 // -------------------------------------------------------------------------------------------------
-void RocketScience::registerTypesAndStates(StateDb &sdb)
+void AppShipLanding::registerTypesAndStates(StateDb &sdb)
 {
     Particle::TYPE = sdb.registerType("Particle", 512);
     Particle::Info::STATE = sdb.registerState(Particle::TYPE, "Info", sizeof(Particle::Info));
@@ -128,7 +128,7 @@ void decomposeTransform(const glm::fmat4 &xform,
 }
 
 // -------------------------------------------------------------------------------------------------
-bool RocketScience::initialize(StateDb &sdb, Assets &assets)
+bool AppShipLanding::initialize(StateDb &sdb, Assets &assets)
 {
     auto camera = sdb.create< Renderer::Camera::Info >(m_cameraHandle);
     camera->position = glm::fvec3(-10.0f, -20.0f, 20.0f);
@@ -323,16 +323,16 @@ bool RocketScience::initialize(StateDb &sdb, Assets &assets)
 }
 
 // -------------------------------------------------------------------------------------------------
-void RocketScience::shutdown(StateDb &sdb)
+void AppShipLanding::shutdown(StateDb &sdb)
 {
     sdb.destroy(m_arrowMeshHandle);
     sdb.destroy(m_cameraHandle);
 }
 
 // -------------------------------------------------------------------------------------------------
-void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS)
+void AppShipLanding::update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS)
 {
-    PROFILER_SECTION(RocketScience, glm::fvec3(0.0f, 1.0f, 0.0f))
+    PROFILER_SECTION(AppShipLanding, glm::fvec3(0.0f, 1.0f, 0.0f))
 
     m_timeInS += deltaTimeInS;
 
@@ -687,7 +687,7 @@ void RocketScience::update(StateDb &sdb, Assets &assets, Renderer &renderer, dou
 #define __sin(arg) std::sin(arg)
 //#define __sin(arg) glm::fastSin(arg)
 //#define __sin(arg) (arg) // NOP for testing performance impact...
-float RocketScience::oceanEquation(const glm::fvec2 &position, double timeInS)
+float AppShipLanding::oceanEquation(const glm::fvec2 &position, double timeInS)
 {
     glm::fvec2 unitSize = OCEAN_TILE_UNIT_SIZE;
     float twoPi = 2.0f * glm::pi< float >();
@@ -703,7 +703,7 @@ float RocketScience::oceanEquation(const glm::fvec2 &position, double timeInS)
 #undef __sin
 
 // -------------------------------------------------------------------------------------------------
-void RocketScience::addBuoyancyAffector(StateDb &sdb,
+void AppShipLanding::addBuoyancyAffector(StateDb &sdb,
     const glm::fvec3 &translation, u64 parentRigidBodyHandle)
 {
     u64 buoyancyAffectorHandle = 0;
@@ -714,7 +714,7 @@ void RocketScience::addBuoyancyAffector(StateDb &sdb,
 }
 
 // -------------------------------------------------------------------------------------------------
-void RocketScience::updateBuoyancyAffectors(StateDb &sdb, double timeInS)
+void AppShipLanding::updateBuoyancyAffectors(StateDb &sdb, double timeInS)
 {
     // TODO(martinmo): Get rid of multi-level indirection by
     // TODO(martinmo): - Storing buoyancy type hint in force info
