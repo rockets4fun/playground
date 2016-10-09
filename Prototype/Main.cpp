@@ -84,6 +84,8 @@ int main(int argc, char *argv[])
         std::vector< ModuleIf * > modulesReversed = modules;
         std::reverse(modulesReversed.begin(), modulesReversed.end());
 
+        imGuiEval.registerModule(app);
+
         for (auto &module : modules)
         {
             module->registerTypesAndStates(sdb);
