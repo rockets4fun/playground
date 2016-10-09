@@ -19,6 +19,14 @@ struct ImGuiEval : public ModuleIf
     ImGuiEval();
     virtual ~ImGuiEval();
 
+    struct ModuleIf
+    {
+    public: // ImGui module interface
+        virtual void imGuiUpdate(StateDb &sdb, Assets &assets) = 0;
+    };
+
+    void registerModule(ModuleIf &module);
+
 public: // Application module interface
     virtual void registerTypesAndStates(StateDb &sdb);
     virtual bool initialize(StateDb &sdb, Assets &assets);
@@ -33,6 +41,8 @@ private:
 
     bool m_metricsVisible = true;
     bool m_profilerVisible = true;
+
+    std::vector< ModuleIf * > m_modules;
 
 private:
     COMMON_DISABLE_COPY(ImGuiEval)

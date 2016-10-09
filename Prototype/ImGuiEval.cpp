@@ -37,6 +37,12 @@ ImGuiEval::~ImGuiEval()
 }
 
 // -------------------------------------------------------------------------------------------------
+void ImGuiEval::registerModule(ModuleIf &module)
+{
+    m_modules.push_back(&module);
+}
+
+// -------------------------------------------------------------------------------------------------
 void ImGuiEval::registerTypesAndStates(StateDb &sdb)
 {
 }
@@ -153,6 +159,7 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
 
             ImGui::End();
         }
+        for (auto &module : m_modules) module->imGuiUpdate(sdb, assets);
         ImGui::Render();
     }
 
