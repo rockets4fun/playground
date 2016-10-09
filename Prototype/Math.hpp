@@ -16,6 +16,9 @@ struct Math
 {
     static glm::fquat rotateFromTo(const glm::fvec3 &from, const glm::fvec3 &to);
 
+    static void decomposeTransform(const glm::fmat4 &xform,
+        glm::fvec3 &translation, glm::fquat &rotation, glm::vec3 &scale);
+
 private:
     COMMON_DISABLE_COPY(Math)
 };
