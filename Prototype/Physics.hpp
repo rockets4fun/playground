@@ -31,9 +31,15 @@ struct Physics : ModuleIf
             BOUNDING_SPHERE,
             CONVEX_HULL_COMPOUND
         };
+        enum Flag
+        {
+            RESET_TO_MESH = 0x1
+        };
         struct Info
         {
             static u64 STATE;
+
+            u32 flags = 0;
 
             u64 meshHandle = 0;
             u32 collisionShape = 0;

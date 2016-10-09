@@ -326,6 +326,7 @@ void Physics::PrivateState::preTick(btScalar timeStep)
     auto rigidBodiesPrivate = sdb.stateAll< RigidBody::PrivateInfo >();
 
     // Apply linear velocity limits to all RBs
+    // FIXME(MARTINMO): This should move to the post tick callback
     for (auto rigidBody : rigidBodies)
     {
         auto rigidBodyPrivate = rigidBodiesPrivate.rel(rigidBodies, rigidBody);
@@ -500,7 +501,7 @@ void Physics::update(StateDb &sdb, Assets &assets, Renderer &renderer, double de
     auto rigidBodiesPrivate = sdb.stateAll< RigidBody::PrivateInfo >();
     auto affectors = sdb.stateAll< Affector::Info >();
 
-    // Clear old and find new affectors of rigid bodies
+    // Update rigid body affectors
     for (auto rigidBodyPrivate : rigidBodiesPrivate)
     {
         rigidBodyPrivate->state->affectors.clear();
@@ -512,6 +513,34 @@ void Physics::update(StateDb &sdb, Assets &assets, Renderer &renderer, double de
             auto rigidBodyPrivate = sdb.state< RigidBody::PrivateInfo >(affector->rigidBodyHandle);
             rigidBodyPrivate->state->affectors.push_back(affector);
         }
+    }
+
+    // Handle mesh => rigid body state forwarding
+    for (auto rigidBody : rigidBodies)
+    {
+        // TODO(martinmo): Delete rigid bodies with bad mesh references?
+        // TODO(martinmo): (e.g. mesh has been destroyed but rigid body still alive)
+        if (!sdb.isHandleValid(rigidBody->meshHandle))
+        {
+            continue;
+        }
+
+        if (!(rigidBody->flags & RigidBody::Flag::RESET_TO_MESH))
+        {
+            continue;
+        }
+
+        auto rigidBodyPrivate = rigidBodiesPrivate.rel(rigidBodies, rigidBody);
+        auto mesh = sdb.state< Renderer::Mesh::Info >(rigidBody->meshHandle);
+
+        btRigidBody *bulletRigidBody = rigidBodyPrivate->state->bulletRigidBody.get();
+
+        bulletRigidBody->setLinearVelocity(btVector3(0, 0, 0));
+        bulletRigidBody->setAngularVelocity(btVector3(0, 0, 0));
+        bulletRigidBody->setWorldTransform(
+            btTransform(toBulletQuat(mesh->rotation), toBulletVec(mesh->translation)));
+
+        rigidBody->flags &= ~RigidBody::Flag::RESET_TO_MESH;
     }
 
     // Update rigid body physics simulation
