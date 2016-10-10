@@ -404,7 +404,9 @@ bool Physics::initialize(StateDb &sdb, Assets &assets)
         state->dispatcher.get(), state->broadphase.get(),
         state->solver.get(), state->collisionConfiguration.get());
 
-    state->dynamicsWorld->setGravity(btVector3(0, 0, -10));
+    //btVector3 gravity(0, 0, -10); // earth
+    btVector3 gravity(0, 0, 0);   // space
+    state->dynamicsWorld->setGravity(gravity);
 
     /*
     {
