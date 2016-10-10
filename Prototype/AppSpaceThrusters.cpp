@@ -41,6 +41,7 @@ bool AppSpaceThrusters::initialize(StateDb &sdb, Assets &assets)
         glm::fvec3(0.0f, 1.0f, 0.0f), glm::fvec3(0.0f, 0.0f, 1.0f));
     spaceShipMesh->modelAsset = assets.asset("Assets/Models/PusherFront.model");
     spaceShipMesh->groups = Renderer::Group::DEFAULT;
+
     m_spaceShipMeshInit = *spaceShipMesh;
 
     auto spaceShipRb = sdb.create< Physics::RigidBody::Info >(m_spaceShipRbHandle);
@@ -115,7 +116,9 @@ void AppSpaceThrusters::imGuiUpdate(StateDb &sdb, Assets &assets)
         glm::fvec3 scale;
         Math::decomposeTransform(instance.xform, translation, rotation, scale);
 
-        if (ImGui::Button(instance.name.c_str()))
+        ImGui::Button(instance.name.c_str());
+
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0))
         {
             thrusterAffector->enabled = true;
             thrusterAffector->forcePosition = translation;
