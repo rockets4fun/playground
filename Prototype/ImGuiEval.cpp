@@ -8,23 +8,12 @@
 #include <SDL.h>
 #include <imgui.h>
 
+#include "Str.hpp"
+
 #include "Assets.hpp"
 #include "StateDb.hpp"
 #include "Renderer.hpp"
 #include "Profiler.hpp"
-
-struct Str
-{
-    static std::string build(const char *format, ...)
-    {
-        char buffer[1024];
-        va_list args;
-        va_start(args, format);
-        int ret = vsnprintf(buffer, sizeof(buffer), format, args);
-        va_end(args);
-        return std::string(buffer);
-    }
-};
 
 // -------------------------------------------------------------------------------------------------
 ImGuiEval::ImGuiEval()
