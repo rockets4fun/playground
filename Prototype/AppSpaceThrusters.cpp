@@ -75,7 +75,7 @@ bool AppSpaceThrusters::initialize(StateDb &sdb, Assets &assets)
         Math::decomposeTransform(instance.xform, translation, rotation, scale);
 
         thruster.pos = translation;
-        thruster.dir = -instance.xform[1];
+        thruster.dir = glm::fvec3(-instance.xform[1]);
 
         m_thrusters.push_back(thruster);
     }
@@ -120,15 +120,25 @@ void AppSpaceThrusters::imGuiUpdate(StateDb &sdb, Assets &assets)
         spaceShipRb->flags |= Physics::RigidBody::Flag::RESET_TO_MESH;
     }
 
-    /*
     std::set< std::string > activeThrusters;
+
     ImGui::Separator();
-    if (ImGui::Button("Roll Left"))
     {
-        activeThrusters.insert("Front-Wing-Left.Engine-Top");
-        activeThrusters.insert("Front-Wing-Right.Engine-Bottom");
+        ImGui::Button("Roll Left");
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0))
+        {
+            activeThrusters.insert("Front-Wing-Left.Engine-Top");
+            activeThrusters.insert("Front-Wing-Right.Engine-Bottom");
+        }
     }
-    */
+    {
+        ImGui::Button("Roll Right");
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0))
+        {
+            activeThrusters.insert("Front-Wing-Left.Engine-Bottom");
+            activeThrusters.insert("Front-Wing-Right.Engine-Top");
+        }
+    }
 
     ImGui::Separator();
     for (auto &thruster : m_thrusters)
@@ -142,21 +152,23 @@ void AppSpaceThrusters::imGuiUpdate(StateDb &sdb, Assets &assets)
         infoMesh->flags |= Renderer::Mesh::Flag::HIDDEN;
         affector->enabled = false;
 
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0))
-        {
-            affector->enabled = true;
-            // FIXME(MARTINMO): Should also be global just like 'force'
-            affector->forcePosition = thruster.pos;
-            affector->force = spaceShipMesh->rotation * thruster.dir;
-        }
+        bool active = activeThrusters.find(thruster.name) != activeThrusters.end();
 
-        if (ImGui::IsItemHovered())
+        if (ImGui::IsItemHovered() || active)
         {
             infoMesh->flags &= ~Renderer::Mesh::Flag::HIDDEN;
             infoMesh->translation =
                 spaceShipMesh->translation + spaceShipMesh->rotation * thruster.pos;
             infoMesh->rotation = spaceShipMesh->rotation
-                * Math::rotateFromTo(glm::fvec3(0.0f, 1.0f, 0.0f), thruster.dir);
+                * Math::rotateFromTo(glm::fvec3(0.0f, 1.0f, 0.0f), -thruster.dir);
+        }
+
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0) || active)
+        {
+            affector->enabled = true;
+            // FIXME(MARTINMO): Should also be global just like 'force'
+            affector->forcePosition = thruster.pos;
+            affector->force = spaceShipMesh->rotation * thruster.dir;
         }
     }
 
