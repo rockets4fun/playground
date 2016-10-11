@@ -49,12 +49,36 @@ bool AppSpaceThrusters::initialize(StateDb &sdb, Assets &assets)
     spaceShipRb->collisionShape = Physics::RigidBody::CollisionShape::CONVEX_HULL_COMPOUND;
     spaceShipRb->mass = 1.0;
 
-    auto thrusterMesh = sdb.create< Renderer::Mesh::Info >(m_thrusterMeshHandle);
-    thrusterMesh->modelAsset = assets.asset("Assets/Models/AxesY.model");
-    thrusterMesh->groups = Renderer::Group::DEFAULT;
+    Assets::Model *spaceShipModel = assets.refModel(spaceShipMesh->modelAsset);
+    for (auto &instance : spaceShipModel->instances)
+    {
+        if (!Str::startsWith(instance.type, "Engine"))
+        {
+            continue;
+        }
 
-    auto thrusterAffector = sdb.create< Physics::Affector::Info >(m_thrusterAffectorHandle);
-    thrusterAffector->rigidBodyHandle = m_spaceShipRbHandle;
+        Thruster thruster;
+
+        thruster.name = instance.name;
+
+        auto infoMesh = sdb.create< Renderer::Mesh::Info >(thruster.infoMeshHandle);
+        infoMesh->modelAsset = assets.asset("Assets/Models/AxesY.model");
+        infoMesh->flags |= Renderer::Mesh::Flag::HIDDEN;
+        infoMesh->groups = Renderer::Group::DEFAULT;
+
+        auto affector = sdb.create< Physics::Affector::Info >(thruster.affectorHandle);
+        affector->rigidBodyHandle = m_spaceShipRbHandle;
+
+        glm::fvec3 translation;
+        glm::fquat rotation;
+        glm::fvec3 scale;
+        Math::decomposeTransform(instance.xform, translation, rotation, scale);
+
+        thruster.pos = translation;
+        thruster.dir = -instance.xform[1];
+
+        m_thrusters.push_back(thruster);
+    }
 
     auto mesh = sdb.create< Renderer::Mesh::Info >();
     mesh->modelAsset = assets.asset("Assets/Models/AxesXYZ.model");
@@ -86,11 +110,9 @@ void AppSpaceThrusters::imGuiUpdate(StateDb &sdb, Assets &assets)
 {
     auto spaceShipMesh = sdb.state< Renderer::Mesh::Info >(m_spaceShipMeshHandle);
     auto spaceShipRb = sdb.state< Physics::RigidBody::Info >(m_spaceShipRbHandle);
-    auto thrusterMesh = sdb.state< Renderer::Mesh::Info >(m_thrusterMeshHandle);
-    auto thrusterAffector = sdb.state< Physics::Affector::Info >(m_thrusterAffectorHandle);
 
     ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiSetCond_FirstUseEver);
-    ImGui::Begin("Thruster");
+    ImGui::Begin("Thrusters");
 
     if (ImGui::Button("Reset Space Ship"))
     {
@@ -98,39 +120,43 @@ void AppSpaceThrusters::imGuiUpdate(StateDb &sdb, Assets &assets)
         spaceShipRb->flags |= Physics::RigidBody::Flag::RESET_TO_MESH;
     }
 
+    /*
+    std::set< std::string > activeThrusters;
     ImGui::Separator();
-
-    thrusterMesh->flags |= Renderer::Mesh::Flag::HIDDEN;
-    thrusterAffector->enabled = false;
-
-    Assets::Model *spaceShipModel = assets.refModel(spaceShipMesh->modelAsset);
-    for (auto &instance : spaceShipModel->instances)
+    if (ImGui::Button("Roll Left"))
     {
-        if (!Str::startsWith(instance.type, "Engine"))
-        {
-            continue;
-        }
+        activeThrusters.insert("Front-Wing-Left.Engine-Top");
+        activeThrusters.insert("Front-Wing-Right.Engine-Bottom");
+    }
+    */
 
-        glm::fvec3 translation;
-        glm::fquat rotation;
-        glm::fvec3 scale;
-        Math::decomposeTransform(instance.xform, translation, rotation, scale);
+    ImGui::Separator();
+    for (auto &thruster : m_thrusters)
+    {
+        ImGui::Button(thruster.name.c_str());
 
-        ImGui::Button(instance.name.c_str());
+        auto infoMesh = sdb.state< Renderer::Mesh::Info >(thruster.infoMeshHandle);
+        auto affector = sdb.state< Physics::Affector::Info >(thruster.affectorHandle);
+
+        // Default is for info mesh to be hidden and affector to be disabled
+        infoMesh->flags |= Renderer::Mesh::Flag::HIDDEN;
+        affector->enabled = false;
 
         if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0))
         {
-            thrusterAffector->enabled = true;
-            thrusterAffector->forcePosition = translation;
-            thrusterAffector->force = spaceShipMesh->rotation * glm::fvec3(-instance.xform[1]);
+            affector->enabled = true;
+            // FIXME(MARTINMO): Should also be global just like 'force'
+            affector->forcePosition = thruster.pos;
+            affector->force = spaceShipMesh->rotation * thruster.dir;
         }
 
         if (ImGui::IsItemHovered())
         {
-            thrusterMesh->flags &= ~Renderer::Mesh::Flag::HIDDEN;
-            thrusterMesh->translation =
-                spaceShipMesh->translation + spaceShipMesh->rotation * translation;
-            thrusterMesh->rotation = spaceShipMesh->rotation * rotation;
+            infoMesh->flags &= ~Renderer::Mesh::Flag::HIDDEN;
+            infoMesh->translation =
+                spaceShipMesh->translation + spaceShipMesh->rotation * thruster.pos;
+            infoMesh->rotation = spaceShipMesh->rotation
+                * Math::rotateFromTo(glm::fvec3(0.0f, 1.0f, 0.0f), thruster.dir);
         }
     }
 

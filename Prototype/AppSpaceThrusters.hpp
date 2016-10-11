@@ -6,6 +6,8 @@
 #ifndef APPSPACETHRUSTERS_HPP
 #define APPSPACETHRUSTERS_HPP
 
+#include <string>
+
 #include "Common.hpp"
 #include "ModuleIf.hpp"
 #include "ImGuiEval.hpp"
@@ -30,14 +32,23 @@ public: // ImGui module interface implementation
     virtual void imGuiUpdate(StateDb &sdb, Assets &assets);
 
 private:
+    struct Thruster
+    {
+        std::string name;
+        u64 infoMeshHandle = 0;
+        u64 affectorHandle = 0;
+        // Thruster position and direction in space ship local frame
+        glm::fvec3 pos;
+        glm::fvec3 dir;
+    };
+
     u64 m_cameraHandle = 0;
 
     u64 m_spaceShipMeshHandle = 0;
     Renderer::Mesh::Info m_spaceShipMeshInit;
-
     u64 m_spaceShipRbHandle = 0;
-    u64 m_thrusterMeshHandle = 0;
-    u64 m_thrusterAffectorHandle = 0;
+
+    std::vector< Thruster > m_thrusters;
 
 private:
     COMMON_DISABLE_COPY(AppSpaceThrusters)
