@@ -6,6 +6,7 @@
 #include "Str.hpp"
 
 #include <fstream>
+#include <stdarg.h>
 
 #include "Logger.hpp"
 
