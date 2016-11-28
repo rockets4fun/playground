@@ -236,7 +236,7 @@ bool AppShipLanding::initialize(StateDb &sdb, Assets &assets)
 
             //mesh->modelAsset = assets.asset("Assets/Models/Pusher.model");
             //mesh->modelAsset = assets.asset("Assets/Models/PusherFront.model");
-            mesh->modelAsset = assets.asset("Assets/Models/Test.model");
+            mesh->modelAsset = assets.asset("Assets/Models/PusherFull.model");
 
             m_rocketModelAsset = mesh->modelAsset;
 
