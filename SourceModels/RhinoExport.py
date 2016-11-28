@@ -182,6 +182,9 @@ def processObject(object, parentInstances) :
 
     rs.DeleteObject(object)
 
+def instanceSortKey(instance) : return instance["fullName"]
+def partSortKey(part) : return part["instance"]["fullName"]
+
 def main() :
     global g_instances
     global g_parts
@@ -244,6 +247,7 @@ def main() :
     #output.write("# t <vertex-1> <vertex-2> <vertex-3>\n")
     #output.write("\n")
 
+    g_instances.sort(key = instanceSortKey)
     for instance in g_instances :
         parentCount = len(instance["parents"])
 
@@ -284,6 +288,7 @@ def main() :
         print(line)
         output.write(line + "\n")
 
+    g_parts.sort(key = partSortKey)
     for part in g_parts :
         mesh = part["mesh"]
 
