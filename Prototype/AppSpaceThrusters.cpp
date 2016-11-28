@@ -161,6 +161,12 @@ void AppSpaceThrusters::imGuiUpdate(StateDb &sdb, Assets &assets)
                 spaceShipMesh->translation + spaceShipMesh->rotation * thruster.pos;
             infoMesh->rotation = spaceShipMesh->rotation
                 * Math::rotateFromTo(glm::fvec3(0.0f, 1.0f, 0.0f), -thruster.dir);
+
+            // FIXME: 'rotateFromTo' fails if from == -to
+            if (thruster.name == "Front-Wing-Left.Engine-Back")
+            {
+                int debug = 1;
+            }
         }
 
         if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0) || active)
