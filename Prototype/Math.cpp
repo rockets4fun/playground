@@ -5,15 +5,32 @@
 
 #include "Math.hpp"
 
+const glm::fvec3 Math::X_AXIS = glm::fvec3(1.0f, 0.0f, 0.0f);
+const glm::fvec3 Math::Y_AXIS = glm::fvec3(0.0f, 1.0f, 0.0f);
+const glm::fvec3 Math::Z_AXIS = glm::fvec3(0.0f, 0.0f, 1.0f);
+
+// -------------------------------------------------------------------------------------------------
+glm::fvec3 Math::perpendicular(const glm::fvec3 &v)
+{
+    float x = glm::abs(v.x);
+    float y = glm::abs(v.y);
+    float z = glm::abs(v.z);
+    glm::fvec3 other = x < y ? (x < z ? X_AXIS : Z_AXIS) : (y < z ? Y_AXIS : Z_AXIS);
+    return glm::cross(v, other);
+}
+
 // -------------------------------------------------------------------------------------------------
 glm::fquat Math::rotateFromTo(const glm::fvec3 &from, const glm::fvec3 &to)
 {
-    // FIXME(martinmo): Handle case where 'from' and 'to' are parallel
-    // FIXME(martinmo): ==> Cross product not well defined in this case
-    glm::fvec3 axis = glm::cross(from, to);
-    glm::fquat result = glm::fquat(glm::dot(from, to), axis.x, axis.y, axis.z);
-    result.w += glm::length(result);
-    return glm::normalize(result);
+    // from "Real-Time Rendering" equation (4.53)
+    float e = glm::dot(from, to);
+    if (e < -0.99f)
+    {
+        // vector 'to' points in opposite direction of 'from'
+        return glm::angleAxis(glm::radians(180.0f), perpendicular(from));
+    }
+    float t = glm::sqrt(2.0f * (1.0f + e));
+    return glm::fquat(t * 0.5f, 1.0f / t * glm::cross(from, to));
 }
 
 // -------------------------------------------------------------------------------------------------
