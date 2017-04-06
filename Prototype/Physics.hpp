@@ -106,12 +106,15 @@ struct Physics : ModuleIf
             u64 rigidBodyHandle = 0;
             u32 enabled = 0;
 
-            // in affected RB's local coordinate frame
+            // FIXME(MARTINMO): Normalize to either all global or RB local frames
+            // FIXME(MARTINMO): ==> RB local seems to be the more intuitive choice
+
+            // In affected RB's local coordinate frame
             glm::fvec3 forcePosition;
 
-            // in global coordinate frame
+            // In global coordinate frame
             glm::fvec3 force;
-            // in global coordinate frame
+            // In global coordinate frame
             glm::fvec3 torque;
         };
     };
@@ -123,24 +126,25 @@ struct Physics : ModuleIf
         {
             ACCEL = 0, // Accelerometer - measures linear acceleration
             GYRO,      // Gyro - measures angular acceleration
-            GPS        // GPS - measures XYZ position and XY speed
+            GPS        // GPS - measures XY position and XY speed
         };
         struct Info
         {
             static u64 STATE;
-            // sensor type and value
+            // Sensor type and value
             s32 type = 0;
             // ACCEL => Linear acceleration vector XYZ
-            // GYRO  => Angular acceleration quaternion XYZW
-            // GPS   => Position vector XYZ
+            // GYRO  => Angular acceleration XYZ
+            // GPS   => Position vector XY
             glm::fvec4 value;
             // GPS   => Horizontal velocity XY
             glm::fvec4 valueEx;
-            // Sensor pose relative to rigid body it is attached to
+            // Sensor position/orientation in RB local frame
             glm::fvec3 position;
             glm::fquat orientation;
-            // Simulated sensor rigid body handle and error/noise
-            u64        simRbHandle = 0;
+            // Simulated sensor RB handle
+            u64 simRbHandle = 0;
+            // Simulated sensor error/noise settings
             glm::fvec3 simBias;
             glm::fvec3 simGain;
             glm::fvec3 simNoise;

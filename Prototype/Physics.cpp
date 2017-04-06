@@ -354,23 +354,29 @@ void Physics::PrivateState::postTick(btScalar timeStep)
         // FIXME(MARTINMO): => Maybe just add copy of pointer in 'RigidBody::PrivateInfo'
         const btRigidBody *bulletRigidBody = rigidBodyPrivate->state->bulletRigidBody.get();
 
-        // FIXME(MARTINMO): Make sure we keep sensor readings w/ highest magnitude
+        // FIXME(MARTINMO): Make sure to keep sensor readings w/ highest magnitude
         // FIXME(MARTINMO): throughout all internal ticks of a frame?
+
+        const btTransform &worldTrans = bulletRigidBody->getCenterOfMassTransform();
+        glm::fquat rotation = fromBulletQuat(worldTrans.getRotation());
+
+        glm::fvec3 force  = fromBulletVec(bulletRigidBody->getTotalForce());
+        glm::fvec3 torque = fromBulletVec(bulletRigidBody->getTotalTorque());
+
+        // Transform torque and force from global into RB local coordinate frame
+        torque = torque * rotation;
+        force  = force  * rotation;
 
         // Debugging output
         {
-            const btTransform &worldTrans = bulletRigidBody->getCenterOfMassTransform();
-            glm::fquat rotation = fromBulletQuat(worldTrans.getRotation());
-
-            glm::fvec3 force  = fromBulletVec(bulletRigidBody->getTotalForce());
-            glm::fvec3 torque = fromBulletVec(bulletRigidBody->getTotalTorque());
-
-            // Transform torque and force from global into RB local coordinate frame
-            torque = torque * rotation;
-            force  = force  * rotation;
-
             Logger::debug("%08X   force = %5.2f %5.2f %5.2f   torque = %5.2f %5.2f %5.2f",
                 bulletRigidBody, force.x, force.y, force.z, torque.x, torque.y, torque.z);
+        }
+
+        switch (sensor->type)
+        {
+            case Sensor::Type::ACCEL: sensor->value = glm::fvec4(force,  0.0); break;
+            case Sensor::Type::GYRO:  sensor->value = glm::fvec4(torque, 0.0); break;
         }
     }
 

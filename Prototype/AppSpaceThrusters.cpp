@@ -229,7 +229,6 @@ void AppSpaceThrusters::imGuiUpdate(StateDb &sdb, Assets &assets)
         if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0) || active)
         {
             affector->enabled = true;
-            // FIXME(MARTINMO): Should also be global just like 'force'
             affector->forcePosition = thruster.pos;
             affector->force = spaceShipMesh->rotation * thruster.dir;
         }
