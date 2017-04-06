@@ -22,6 +22,18 @@ struct Physics : ModuleIf
     Physics();
     virtual ~Physics();
 
+    u64 worldHandle() const;
+
+    struct World
+    {
+        static u64 TYPE;
+        struct Info
+        {
+            static u64 STATE;
+            glm::fvec3 gravity;
+        };
+    };
+
     struct RigidBody
     {
         static u64 TYPE;
@@ -94,12 +106,44 @@ struct Physics : ModuleIf
             u64 rigidBodyHandle = 0;
             u32 enabled = 0;
 
+            // in affected RB's local coordinate frame
+            glm::fvec3 forcePosition;
+
             // in global coordinate frame
             glm::fvec3 force;
-            // in affected RBs local coordinate frame
-            glm::fvec3 forcePosition;
-            // in affected RBs local coordinate frame
+            // in global coordinate frame
             glm::fvec3 torque;
+        };
+    };
+
+    struct Sensor
+    {
+        static u64 TYPE;
+        enum Type
+        {
+            ACCEL = 0, // Accelerometer - measures linear acceleration
+            GYRO,      // Gyro - measures angular acceleration
+            GPS        // GPS - measures XYZ position and XY speed
+        };
+        struct Info
+        {
+            static u64 STATE;
+            // sensor type and value
+            s32 type = 0;
+            // ACCEL => Linear acceleration vector XYZ
+            // GYRO  => Angular acceleration quaternion XYZW
+            // GPS   => Position vector XYZ
+            glm::fvec4 value;
+            // GPS   => Horizontal velocity XY
+            glm::fvec4 valueEx;
+            // Sensor pose relative to rigid body it is attached to
+            glm::fvec3 position;
+            glm::fquat orientation;
+            // Simulated sensor rigid body handle and error/noise
+            u64        simRbHandle = 0;
+            glm::fvec3 simBias;
+            glm::fvec3 simGain;
+            glm::fvec3 simNoise;
         };
     };
 
@@ -114,7 +158,9 @@ private:
     struct PrivateConstraint;
     struct PrivateState;
 
-    std::shared_ptr< PrivateState > state;
+    std::shared_ptr< PrivateState > m_state;
+
+    u64 m_worldHandle = 0;
 
     /*
 #ifndef NDEBUG
