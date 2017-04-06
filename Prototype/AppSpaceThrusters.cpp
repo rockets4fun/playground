@@ -18,8 +18,10 @@
 #include "Physics.hpp"
 
 // -------------------------------------------------------------------------------------------------
-AppSpaceThrusters::AppSpaceThrusters()
+AppSpaceThrusters::AppSpaceThrusters(Physics &physics, ImGuiEval &imGui)
+    : m_physics(&physics)
 {
+    imGui.registerModule(*this);
 }
 
 // -------------------------------------------------------------------------------------------------
@@ -80,6 +82,9 @@ bool AppSpaceThrusters::initialize(StateDb &sdb, Assets &assets)
         m_thrusters.push_back(thruster);
     }
 
+    auto affector = sdb.create< Physics::Affector::Info >(m_testAffector);
+    affector->rigidBodyHandle = m_spaceShipRbHandle;
+
     auto mesh = sdb.create< Renderer::Mesh::Info >();
     mesh->modelAsset = assets.asset("Assets/Models/AxesXYZ.model");
     mesh->groups = Renderer::Group::DEFAULT;
@@ -87,6 +92,13 @@ bool AppSpaceThrusters::initialize(StateDb &sdb, Assets &assets)
     auto camera = sdb.create< Renderer::Camera::Info >(m_cameraHandle);
     camera->position = glm::fvec3(0.0f, -10.0f, 10.0f);
     camera->target   = glm::fvec3(0.0f,   0.0f,  5.0f);
+
+    auto world = sdb.state< Physics::World::Info >(m_physics->worldHandle());
+    world->gravity = glm::fvec3(0.0f, 0.0f, 0.0f);
+
+    auto sensor = sdb.create< Physics::Sensor::Info >();
+    sensor->type = Physics::Sensor::ACCEL;
+    sensor->simRbHandle = m_spaceShipRbHandle;
 
     return true;
 }
@@ -137,6 +149,51 @@ void AppSpaceThrusters::imGuiUpdate(StateDb &sdb, Assets &assets)
         {
             activeThrusters.insert("Front-Wing-Left.Engine-Bottom");
             activeThrusters.insert("Front-Wing-Right.Engine-Top");
+        }
+    }
+    ImGui::Separator();
+    {
+        auto affector = sdb.state< Physics::Affector::Info >(m_testAffector);
+        affector->torque = glm::fvec3(0.0f);
+        affector->force  = glm::fvec3(0.0f);
+
+        ImGui::AlignFirstTextHeightToWidgets(); ImGui::Text("Torque");
+        ImGui::SameLine(55.0f); ImGui::Button("+X");
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->torque = glm::fvec3(+1.0, 0.0, 0.0);
+        ImGui::SameLine(); ImGui::Button("-X");
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->torque = glm::fvec3(-1.0, 0.0, 0.0);
+        ImGui::SameLine(); ImGui::Button("+Y");
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->torque = glm::fvec3(0.0, +1.0, 0.0);
+        ImGui::SameLine(); ImGui::Button("-Y");
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->torque = glm::fvec3(0.0, -1.0, 0.0);
+        ImGui::SameLine(); ImGui::Button("+Z");
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->torque = glm::fvec3(0.0, 0.0, +1.0);
+        ImGui::SameLine(); ImGui::Button("-Z");
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->torque = glm::fvec3(0.0, 0.0, -1.0);
+
+        ImGui::AlignFirstTextHeightToWidgets(); ImGui::Text("Force");
+        ImGui::SameLine(55.0f); ImGui::Button("+X");
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->force = glm::fvec3(+1.0, 0.0, 0.0);
+        ImGui::SameLine(); ImGui::Button("-X");
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->force = glm::fvec3(-1.0, 0.0, 0.0);
+        ImGui::SameLine(); ImGui::Button("+Y");
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->force = glm::fvec3(0.0, +1.0, 0.0);
+        ImGui::SameLine(); ImGui::Button("-Y");
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->force = glm::fvec3(0.0, -1.0, 0.0);
+        ImGui::SameLine(); ImGui::Button("+Z");
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->force = glm::fvec3(0.0, 0.0, +1.0);
+        ImGui::SameLine(); ImGui::Button("-Z");
+        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->force = glm::fvec3(0.0, 0.0, -1.0);
+
+        if (glm::length(affector->torque) > 0.001f)
+        {
+            affector->enabled = true;
+            affector->torque = spaceShipMesh->rotation * affector->torque;
+        }
+        if (glm::length(affector->force) > 0.001f)
+        {
+            affector->enabled = true;
+            affector->force = spaceShipMesh->rotation * affector->force;
         }
     }
 
