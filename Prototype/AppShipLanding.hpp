@@ -16,11 +16,13 @@
 
 #include "ModuleIf.hpp"
 
+struct Physics;
+
 // -------------------------------------------------------------------------------------------------
 /// @brief Rocket science prototype logic module
 struct AppShipLanding : public ModuleIf
 {
-    AppShipLanding();
+    AppShipLanding(Physics &physics);
     virtual ~AppShipLanding();
 
 public: // Application module interface implementation
@@ -64,6 +66,8 @@ private:
             u64 debugMeshHandle = 0;
         };
     };
+
+    Physics *m_physics = nullptr;
 
     u64 m_cameraHandle = 0;
     u64 m_pusherAffectorHandle = 0;

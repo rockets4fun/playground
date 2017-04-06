@@ -71,11 +71,9 @@ int main(int argc, char *argv[])
         Renderer renderer;
 
         /*
-        AppShipLanding app;
+        AppShipLanding app(physics);
         */
-
-        AppSpaceThrusters app;
-        imGuiEval.registerModule(app);
+        AppSpaceThrusters app(physics, imGuiEval);
 
         StateDb sdb;
         Assets assets;
@@ -87,7 +85,6 @@ int main(int argc, char *argv[])
 
         std::vector< ModuleIf * > modulesReversed = modules;
         std::reverse(modulesReversed.begin(), modulesReversed.end());
-
 
         for (auto &module : modules)
         {

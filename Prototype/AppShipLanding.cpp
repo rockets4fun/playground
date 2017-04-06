@@ -42,7 +42,8 @@ u64 AppShipLanding::Thruster::TYPE = 0;
 u64 AppShipLanding::Thruster::Info::STATE = 0;
 
 // -------------------------------------------------------------------------------------------------
-AppShipLanding::AppShipLanding()
+AppShipLanding::AppShipLanding(Physics &physics)
+    : m_physics(&physics)
 {
 }
 
@@ -291,6 +292,10 @@ bool AppShipLanding::initialize(StateDb &sdb, Assets &assets)
 
         m_sleepingMeshHandles.push_back(meshHandle);
     }
+
+    auto world = sdb.state< Physics::World::Info >(m_physics->worldHandle());
+    world->gravity = glm::fvec3(0.0f, 0.0f, -9.81f);
+
     return true;
 }
 
