@@ -14,7 +14,7 @@ h1. Current Coding Roadmap
 **** Approach 4: nD-texture
 *** Simply make all public mesh data available as per-instance data
 
-* Long-term Roadmap
+* Long-term roadmap
 ** Support for simple texturing of models (experiment with using baked-AO for rendering)
 ** Improve bloom effect
 *** Gaussian/triangle/multipass (FBO ping-pong) blur
@@ -92,7 +92,7 @@ h2. Coding Guidelines
 
 * Member-vars of structs/classes with non-static methods other than c'tor/d'tor have 'm_' prefix
 * Make implicit callback-funciton invocations more explicit
-** E.g. by passing potential CBs as paraeters to invoking update function
+** E.g. by passing potential CBs as parameters to invoking update function
 ** Passing CBs implicitly with context has a lot of pros too though...
 * Avoid inheritance (try to use virtual, abstract interfaces only)
 ** Put base-class logic into logically enclosing scope
@@ -126,14 +126,14 @@ h2. State Machine Logic Module
 ** First thing we need is a definition of correctness or (at least) improving it
 *** Could be data read in a state that is not properly initialized in prev state/before
 *** May also be fixable by an approach similar to FutureTalk/ExtSwarmCtrl SMs
-** This approach should work for both C and C++ (thus depend C language features only)
+** This approach should work for both C and C++ (thus depend on C language features only)
 
 h2. State Database Module (StateDb, State DB)
 
 * Performance regression testing
 ** Create random types with random fields similar to expected use case scenarios
 *** E.g. create 50-100 types with randomized list of 2-20 fields (int, float, float4, ...)
-** Create 1000-10000 instances for each type
+** Create 1000-100000 instances for each type
 ** Count how many operations can be performed within a certain time frame
 *** E.g. pseudo-random sequence of handle dereferentiations with and w/o field access
 * Think about making individual state fields introspectible by registering them
@@ -147,7 +147,7 @@ h2. State Database Module (StateDb, State DB)
 * Out-of-elements case should be handled gracefully in release
 ** Return pointer to 0-element (not used ATM anyway...)
 * Write state changes to state back-buffer?
-** Clone into front-buffer before next frame
+** Copy to front-buffer before next frame
 ** All logic of a frame uses same base state for calculations
 ** Double/multi-buffered state storage for interpolation?
 * Scrub and replay state
