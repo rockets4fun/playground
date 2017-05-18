@@ -22,7 +22,8 @@
 ///
 /// Also this class adds means of introspection by storing metadata on state registration.
 ///
-/// Handles are like pointers but they follow an object upon relocation in memory.
+/// Handles are like pointers but they follow an object upon relocation in memory and become
+/// invalid after an object has been deleted.
 ///
 /// With this implementation we pay (in terms of run-time) on:
 /// - Object deletion (fill hole by moving in state from end of state vector)
