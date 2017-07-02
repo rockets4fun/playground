@@ -68,7 +68,18 @@ h1. Game Notes
 ** Mining drones go back and forth between deposits and mining ship
 
 * Story
-** Factions: Earth force, colonies, pirates/raiders, aliens?
+** Cold war in space
+*** Space opera set in debris belt around post-apocalyptic earth
+*** Debris originating from destruction of moon 10 (?) years after nuclear war on earth
+*** Make earth an ice planet (nice way of hiding main story...)
+*** US/SU core technologies
+**** Developed as part of post-nuclear apocalypse survival strategy
+**** Cold war space budgets used for secret emergency evacuation projects
+***** Explanation for lack of post-Apollo space advancements...
+**** Motherships assembled from modules put into space by upscaled Saturn V/N1 rockets
+**** Stasis chambers
+** Simple factions-based
+*** Earth force, colonies, pirates/raiders, aliens?
 
 * Miscellaneous ideas
 ** Robotic war simplification
@@ -78,3 +89,8 @@ h1. Game Notes
 *** Moving around in the ship takes time
 ** Descent 6DOF gameplay aspect
 *** Large asteroids with caves
+** Cargo ships made from dockable modules
+** Hull breaching leaks will imply forces applied to ship's body
+** Phone/tablet as additional control device
+*** Multi-screen => multi-device
+*** Connect tablet via local wifi/network

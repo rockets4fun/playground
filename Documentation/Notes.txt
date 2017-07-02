@@ -12,7 +12,7 @@ h1. Current Coding Roadmap
 **** Approach 2: Uniform buffer object (UBO)
 **** Approach 3: Buffer texture
 **** Approach 4: nD-texture
-*** Simply make all public mesh data available as per-instance data
+*** Simply make all public mesh data available as per-instance data?
 
 * Long-term roadmap
 ** Support for simple texturing of models (experiment with using baked-AO for rendering)
