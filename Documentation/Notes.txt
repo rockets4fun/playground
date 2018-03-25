@@ -126,6 +126,7 @@ h2. State Machine Logic Module
 ** First thing we need is a definition of correctness or (at least) improving it
 *** Could be data read in a state that is not properly initialized in prev state/before
 *** May also be fixable by an approach similar to FutureTalk/ExtSwarmCtrl SMs
+**** Explicitly handle entering a new state (e.g. when state time is zero)...
 ** This approach should work for both C and C++ (thus depend on C language features only)
 
 h2. State Database Module (StateDb, State DB)
