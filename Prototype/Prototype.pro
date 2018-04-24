@@ -66,8 +66,8 @@ win32 {
     INCLUDEPATH += $${THIRDPARTY}/Sdl/include
     win32:contains(QMAKE_HOST.arch, x86_64) {
         CONFIG(debug, debug|release) {
-            LIBS += $${THIRDPARTY}/Sdl/Build/SDL2_Debug.lib
-            LIBS += $${THIRDPARTY}/Sdl/Build/SDL2main_Debug.lib
+            LIBS += $${THIRDPARTY}/Sdl/Build/SDL2d.lib
+            LIBS += $${THIRDPARTY}/Sdl/Build/SDL2maind.lib
         }
         CONFIG(release, debug|release) {
             LIBS += $${THIRDPARTY}/Sdl/Build/SDL2.lib
@@ -124,12 +124,14 @@ win32 {
     INCLUDEPATH += $${THIRDPARTY}/assimp/include
     win32:contains(QMAKE_HOST.arch, x86_64) {
         CONFIG(debug, debug|release) {
-            LIBS += $${THIRDPARTY}/Assimp/lib/assimp-vc120-mtd.lib
+            LIBS += $${THIRDPARTY}/Assimp/lib/assimp-mtd.lib
             LIBS += $${THIRDPARTY}/Assimp/lib/zlibstaticd.lib
+            LIBS += $${THIRDPARTY}/Assimp/lib/IrrXMLd.lib
         }
         CONFIG(release, debug|release) {
-            LIBS += $${THIRDPARTY}/Assimp/lib/assimp-vc120-mt.lib
+            LIBS += $${THIRDPARTY}/Assimp/lib/assimp-mt.lib
             LIBS += $${THIRDPARTY}/Assimp/lib/zlibstatic.lib
+            LIBS += $${THIRDPARTY}/Assimp/lib/IrrXML.lib
         }
     }
 }

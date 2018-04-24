@@ -39,6 +39,8 @@ void ImGuiEval::registerTypesAndStates(StateDb &sdb)
 // -------------------------------------------------------------------------------------------------
 bool ImGuiEval::initialize(StateDb &sdb, Assets &assets)
 {
+    ImGui::CreateContext();
+
     ImGuiIO &imGui = ImGui::GetIO();
 
     imGui.DisplaySize.x = 800.0f;
@@ -83,7 +85,7 @@ void ImGuiEval::shutdown(StateDb &sdb)
     for (auto &meshHandle : m_meshHandles) sdb.destroy(meshHandle);
     sdb.destroy(m_fontTextureHandle);
 
-    ImGui::Shutdown();
+    ImGui::DestroyContext();
 }
 
 // -------------------------------------------------------------------------------------------------

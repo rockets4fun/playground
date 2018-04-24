@@ -2,7 +2,7 @@ include(Common.inc)
 
 # ===== Open Asset Import Library = http://assimp.sf.net ===========================================
 
-cloneAndClean(Sdl, https://github.com/spurious/SDL-mirror.git, release-2.0.4)
+cloneAndClean(Sdl, https://github.com/spurious/SDL-mirror.git, release-2.0.8)
 
 PARAMS  = -B. -H..
 PARAMS += -DCMAKE_DEBUG_POSTFIX=_Debug
