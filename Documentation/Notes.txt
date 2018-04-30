@@ -25,6 +25,8 @@ h1. Current Coding Roadmap
 
 ----------------------------------------------------------------------------------------------------
 
+* Star field rendering prototype using data from EAS Gaia project
+
 * Change docking mechanism to be more like International Docking System Standard (IDSS)
 ** No distinction between male/female adapters (androgynous)
 
