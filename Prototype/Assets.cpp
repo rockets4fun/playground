@@ -100,7 +100,7 @@ Assets::Model *Assets::refModel(u32 hash)
     }
 
     // This is the first time the model is referenced...
-    if (!ref.second->flags & Flag::PROCEDURAL)
+    if (!(ref.second->flags & Flag::PROCEDURAL))
     {
         Logger::debug("Loading model \"%s\"...", ref.second->name.c_str());
         if (loadModel(*ref.second, *ref.first))
@@ -137,7 +137,7 @@ Assets::Program *Assets::refProgram(u32 hash)
         return ref.first;
     }
 
-    if (!ref.second->flags & Flag::PROCEDURAL)
+    if (!(ref.second->flags & Flag::PROCEDURAL))
     {
         if (loadProgram(*ref.second, *ref.first))
         {
@@ -167,7 +167,7 @@ Assets::Texture *Assets::refTexture(u32 hash)
         return ref.first;
     }
 
-    if (!ref.second->flags & Flag::PROCEDURAL)
+    if (!(ref.second->flags & Flag::PROCEDURAL))
     {
         // Only procedural textures for now...
         return nullptr;
