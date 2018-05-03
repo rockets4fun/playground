@@ -90,6 +90,7 @@ struct Assets
             u64 offset = 0;
             u64 count = 0;
             u64 materialHint = 0;
+            glm::u16vec4 scissor; // Lower left corner, width/height
         };
 
         // Default vertex attribute arrays

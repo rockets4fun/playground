@@ -212,8 +212,14 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
             {
                 ImDrawCmd &cmd = cmdList->CmdBuffer[cmdIdx];
                 Assets::Model::Part &part = model->parts[cmdIdx];
-                // FIXME(martinmo): Pass the scissor rectangle stored in 'cmd'...
+
                 part.materialHint = *(u64 *)cmd.TextureId;
+                part.scissor = glm::u16vec4(
+                    u16(cmd.ClipRect.x), u16(imGui.DisplaySize.y - cmd.ClipRect.w),
+                    u16(cmd.ClipRect.z - cmd.ClipRect.x),
+                    u16(cmd.ClipRect.w - cmd.ClipRect.y)
+                );
+
                 part.offset = prevElemOffset;
                 part.count = cmd.ElemCount;
                 prevElemOffset += part.count;

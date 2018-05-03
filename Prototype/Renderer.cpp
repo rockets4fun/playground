@@ -61,6 +61,7 @@ struct Renderer::PrivateFuncs
     PFNGLCLEARCOLORPROC glClearColor = nullptr;
     PFNGLCLEARPROC      glClear = nullptr;
     PFNGLVIEWPORTPROC   glViewport = nullptr;
+    PFNGLSCISSORPROC    glScissor = nullptr;
     PFNGLDEPTHMASKPROC  glDepthMask = nullptr;
     // Texturing
     PFNGLGENTEXTURESPROC    glGenTextures = nullptr;
@@ -931,6 +932,7 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
             if (privateMesh->ibo)
             {
                 u64 activeMaterialHint = 0;
+                glm::u16vec4 activeScissor;
                 Texture::PrivateInfo *texture = nullptr;
                 for (auto &part : privateMesh->asset->parts)
                 {
@@ -941,11 +943,28 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
                         else         funcs->glBindTexture(GL_TEXTURE_2D, 0);
                         activeMaterialHint = part.materialHint;
                     }
+                    if (activeScissor != part.scissor)
+                    {
+                        activeScissor = part.scissor;
+                        if (activeScissor.z && activeScissor.w)
+                        {
+                            funcs->glScissor(
+                                activeScissor.x, activeScissor.y,
+                                activeScissor.z, activeScissor.w
+                            );
+                            funcs->glEnable(GL_SCISSOR_TEST);
+                        }
+                        else
+                        {
+                            funcs->glDisable(GL_SCISSOR_TEST);
+                        }
+                    }
                     GLvoid *indices = (GLvoid *)(part.offset * privateMesh->iboAttrSize);
                     funcs->glDrawElements(GL_TRIANGLES,
                         GLint(part.count), privateMesh->iboGlType, indices);
                 }
                 if (texture) funcs->glBindTexture(GL_TEXTURE_2D, 0);
+                if (activeScissor.z && activeScissor.w) funcs->glDisable(GL_SCISSOR_TEST);
             }
             else
             {
@@ -1006,6 +1025,7 @@ bool Renderer::initializeGl()
     RENDERER_GL_FUNC(glClearColor);
     RENDERER_GL_FUNC(glClear);
     RENDERER_GL_FUNC(glViewport);
+    RENDERER_GL_FUNC(glScissor);
     RENDERER_GL_FUNC(glDepthMask);
 
     RENDERER_GL_FUNC(glGenTextures);
