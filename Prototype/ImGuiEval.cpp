@@ -94,7 +94,17 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
     ImGuiIO &imGui = ImGui::GetIO();
     imGui.DeltaTime = float(deltaTimeInS);
 
-    // (1) Immediate mode style UI definition
+    // Read input state via SDL and pass on to ImGui
+    {
+        int mouseX = -1, mouseY = -1;
+        Uint32 mouseMask = SDL_GetMouseState(&mouseX, &mouseY);
+        imGui.MousePos = ImVec2((float)mouseX, (float)mouseY);
+        imGui.MouseDown[0] = (mouseMask & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
+        imGui.MouseDown[1] = (mouseMask & SDL_BUTTON(SDL_BUTTON_RIGHT)) != 0;
+        imGui.MouseDown[2] = (mouseMask & SDL_BUTTON(SDL_BUTTON_MIDDLE)) != 0;
+    }
+
+    // Immediate mode style UI definition
     {
         ImGui::NewFrame();
         ImGui::ShowMetricsWindow(&m_metricsVisible);
@@ -154,7 +164,7 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
         ImGui::Render();
     }
 
-    // (2) Retrieve render command buffers and transform/prepare for renderer
+    // Retrieve render command buffers and transform/prepare for renderer
     {
         ImDrawData *drawData = ImGui::GetDrawData();
         // Get rid of meshes/reset models no longer used...
@@ -227,15 +237,5 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
 
             model->vertexCount = cmdList->VtxBuffer.size();
         }
-    }
-
-    // (3) Read input state via SDL and pass on to ImGui
-    {
-        int mouseX = -1, mouseY = -1;
-        Uint32 mouseMask = SDL_GetMouseState(&mouseX, &mouseY);
-        imGui.MousePos = ImVec2((float)mouseX, (float)mouseY);
-        imGui.MouseDown[0] = (mouseMask & SDL_BUTTON(SDL_BUTTON_LEFT)) != 0;
-        imGui.MouseDown[1] = (mouseMask & SDL_BUTTON(SDL_BUTTON_RIGHT)) != 0;
-        imGui.MouseDown[2] = (mouseMask & SDL_BUTTON(SDL_BUTTON_MIDDLE)) != 0;
     }
 }
