@@ -123,7 +123,7 @@ void AppSpaceThrusters::imGuiUpdate(StateDb &sdb, Assets &assets)
     auto spaceShipMesh = sdb.state< Renderer::Mesh::Info >(m_spaceShipMeshHandle);
     auto spaceShipRb = sdb.state< Physics::RigidBody::Info >(m_spaceShipRbHandle);
 
-    ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiSetCond_FirstUseEver);
+    ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiCond_FirstUseEver);
     ImGui::Begin("Thrusters");
 
     if (ImGui::Button("Reset Space Ship"))
@@ -157,7 +157,7 @@ void AppSpaceThrusters::imGuiUpdate(StateDb &sdb, Assets &assets)
         affector->torque = glm::fvec3(0.0f);
         affector->force  = glm::fvec3(0.0f);
 
-        ImGui::AlignFirstTextHeightToWidgets(); ImGui::Text("Torque");
+        ImGui::AlignTextToFramePadding(); ImGui::Text("Torque");
         ImGui::SameLine(55.0f); ImGui::Button("+X");
         if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->torque = glm::fvec3(+1.0, 0.0, 0.0);
         ImGui::SameLine(); ImGui::Button("-X");
@@ -171,7 +171,7 @@ void AppSpaceThrusters::imGuiUpdate(StateDb &sdb, Assets &assets)
         ImGui::SameLine(); ImGui::Button("-Z");
         if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->torque = glm::fvec3(0.0, 0.0, -1.0);
 
-        ImGui::AlignFirstTextHeightToWidgets(); ImGui::Text("Force");
+        ImGui::AlignTextToFramePadding(); ImGui::Text("Force");
         ImGui::SameLine(55.0f); ImGui::Button("+X");
         if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->force = glm::fvec3(+1.0, 0.0, 0.0);
         ImGui::SameLine(); ImGui::Button("-X");

@@ -100,7 +100,7 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
         ImGui::ShowMetricsWindow(&m_metricsVisible);
         if (m_profilerVisible)
         {
-            ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiSetCond_FirstUseEver);
+            ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiCond_FirstUseEver);
             ImGui::Begin("Profiler", &m_profilerVisible);
 
             Profiler *profiling = Profiler::instance();
