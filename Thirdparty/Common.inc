@@ -12,7 +12,7 @@ defineTest(cloneAndClean) {
             MESSAGE = Checking out $${CHECKOUT}
             COMMAND = cd $${DIRECTORY} && git checkout $${CHECKOUT}
             contains(CHECKOUT, ".*tags/.*") {
-                BRANCH = $$replace(CHECKOUT, "tags/", "branch_")
+                BRANCH = $$replace(CHECKOUT, "tags/", "Branch_")
             }
             !isEmpty(BRANCH) {
                 MESSAGE += into $${BRANCH}
