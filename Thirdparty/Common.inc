@@ -31,8 +31,13 @@ defineTest(buildDebugAndRelease) {
     CMAKEPARAMS = $${2}
 
     win32 {
-        MAKECMD = nmake
-        CMAKEGEN = $$shell_quote(NMake Makefiles)
+        isEmpty($$system(where jom)) {
+            MAKECMD = jom
+            CMAKEGEN = $$shell_quote(NMake Makefiles JOM)
+        } else {
+            MAKECMD = nmake
+            CMAKEGEN = $$shell_quote(NMake Makefiles)
+        }
     }
     unix {
         MAKECMD = make
