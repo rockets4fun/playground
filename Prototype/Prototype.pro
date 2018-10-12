@@ -149,7 +149,8 @@ INCLUDEPATH += $${THIRDPARTY}/ImGui
 HEADERS += $${THIRDPARTY}/ImGui/imgui.h
 SOURCES += \
     $${THIRDPARTY}/ImGui/imgui.cpp \
-    $${THIRDPARTY}/ImGui/imgui_draw.cpp
+    $${THIRDPARTY}/ImGui/imgui_draw.cpp \
+    $${THIRDPARTY}/ImGui/imgui_widgets.cpp
 
 # ==================================================================================================
 
