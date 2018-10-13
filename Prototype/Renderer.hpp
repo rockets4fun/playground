@@ -175,8 +175,8 @@ private:
     std::shared_ptr< PrivateHelpers > helpers;
 
     void renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateInfo *program,
-            const glm::fmat4 &projection, const glm::fmat4 &worldToView = glm::fmat4(1.0),
-            const glm::fvec4 &renderParams = glm::fvec4(0.0));
+            const glm::fmat4 &projection, const glm::fmat4 &worldToView = glm::fmat4(1.0f),
+            const glm::fvec4 &renderParams = glm::fvec4(0.0f));
 
     bool initializeGl();
 
