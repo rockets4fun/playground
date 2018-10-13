@@ -29,6 +29,9 @@ win32 {
     # 'function': This function or variable may be unsafe
     QMAKE_CXXFLAGS_WARN_ON += /wd4996
 
+    # Mitigate VS 2017 15.8 compiler changes
+    DEFINES += _DISABLE_EXTENDED_ALIGNED_STORAGE
+
     LIBS += Winmm.lib
     LIBS += version.lib
 }
