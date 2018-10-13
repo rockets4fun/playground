@@ -123,6 +123,8 @@ void AppSpaceThrusters::imGuiUpdate(StateDb &sdb, Assets &assets)
     auto spaceShipMesh = sdb.state< Renderer::Mesh::Info >(m_spaceShipMeshHandle);
     auto spaceShipRb = sdb.state< Physics::RigidBody::Info >(m_spaceShipRbHandle);
 
+    bool mouseDown = ImGui::IsMouseDown(0);
+
     ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiCond_FirstUseEver);
     ImGui::Begin("Thrusters");
 
@@ -137,7 +139,7 @@ void AppSpaceThrusters::imGuiUpdate(StateDb &sdb, Assets &assets)
     ImGui::Separator();
     {
         ImGui::Button("Roll Left");
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0))
+        if (ImGui::IsItemHovered() && mouseDown)
         {
             activeThrusters.insert("Front-Wing-Left.Engine-Top");
             activeThrusters.insert("Front-Wing-Right.Engine-Bottom");
@@ -145,7 +147,7 @@ void AppSpaceThrusters::imGuiUpdate(StateDb &sdb, Assets &assets)
     }
     {
         ImGui::Button("Roll Right");
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0))
+        if (ImGui::IsItemHovered() && mouseDown)
         {
             activeThrusters.insert("Front-Wing-Left.Engine-Bottom");
             activeThrusters.insert("Front-Wing-Right.Engine-Top");
@@ -154,46 +156,49 @@ void AppSpaceThrusters::imGuiUpdate(StateDb &sdb, Assets &assets)
     ImGui::Separator();
     {
         auto affector = sdb.state< Physics::Affector::Info >(m_testAffector);
-        affector->torque = glm::fvec3(0.0f);
-        affector->force  = glm::fvec3(0.0f);
+        glm::fvec3 &torque = affector->torque;
+        glm::fvec3 &force = affector->force;
+
+        torque = glm::fvec3(0.0f);
+        force  = glm::fvec3(0.0f);
 
         ImGui::AlignTextToFramePadding(); ImGui::Text("Torque");
         ImGui::SameLine(55.0f); ImGui::Button("+X");
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->torque = glm::fvec3(+1.0, 0.0, 0.0);
+        if (ImGui::IsItemHovered() && mouseDown) torque = glm::fvec3(+1.0, 0.0, 0.0);
         ImGui::SameLine(); ImGui::Button("-X");
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->torque = glm::fvec3(-1.0, 0.0, 0.0);
+        if (ImGui::IsItemHovered() && mouseDown) torque = glm::fvec3(-1.0, 0.0, 0.0);
         ImGui::SameLine(); ImGui::Button("+Y");
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->torque = glm::fvec3(0.0, +1.0, 0.0);
+        if (ImGui::IsItemHovered() && mouseDown) torque = glm::fvec3(0.0, +1.0, 0.0);
         ImGui::SameLine(); ImGui::Button("-Y");
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->torque = glm::fvec3(0.0, -1.0, 0.0);
+        if (ImGui::IsItemHovered() && mouseDown) torque = glm::fvec3(0.0, -1.0, 0.0);
         ImGui::SameLine(); ImGui::Button("+Z");
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->torque = glm::fvec3(0.0, 0.0, +1.0);
+        if (ImGui::IsItemHovered() && mouseDown) torque = glm::fvec3(0.0, 0.0, +1.0);
         ImGui::SameLine(); ImGui::Button("-Z");
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->torque = glm::fvec3(0.0, 0.0, -1.0);
+        if (ImGui::IsItemHovered() && mouseDown) torque = glm::fvec3(0.0, 0.0, -1.0);
 
         ImGui::AlignTextToFramePadding(); ImGui::Text("Force");
         ImGui::SameLine(55.0f); ImGui::Button("+X");
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->force = glm::fvec3(+1.0, 0.0, 0.0);
+        if (ImGui::IsItemHovered() && mouseDown) force = glm::fvec3(+1.0, 0.0, 0.0);
         ImGui::SameLine(); ImGui::Button("-X");
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->force = glm::fvec3(-1.0, 0.0, 0.0);
+        if (ImGui::IsItemHovered() && mouseDown) force = glm::fvec3(-1.0, 0.0, 0.0);
         ImGui::SameLine(); ImGui::Button("+Y");
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->force = glm::fvec3(0.0, +1.0, 0.0);
+        if (ImGui::IsItemHovered() && mouseDown) force = glm::fvec3(0.0, +1.0, 0.0);
         ImGui::SameLine(); ImGui::Button("-Y");
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->force = glm::fvec3(0.0, -1.0, 0.0);
+        if (ImGui::IsItemHovered() && mouseDown) force = glm::fvec3(0.0, -1.0, 0.0);
         ImGui::SameLine(); ImGui::Button("+Z");
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->force = glm::fvec3(0.0, 0.0, +1.0);
+        if (ImGui::IsItemHovered() && mouseDown) force = glm::fvec3(0.0, 0.0, +1.0);
         ImGui::SameLine(); ImGui::Button("-Z");
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0)) affector->force = glm::fvec3(0.0, 0.0, -1.0);
+        if (ImGui::IsItemHovered() && mouseDown) force = glm::fvec3(0.0, 0.0, -1.0);
 
-        if (glm::length(affector->torque) > 0.001f)
+        if (glm::length(torque) > 0.001f)
         {
             affector->enabled = true;
-            affector->torque = spaceShipMesh->rotation * affector->torque;
+            torque = spaceShipMesh->rotation * torque;
         }
-        if (glm::length(affector->force) > 0.001f)
+        if (glm::length(force) > 0.001f)
         {
             affector->enabled = true;
-            affector->force = spaceShipMesh->rotation * affector->force;
+            force = spaceShipMesh->rotation * force;
         }
     }
 
@@ -226,7 +231,7 @@ void AppSpaceThrusters::imGuiUpdate(StateDb &sdb, Assets &assets)
             }
         }
 
-        if (ImGui::IsItemHovered() && ImGui::IsMouseDown(0) || active)
+        if (ImGui::IsItemHovered() && mouseDown || active)
         {
             affector->enabled = true;
             affector->forcePosition = thruster.pos;
