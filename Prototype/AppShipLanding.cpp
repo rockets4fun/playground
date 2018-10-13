@@ -3,7 +3,7 @@
 /// @date 05.01.2015
 // -------------------------------------------------------------------------------------------------
 
-#define GLM_SWIZZLE
+#define GLM_FORCE_SWIZZLE
 
 #include "AppShipLanding.hpp"
 
@@ -12,8 +12,6 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/random.hpp>
 #include <glm/gtc/noise.hpp>
-
-#include <glm/gtx/fast_trigonometry.hpp>
 
 #include "Math.hpp"
 #include "Logger.hpp"

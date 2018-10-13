@@ -3,8 +3,6 @@
 /// @date 02.01.2015
 // -------------------------------------------------------------------------------------------------
 
-#define GLM_SWIZZLE
-
 #include "Renderer.hpp"
 
 // TODO(martinmo): Remove dependency to SDL through OpenGL function retrieval interface
@@ -932,7 +930,7 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
             if (privateMesh->ibo)
             {
                 u64 activeMaterialHint = 0;
-                glm::u16vec4 activeScissor;
+                glm::u16vec4 activeScissor    = glm::u16vec4( 0 );
                 Texture::PrivateInfo *texture = nullptr;
                 for (auto &part : privateMesh->asset->parts)
                 {

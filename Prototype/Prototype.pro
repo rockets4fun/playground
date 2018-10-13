@@ -87,6 +87,7 @@ macx {
 win32 | unix {
     # Clone branch "0.9.6" from "https://github.com/g-truc/glm.git"
     INCLUDEPATH += $${THIRDPARTY}/Glm
+    DEFINES += GLM_PURE
 }
 
 # =====  Bullet Physics Library = http://bulletphysics.org  ========================================
