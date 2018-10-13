@@ -930,7 +930,7 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
             if (privateMesh->ibo)
             {
                 u64 activeMaterialHint = 0;
-                glm::u16vec4 activeScissor    = glm::u16vec4( 0 );
+                glm::u16vec4 activeScissor;
                 Texture::PrivateInfo *texture = nullptr;
                 for (auto &part : privateMesh->asset->parts)
                 {
