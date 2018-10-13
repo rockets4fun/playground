@@ -107,10 +107,10 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
     // Immediate mode style UI definition
     {
         ImGui::NewFrame();
-        ImGui::ShowMetricsWindow(&m_metricsVisible);
+        //ImGui::ShowMetricsWindow(&m_metricsVisible);
         if (m_profilerVisible)
         {
-            ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiCond_FirstUseEver);
+            //ImGui::SetNextWindowSize(ImVec2(200,100), ImGuiCond_FirstUseEver);
             ImGui::Begin("Profiler", &m_profilerVisible);
 
             Profiler *profiling = Profiler::instance();
@@ -144,7 +144,7 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
                         maxCallDepth = sample.callDepth;
                     }
                     ImGui::SameLine(200);
-                    ImGui::Text("%6.0f us", Profiler::instance()->ticksToMs(
+                    ImGui::Text("%8.0f us", Profiler::instance()->ticksToMs(
                         sample.ticksExit - sample.ticksEnter) * 1000.0f);
                     if (maxCallDepth >= 0)
                     {
@@ -167,6 +167,10 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
     // Retrieve render command buffers and transform/prepare for renderer
     {
         ImDrawData *drawData = ImGui::GetDrawData();
+
+        static int imGuiPass = 0;
+        if ((++imGuiPass % 2) == 0) drawData->CmdListsCount = 0;
+
         // Get rid of meshes/reset models no longer used...
         while (m_meshHandles.size() > drawData->CmdListsCount)
         {
@@ -176,6 +180,7 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
             sdb.destroy(meshHandle);
             m_meshHandles.pop_back();
         }
+
         // Transform UI meshes into models and mesh references for renderer
         for (int cmdListIdx = 0; cmdListIdx < drawData->CmdListsCount; ++cmdListIdx)
         {
@@ -206,7 +211,7 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
                 mesh->flags |= Renderer::Mesh::DRAW_PARTS;
             }
 
-            void *dataPointer = &cmdList->VtxBuffer[0].pos.x;
+            void *dataPointer = &cmdList->VtxBuffer[0];
             for (auto &attr : model->attrs) attr.data = dataPointer;
 
             model->indicesAttr.data = &cmdList->IdxBuffer[0];

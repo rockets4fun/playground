@@ -703,6 +703,10 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         }
         glm::fvec4 renderParams = glm::fvec4(debugNormals ? 1.0f : 0.0f, 0.0, 0.0, 0.0);
 
+        funcs->glClearColor(0.75f, 0.75f, 0.75f, 1.0f);
+        funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        /*
         // Fixed default pass
         {
             PROFILER_SECTION(PassDefault, glm::fvec3(1.0f, 0.0f, 0.0f))
@@ -711,6 +715,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
             funcs->glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
             renderPass(sdb, Group::DEFAULT, defaultProgram, projection, worldToView, renderParams);
         }
+        */
 
         /*
         // Render transparent items with Z-writes off
@@ -771,6 +776,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
     }
     */
 
+    /*
     // Fixed UI render pass
     {
         PROFILER_SECTION(PassUi, glm::fvec3(1.0f, 1.0f, 0.0f))
@@ -782,6 +788,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         funcs->glClear(GL_DEPTH_BUFFER_BIT);
         renderPass(sdb, Group::DEFAULT_GUI, defaultProgram, projection, worldToView, renderParams);
     }
+    */
 
     // Custom/generalized render passes
     {
@@ -790,6 +797,10 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         auto passes = sdb.stateAll< Pass::Info >();
         for (auto pass : passes)
         {
+            if (pass->groups != Renderer::DEFAULT_IM_GUI)
+            {
+                continue;
+            }
             auto program = sdb.state< Renderer::Program::PrivateInfo >(pass->programHandle);
             if (!program) continue;
             if (!(pass->flags & Pass::Flag::DEPTH_TEST)) funcs->glDisable(GL_DEPTH_TEST);
@@ -798,6 +809,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
                 funcs->glEnable(GL_BLEND);
                 funcs->glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
             }
+
             glm::fmat4 projection = glm::ortho(0.0f, 800.0f, 450.0f, 0.0f, -10.0f, 10.0f);
             renderPass(sdb, pass->groups, program, projection);
             if ( (pass->flags & Pass::Flag::BLEND))      funcs->glDisable(GL_BLEND);
@@ -810,6 +822,8 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
 void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateInfo *program,
     const glm::fmat4 &projection, const glm::fmat4 &worldToView, const glm::fvec4 &renderParams)
 {
+    int meshCount = 0;
+
     funcs->glUseProgram(program->program);
 
     glm::fvec4 defaultDiffuseMul(1.0f, 1.0f, 1.0f, 1.0f);
@@ -821,9 +835,23 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
     auto meshes = sdb.stateAll< Mesh::Info >();
     auto meshesPrivate = sdb.stateAll< Mesh::PrivateInfo >();
 
+    static int imGuiPass = 0;
+    if (renderMask == Renderer::DEFAULT_IM_GUI)
+    {
+        ++imGuiPass;
+    }
+
     // Pseudo-instanced rendering of meshes
     for (auto mesh : meshes)
     {
+        if (renderMask == Renderer::DEFAULT_IM_GUI)
+        {
+            if (imGuiPass <= 2)
+            {
+                continue;
+            }
+        }
+
         if (mesh->flags & Mesh::Flag::HIDDEN)
         {
             continue;
@@ -960,6 +988,10 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
                     GLvoid *indices = (GLvoid *)(part.offset * privateMesh->iboAttrSize);
                     funcs->glDrawElements(GL_TRIANGLES,
                         GLint(part.count), privateMesh->iboGlType, indices);
+                    if (renderMask == Renderer::DEFAULT_IM_GUI)
+                    {
+                        ++meshCount;
+                    }
                 }
                 if (texture) funcs->glBindTexture(GL_TEXTURE_2D, 0);
                 if (activeScissor.z && activeScissor.w) funcs->glDisable(GL_SCISSOR_TEST);
@@ -988,6 +1020,12 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         if (privateMesh->ibo) funcs->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
         funcs->glBindVertexArray(0);
     }
+
+    if (renderMask == Renderer::DEFAULT_IM_GUI)
+    {
+        Logger::debug("Frame %04d: %d ImGui meshes", imGuiPass, meshCount );
+    }
+
     funcs->glUseProgram(0);
 }
 

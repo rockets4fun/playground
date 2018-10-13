@@ -70,8 +70,8 @@ int main(int argc, char *argv[])
         ImGuiEval imGuiEval;
         Renderer renderer;
 
-        //AppShipLanding app(physics);
-        AppSpaceThrusters app(physics, imGuiEval);
+        AppShipLanding app(physics);
+        //AppSpaceThrusters app(physics, imGuiEval);
 
         StateDb sdb;
         Assets assets;
@@ -124,6 +124,7 @@ int main(int argc, char *argv[])
             }
 
             SDL_GL_SwapWindow(window);
+            SDL_Delay(1000);
         }
 
         for (auto &module : modulesReversed)
