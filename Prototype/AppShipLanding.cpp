@@ -210,10 +210,10 @@ bool AppShipLanding::initialize(StateDb &sdb, Assets &assets)
             for (int row = 0; row < PLATFORM_SPHERE_COUNT; ++row)
             {
                 glm::fvec3 translation = glm::fvec3(
-                    -0.5f * platformSize + double(col)
-                            / double(PLATFORM_SPHERE_COUNT - 1) * platformSize,
-                    -0.5f * platformSize + double(row)
-                            / double(PLATFORM_SPHERE_COUNT - 1) * platformSize, 0.0);
+                    -0.5f * platformSize + float(col)
+                            / float(PLATFORM_SPHERE_COUNT - 1) * platformSize,
+                    -0.5f * platformSize + float(row)
+                            / float(PLATFORM_SPHERE_COUNT - 1) * platformSize, 0.0);
                 addBuoyancyAffector(sdb, translation, platformRigidBodyHandle);
             }
         }

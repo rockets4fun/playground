@@ -55,7 +55,7 @@ private:
 
     std::vector< Thruster > m_thrusters;
 
-    u64 m_testAffector;
+    u64 m_testAffector = 0;
 
 private:
     COMMON_DISABLE_COPY(AppSpaceThrusters)

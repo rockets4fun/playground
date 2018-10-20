@@ -179,7 +179,7 @@ private:
     struct Type
     {
         std::string name;
-        u64 id;
+        u64 id = 0;
         u64 maxObjectCount = 0;
         u64 objectCount = 0;
         std::vector< u64 > stateIds;
@@ -192,8 +192,8 @@ private:
     {
         u64 typeId = 0;
         std::string name;
-        u64 id;
-        u64 elemSize;
+        u64 id = 0;
+        u64 elemSize = 0;
         // TODO(martinmo): Add version info here for protocol/struct changes
     };
 
