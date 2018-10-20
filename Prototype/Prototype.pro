@@ -155,6 +155,7 @@ SOURCES += \
     $${THIRDPARTY}/ImGui/imgui.cpp \
     $${THIRDPARTY}/ImGui/imgui_draw.cpp \
     $${THIRDPARTY}/ImGui/imgui_widgets.cpp
+DEFINES += IMGUI_DISABLE_OBSOLETE_FUNCTIONS
 
 # ==================================================================================================
 
