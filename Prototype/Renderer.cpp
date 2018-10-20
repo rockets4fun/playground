@@ -51,6 +51,7 @@ static const GLenum attrGlType[] =
 struct Renderer::PrivateFuncs
 {
     // Basic functions
+    PFNGLGETSTRINGPROC  glGetString = nullptr;
     PFNGLENABLEPROC     glEnable = nullptr;
     PFNGLDISABLEPROC    glDisable = nullptr;
     PFNGLCULLFACEPROC   glCullFace = nullptr;
@@ -417,6 +418,9 @@ bool Renderer::initialize(StateDb &sdb, Assets &assets)
     {
         return false;
     }
+
+    Logger::debug("OpenGL vendor: %s", funcs->glGetString(GL_VENDOR));
+    Logger::debug("OpenGL renderer: %s", funcs->glGetString(GL_RENDERER));
 
     if (SDL_GL_ExtensionSupported("GL_ARB_debug_output"))
     {
@@ -1036,6 +1040,7 @@ void Renderer::updateTransforms(StateDb &sdb)
     }
 bool Renderer::initializeGl()
 {
+    RENDERER_GL_FUNC(glGetString);
     RENDERER_GL_FUNC(glEnable);
     RENDERER_GL_FUNC(glDisable);
     RENDERER_GL_FUNC(glCullFace);
