@@ -566,6 +566,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         for (auto &attr : privateMesh->asset->attrs)
         {
             u64 attrStrideInB = attr.offsetInB + attrSize[attr.type] * attr.count;
+            // FIXME(mmoerth): If attribute 'data' changes we create a new VBO
             PrivateMesh::VboInfo &vboInfo = privateMesh->vbosByInitialData[attr.data];
             vboInfo.vertexStrideInB = glm::max(vboInfo.vertexStrideInB, attrStrideInB);
             vboInfo.attrIdx = &attr - &privateMesh->asset->attrs[0];
@@ -581,6 +582,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
                 // NOTE: Update all programs to assign fixed locations for new attribute
                 forceProgramUpdate = true;
             }
+            // FIXME(mmoerth): If attribute 'data' changes we create a new VBO
             PrivateMesh::VboInfo &vboInfo = privateMesh->vbosByInitialData[attr.data];
             if (!vboInfo.vbo) funcs->glGenBuffers(1, &vboInfo.vbo);
             funcs->glBindBuffer(GL_ARRAY_BUFFER, vboInfo.vbo);
@@ -960,6 +962,7 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         funcs->glUniform4fv(programPrivate->uAmbientAdd, 1, glm::value_ptr(ambientAdd));
 
         funcs->glBindVertexArray(privateMesh->vao);
+        // TODO(martinmo): Should we bind the index buffer as part of the VAO?
         if (privateMesh->ibo) funcs->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, privateMesh->ibo);
         if (mesh->flags & Mesh::Flag::DRAW_PARTS)
         {
