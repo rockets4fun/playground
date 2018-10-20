@@ -208,6 +208,7 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
 
             void *dataPointer = &cmdList->VtxBuffer[0];
             for (auto &attr : model->attrs) attr.data = dataPointer;
+            model->vertexCount = cmdList->VtxBuffer.size();
 
             model->indicesAttr.data = &cmdList->IdxBuffer[0];
             model->indicesAttr.count = cmdList->IdxBuffer.size();
@@ -234,8 +235,6 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
                 part.count = cmd.ElemCount;
                 prevElemOffset += part.count;
             }
-
-            model->vertexCount = cmdList->VtxBuffer.size();
         }
     }
 }
