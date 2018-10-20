@@ -59,7 +59,7 @@ bool ImGuiEval::initialize(StateDb &sdb, Assets &assets)
 
         auto fontTexture = sdb.create< Renderer::Texture::Info >(m_fontTextureHandle);
         fontTexture->textureAsset = fontTextureAsset;
-        imGui.Fonts->TexID = &m_fontTextureHandle;
+        imGui.Fonts->SetTexID(&m_fontTextureHandle);
     }
 
     {
