@@ -523,6 +523,8 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
     }
     */
 
+    bool forceProgramUpdate = false;
+
     // Prepare references to per-model private data
     auto meshes = sdb.stateAll< Mesh::Info >();
     auto meshesPrivate = sdb.stateAll< Mesh::PrivateInfo >();
@@ -573,7 +575,12 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
         for (auto &attr : privateMesh->asset->attrs)
         {
             GLuint &idx = state->attrIndicesByName[attr.name];
-            if (!idx) idx = GLuint(state->attrIndicesByName.size());
+            if (!idx)
+            {
+                idx = GLuint(state->attrIndicesByName.size());
+                // NOTE: Update all programs to assign fixed locations for new attribute
+                forceProgramUpdate = true;
+            }
             PrivateMesh::VboInfo &vboInfo = privateMesh->vbosByInitialData[attr.data];
             if (!vboInfo.vbo) funcs->glGenBuffers(1, &vboInfo.vbo);
             funcs->glBindBuffer(GL_ARRAY_BUFFER, vboInfo.vbo);
@@ -604,7 +611,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
             COMMON_ASSERT(programPrivate->assetInfo)
         }
         u32 assetVersion = programPrivate->assetInfo->version;
-        if (programPrivate->assetVersionLoaded == assetVersion)
+        if (programPrivate->assetVersionLoaded == assetVersion && !forceProgramUpdate)
         {
             continue;
         }
