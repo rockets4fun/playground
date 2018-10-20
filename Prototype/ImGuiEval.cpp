@@ -122,8 +122,8 @@ void ImGuiEval::update(StateDb &sdb, Assets &assets, Renderer &renderer, double 
                 int prevCallDepth = -1;
                 for (Profiler::SectionSample &sample : mainThread->samples)
                 {
-                    float enterMs   = float(profiling->ticksToMs(sample.ticksEnter));
-                    float exitMs    = float(profiling->ticksToMs(sample.ticksExit));
+                    float enterMs = float(profiling->ticksToMs(sample.ticksEnter));
+                    float exitMs  = float(profiling->ticksToMs(sample.ticksExit));
                     if (maxCallDepth >= 0)
                     {
                         if (sample.callDepth > maxCallDepth)
