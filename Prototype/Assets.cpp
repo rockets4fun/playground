@@ -252,10 +252,10 @@ void Assets::Model::setDefaultAttrs()
     {
         attrs =
         {
-            MAttr("Position", &positions[0].x),
-            MAttr("Normal",   &normals  [0].x),
-            MAttr("Diffuse",  &diffuse  [0].r),
-            MAttr("Ambient",  &ambient  [0].r),
+            MAttr("Position", &positions[0]),
+            MAttr("Normal",   &normals  [0]),
+            MAttr("Diffuse",  &diffuse  [0]),
+            MAttr("Ambient",  &ambient  [0]),
         };
     }
 }
