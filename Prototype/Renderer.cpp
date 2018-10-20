@@ -172,7 +172,7 @@ struct Renderer::PrivateMesh
     struct VboInfo
     {
         GLuint vbo = 0;
-        std::vector< Assets::MAttr * > attrs;
+        int attrIdx = -1;
         u64 vertexStrideInB = 0;
     };
 
@@ -568,7 +568,7 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
             u64 attrStrideInB = attr.offsetInB + attrSize[attr.type] * attr.count;
             PrivateMesh::VboInfo &vboInfo = privateMesh->vbosByInitialData[attr.data];
             vboInfo.vertexStrideInB = glm::max(vboInfo.vertexStrideInB, attrStrideInB);
-            vboInfo.attrs.push_back(&attr);
+            vboInfo.attrIdx = &attr - &privateMesh->asset->attrs[0];
         }
         funcs->glGenVertexArrays(1, &privateMesh->vao);
         funcs->glBindVertexArray(privateMesh->vao);
@@ -858,7 +858,11 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
             u64 vertexCount = privateMesh->asset->vertexCount;
             for (auto &vbosIt : privateMesh->vbosByInitialData)
             {
-                void *data = vbosIt.second.attrs[0]->data;
+#ifdef COMMON_DEBUG
+                COMMON_ASSERT(vbosIt.second.attrIdx >= 0);
+                COMMON_ASSERT(vbosIt.second.attrIdx < privateMesh->asset->attrs.size());
+#endif
+                void *data = privateMesh->asset->attrs[ vbosIt.second.attrIdx ].data;
                 u64 size = vertexCount * vbosIt.second.vertexStrideInB;
 
                 /*
