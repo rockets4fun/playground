@@ -150,7 +150,7 @@ struct Renderer::PrivateHelpers
     PrivateHelpers(PrivateFuncs *funcs);
 
     bool updateShader(GLuint &shader, GLenum type, const std::string &source);
-    bool updateProgram(Program::PrivateInfo *privateInfo,
+    bool updateProgram(Program::PrivateInfo *programPrivate,
         const std::map< std::string, GLuint > &attrIndicesByName);
 
     void printInfoLog(GLuint object, GetProc getProc, InfoLogProc infoLogProc);
@@ -297,36 +297,36 @@ bool Renderer::PrivateHelpers::updateShader(
 }
 
 // -------------------------------------------------------------------------------------------------
-bool Renderer::PrivateHelpers::updateProgram(Program::PrivateInfo *privateInfo,
+bool Renderer::PrivateHelpers::updateProgram(Program::PrivateInfo *programPrivate,
     const std::map< std::string, GLuint > &attrIndicesByName)
 {
-    if (!privateInfo->program)
+    if (!programPrivate->program)
     {
-        privateInfo->program = funcs->glCreateProgram();
-        if (!privateInfo->program)
+        programPrivate->program = funcs->glCreateProgram();
+        if (!programPrivate->program)
         {
             Logger::debug("ERROR: Failed to create program object");
             return false;
         }
     }
 
-    funcs->glAttachShader(privateInfo->program, privateInfo->vertexShader);
-    funcs->glAttachShader(privateInfo->program, privateInfo->fragmentShader);
+    funcs->glAttachShader(programPrivate->program, programPrivate->vertexShader);
+    funcs->glAttachShader(programPrivate->program, programPrivate->fragmentShader);
 
     // Use 'glBindAttribLocation()' before linking the program to force assignment of
     // attributes to specific fixed locations (e.g. position always 0, color always 1 etc.)
     // ==> This allows us to use the same VAO independent of shader program in use
     for (auto &attrIndexMapEntry : attrIndicesByName)
     {
-        funcs->glBindAttribLocation(privateInfo->program,
+        funcs->glBindAttribLocation(programPrivate->program,
             attrIndexMapEntry.second, attrIndexMapEntry.first.c_str());
     }
 
-    funcs->glLinkProgram(privateInfo->program);
-    printInfoLog(privateInfo->program, funcs->glGetProgramiv, funcs->glGetProgramInfoLog);
+    funcs->glLinkProgram(programPrivate->program);
+    printInfoLog(programPrivate->program, funcs->glGetProgramiv, funcs->glGetProgramInfoLog);
 
     GLint linkStatus = GL_FALSE;
-    funcs->glGetProgramiv(privateInfo->program, GL_LINK_STATUS, &linkStatus);
+    funcs->glGetProgramiv(programPrivate->program, GL_LINK_STATUS, &linkStatus);
     if (linkStatus == GL_FALSE)
     {
         Logger::debug("ERROR: Failed to link program");
@@ -809,16 +809,16 @@ void Renderer::update(StateDb &sdb, Assets &assets, Renderer &renderer, double d
 }
 
 // -------------------------------------------------------------------------------------------------
-void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateInfo *program,
+void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateInfo *programPrivate,
     const glm::fmat4 &projection, const glm::fmat4 &worldToView, const glm::fvec4 &renderParams)
 {
-    funcs->glUseProgram(program->program);
+    funcs->glUseProgram(programPrivate->program);
 
     glm::fvec4 defaultDiffuseMul(1.0f, 1.0f, 1.0f, 1.0f);
     glm::fvec4 defaultAmbientAdd(0.0f, 0.0f, 0.0f, 0.0f);
 
-    funcs->glUniform4fv(program->uRenderParams, 1, glm::value_ptr(renderParams));
-    funcs->glUniformMatrix4fv(program->uProjectionMatrix, 1, GL_FALSE, glm::value_ptr(projection));
+    funcs->glUniform4fv(programPrivate->uRenderParams, 1, glm::value_ptr(renderParams));
+    funcs->glUniformMatrix4fv(programPrivate->uProjectionMatrix, 1, GL_FALSE, glm::value_ptr(projection));
 
     auto meshes = sdb.stateAll< Mesh::Info >();
     auto meshesPrivate = sdb.stateAll< Mesh::PrivateInfo >();
@@ -930,19 +930,19 @@ void Renderer::renderPass(StateDb &sdb, u32 renderMask, const Program::PrivateIn
         }
 
         funcs->glUniformMatrix4fv(
-            program->uModelToWorldMatrix, 1, GL_FALSE, glm::value_ptr(modelToWorld));
+            programPrivate->uModelToWorldMatrix, 1, GL_FALSE, glm::value_ptr(modelToWorld));
 
         glm::fmat4 modelToView = worldToView * modelToWorld;
         funcs->glUniformMatrix4fv(
-            program->uModelToViewMatrix, 1, GL_FALSE, glm::value_ptr(modelToView));
+            programPrivate->uModelToViewMatrix, 1, GL_FALSE, glm::value_ptr(modelToView));
 
         glm::fvec4 diffuseMul = defaultDiffuseMul;
         if (mesh->flags & Mesh::Flag::DIFFUSE_MUL) diffuseMul = mesh->diffuseMul;
-        funcs->glUniform4fv(program->uDiffuseMul, 1, glm::value_ptr(diffuseMul));
+        funcs->glUniform4fv(programPrivate->uDiffuseMul, 1, glm::value_ptr(diffuseMul));
 
         glm::fvec4 ambientAdd = defaultAmbientAdd;
         if (mesh->flags & Mesh::Flag::AMBIENT_ADD) ambientAdd = mesh->ambientAdd;
-        funcs->glUniform4fv(program->uAmbientAdd, 1, glm::value_ptr(ambientAdd));
+        funcs->glUniform4fv(programPrivate->uAmbientAdd, 1, glm::value_ptr(ambientAdd));
 
         funcs->glBindVertexArray(privateMesh->vao);
         if (privateMesh->ibo) funcs->glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, privateMesh->ibo);
