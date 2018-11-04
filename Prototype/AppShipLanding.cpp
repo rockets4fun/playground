@@ -3,6 +3,7 @@
 /// @date 05.01.2015
 // -------------------------------------------------------------------------------------------------
 
+//#define GLM_FORCE_MESSAGES
 #define GLM_FORCE_SWIZZLE
 
 #include "AppShipLanding.hpp"
