@@ -40,8 +40,8 @@ struct Assets
     {
         u32 hash = 0;
         std::string name;
-        u32 flags = 0;
-        Type type = Type::UNDEFINED;
+        u32 flags   = 0;
+        Type type   = Type::UNDEFINED;
         u32 version = 0;
     };
 
@@ -51,19 +51,23 @@ struct Assets
         {
             enum CompType
             {
-                FLOAT = 0, U8, U16, U32
+                FLOAT = 0,
+                U8,
+                U16,
+                U32
             };
 
             std::string name;
-            void *data = nullptr;            // pointer to actual per-vertex data
-            CompType type = CompType::FLOAT; // type of per-vertex component(s)
-            u64 count = 3;                   // per-vertex component count
-            u64 offsetInB = 0;               // offset into interleaved attribute array
-            bool normalize = false;          // normalize values when feeding into shader
+            void* data     = nullptr;          // pointer to actual per-vertex data
+            CompType type  = CompType::FLOAT;  // type of per-vertex component(s)
+            u64 count      = 3;                // per-vertex component count
+            u64 offsetInB  = 0;                // offset into interleaved attribute array
+            bool normalize = false;            // normalize values when feeding into shader
 
-            Attr(const std::string &nameInit = "", void *dataInit = nullptr,
-                CompType typeInit = CompType::FLOAT, u64 countInit = 3,
-                u64 offsetInBInit = 0, bool normalizeInit = false);
+            Attr(
+                const std::string& nameInit = "", void* dataInit = nullptr,
+                CompType typeInit = CompType::FLOAT, u64 countInit = 3, u64 offsetInBInit = 0,
+                bool normalizeInit = false );
         };
 
         struct Instance
@@ -87,10 +91,10 @@ struct Assets
             std::string name;
             std::string instance;
             std::string material;
-            u64 offset = 0;
-            u64 count = 0;
+            u64 offset       = 0;
+            u64 count        = 0;
             u64 materialHint = 0;
-            glm::u16vec4 scissor; // Lower left corner, width/height
+            glm::u16vec4 scissor;  // Lower left corner, width/height
         };
 
         // Default vertex attribute arrays
@@ -102,7 +106,7 @@ struct Assets
         std::vector< u32 > indices;
 
         std::vector< Attr > attrs;
-        Attr indicesAttr = Attr("", nullptr, Attr::U32, 0);
+        Attr indicesAttr = Attr( "", nullptr, Attr::U32, 0 );
 
         std::vector< Instance > instances;
         std::vector< Material > materials;
@@ -130,7 +134,7 @@ struct Assets
     struct Texture
     {
         typedef u32 Pixel;
-        int width = 0;
+        int width  = 0;
         int height = 0;
         std::vector< Pixel > pixels;
     };
@@ -138,14 +142,14 @@ struct Assets
     Assets();
     virtual ~Assets();
 
-    u32 asset(const std::string &name, u32 flags = 0);
+    u32 asset( const std::string& name, u32 flags = 0 );
 
-    const Info *info(u32 hash);
-    u32 touch(u32 hash);
+    const Info* info( u32 hash );
+    u32 touch( u32 hash );
 
-    Model *refModel(u32 hash);
-    Program *refProgram(u32 hash);
-    Texture *refTexture(u32 hash);
+    Model* refModel( u32 hash );
+    Program* refProgram( u32 hash );
+    Texture* refTexture( u32 hash );
 
     void reloadModifiedAssets();
 
@@ -169,36 +173,33 @@ private:
     std::map< std::string, DepInfo > m_depsByFile;
 
     template< class AssetType >
-    std::pair< AssetType *, Info * > refAsset(u32 hash,
-        Type assetType, std::map< u32, AssetType > &assetMap)
+    std::pair< AssetType*, Info* > refAsset( u32 hash, Type assetType, std::map< u32, AssetType >& assetMap )
     {
-        auto ref = std::make_pair((AssetType *)(nullptr), (Info *)(nullptr));
-        auto infoIter = m_assetInfos.find(hash);
-        if (infoIter == m_assetInfos.end())
-        {
+        auto ref      = std::make_pair( (AssetType*)( nullptr ), (Info*)( nullptr ) );
+        auto infoIter = m_assetInfos.find( hash );
+        if ( infoIter == m_assetInfos.end() ) {
             return ref;
         }
-        if (infoIter->second.type != Type::UNDEFINED && infoIter->second.type != assetType)
-        {
+        if ( infoIter->second.type != Type::UNDEFINED && infoIter->second.type != assetType ) {
             return ref;
         }
-        ref.first = &assetMap[hash];
+        ref.first  = &assetMap[ hash ];
         ref.second = &infoIter->second;
         return ref;
     }
 
-    bool loadModel(const Info &info, Model &model);
-    bool loadModelCustom(const Info &info, Model &model);
-    bool loadModelAssimp(const Info &info, Model &model);
-    bool loadProgram(const Info &info, Program &model);
+    bool loadModel( const Info& info, Model& model );
+    bool loadModelCustom( const Info& info, Model& model );
+    bool loadModelAssimp( const Info& info, Model& model );
+    bool loadProgram( const Info& info, Program& model );
 
-    void registerDep(u32 hash, const std::string &filename);
-    void resetDeps(u32 hash);
+    void registerDep( u32 hash, const std::string& filename );
+    void resetDeps( u32 hash );
 
-    u32 krHash(const char *data, size_t size);
+    u32 krHash( const char* data, size_t size );
 
 private:
-    COMMON_DISABLE_COPY(Assets)
+    COMMON_DISABLE_COPY( Assets )
 };
 
 #endif

@@ -19,15 +19,15 @@ struct Math
     static const glm::fvec3 Y_AXIS;
     static const glm::fvec3 Z_AXIS;
 
-    static glm::fvec3 perpendicular(const glm::fvec3 &v);
+    static glm::fvec3 perpendicular( const glm::fvec3& v );
 
-    static glm::fquat rotateFromTo(const glm::fvec3 &from, const glm::fvec3 &to);
+    static glm::fquat rotateFromTo( const glm::fvec3& from, const glm::fvec3& to );
 
-    static void decomposeTransform(const glm::fmat4 &xform,
-        glm::fvec3 &translation, glm::fquat &rotation, glm::vec3 &scale);
+    static void decomposeTransform(
+        const glm::fmat4& xform, glm::fvec3& translation, glm::fquat& rotation, glm::vec3& scale );
 
 private:
-    COMMON_DISABLE_COPY(Math)
+    COMMON_DISABLE_COPY( Math )
 };
 
 #endif

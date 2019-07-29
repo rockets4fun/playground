@@ -17,21 +17,19 @@ struct Physics;
 
 // -------------------------------------------------------------------------------------------------
 /// @brief Space thrusters prototyping application module
-struct AppSpaceThrusters :
-    public ModuleIf,
-    public ImGuiEval::ModuleIf
+struct AppSpaceThrusters : public ModuleIf, public ImGuiEval::ModuleIf
 {
-    AppSpaceThrusters(Physics &physics, ImGuiEval &imGui);
+    AppSpaceThrusters( Physics& physics, ImGuiEval& imGui );
     virtual ~AppSpaceThrusters();
 
-public: // Application module interface implementation
-    virtual void registerTypesAndStates(StateDb &sdb);
-    virtual bool initialize(StateDb &sdb, Assets &assets);
-    virtual void shutdown(StateDb &sdb);
-    virtual void update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS);
+public:  // Application module interface implementation
+    virtual void registerTypesAndStates( StateDb& sdb );
+    virtual bool initialize( StateDb& sdb, Assets& assets );
+    virtual void shutdown( StateDb& sdb );
+    virtual void update( StateDb& sdb, Assets& assets, Renderer& renderer, double deltaTimeInS );
 
-public: // ImGui module interface implementation
-    virtual void imGuiUpdate(StateDb &sdb, Assets &assets);
+public:  // ImGui module interface implementation
+    virtual void imGuiUpdate( StateDb& sdb, Assets& assets );
 
 private:
     struct Thruster
@@ -44,8 +42,8 @@ private:
         glm::fvec3 dir;
     };
 
-    Physics *m_physics = nullptr;
-    ImGuiEval *m_imGui = nullptr;
+    Physics* m_physics = nullptr;
+    ImGuiEval* m_imGui = nullptr;
 
     u64 m_cameraHandle = 0;
 
@@ -58,7 +56,7 @@ private:
     u64 m_testAffector = 0;
 
 private:
-    COMMON_DISABLE_COPY(AppSpaceThrusters)
+    COMMON_DISABLE_COPY( AppSpaceThrusters )
 };
 
 #endif

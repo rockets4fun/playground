@@ -15,7 +15,7 @@
 /// @brief Simple string parsing class
 struct Parser
 {
-    void init(const std::string &data);
+    void init( const std::string& data );
 
     bool advance();
 
@@ -25,10 +25,10 @@ struct Parser
     char chr();
     std::string str();
 
-    bool uint32(u32 &value);
-    bool uint32Hex(u32 &value);
+    bool uint32( u32& value );
+    bool uint32Hex( u32& value );
 
-    bool floatHex(float &value);
+    bool floatHex( float& value );
 
 private:
     enum CharType
@@ -41,11 +41,11 @@ private:
 
     static std::vector< CharType > s_charTypes;
 
-    const char *m_begin = nullptr;
-    const char *m_end = nullptr;
+    const char* m_begin = nullptr;
+    const char* m_end   = nullptr;
 
-    const char *m_tokenBegin = nullptr;
-    const char *m_tokenEnd = nullptr;
+    const char* m_tokenBegin = nullptr;
+    const char* m_tokenEnd   = nullptr;
     CharType m_tokenCharType = CharType::NONE;
 };
 

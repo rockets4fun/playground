@@ -22,14 +22,14 @@ struct Physics;
 /// @brief Rocket science prototype logic module
 struct AppShipLanding : public ModuleIf
 {
-    AppShipLanding(Physics &physics);
+    AppShipLanding( Physics& physics );
     virtual ~AppShipLanding();
 
-public: // Application module interface implementation
-    virtual void registerTypesAndStates(StateDb &sdb);
-    virtual bool initialize(StateDb &sdb, Assets &assets);
-    virtual void shutdown(StateDb &sdb);
-    virtual void update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS);
+public:  // Application module interface implementation
+    virtual void registerTypesAndStates( StateDb& sdb );
+    virtual bool initialize( StateDb& sdb, Assets& assets );
+    virtual void shutdown( StateDb& sdb );
+    virtual void update( StateDb& sdb, Assets& assets, Renderer& renderer, double deltaTimeInS );
 
 private:
     static const int OCEAN_TILE_VERTEX_COUNT;
@@ -58,7 +58,7 @@ private:
         struct Info
         {
             static u64 STATE;
-            u64 shipMeshHandle = 0;
+            u64 shipMeshHandle     = 0;
             u32 shipMeshInstanceNr = 0;
             glm::fvec3 translation;
             glm::fquat rotation;
@@ -67,17 +67,17 @@ private:
         };
     };
 
-    Physics *m_physics = nullptr;
+    Physics* m_physics = nullptr;
 
-    u64 m_cameraHandle = 0;
+    u64 m_cameraHandle         = 0;
     u64 m_pusherAffectorHandle = 0;
 
     u64 m_debugMeshHandle = 0;
     u64 m_arrowMeshHandle = 0;
 
-    u32 m_oceanModelAsset = 0;
-    u32 m_uiModelAsset = 0;
-    u32 m_postModelAsset = 0;
+    u32 m_oceanModelAsset  = 0;
+    u32 m_uiModelAsset     = 0;
+    u32 m_postModelAsset   = 0;
     u32 m_rocketModelAsset = 0;
 
     std::list< u64 > m_sleepingMeshHandles;
@@ -89,14 +89,13 @@ private:
 
     double m_timeInS = 0.0;
 
-    float oceanEquation(const glm::fvec2 &position, double timeInS);
+    float oceanEquation( const glm::fvec2& position, double timeInS );
 
-    void addBuoyancyAffector(StateDb &sdb,
-        const glm::fvec3 &translation, u64 parentRigidBody);
-    void updateBuoyancyAffectors(StateDb &sdb, double timeInS);
+    void addBuoyancyAffector( StateDb& sdb, const glm::fvec3& translation, u64 parentRigidBody );
+    void updateBuoyancyAffectors( StateDb& sdb, double timeInS );
 
 private:
-    COMMON_DISABLE_COPY(AppShipLanding)
+    COMMON_DISABLE_COPY( AppShipLanding )
 };
 
 #endif

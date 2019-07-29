@@ -53,11 +53,11 @@ struct Physics : ModuleIf
 
             u32 flags = 0;
 
-            u64 meshHandle = 0;
+            u64 meshHandle     = 0;
             u32 collisionShape = 0;
 
             u32 collisionGroup = 0;
-            u32 collisionMask = 0;
+            u32 collisionMask  = 0;
 
             float mass = 0.0f;
 
@@ -104,7 +104,7 @@ struct Physics : ModuleIf
             static u64 STATE;
 
             u64 rigidBodyHandle = 0;
-            u32 enabled = 0;
+            u32 enabled         = 0;
 
             // FIXME(MARTINMO): Normalize to either all global or RB local frames
             // FIXME(MARTINMO): ==> RB local seems to be the more intuitive choice
@@ -124,9 +124,9 @@ struct Physics : ModuleIf
         static u64 TYPE;
         enum Type
         {
-            ACCEL = 0, // Accelerometer - measures linear acceleration
-            GYRO,      // Gyro - measures angular acceleration
-            GPS        // GPS - measures XY position and XY speed
+            ACCEL = 0,  // Accelerometer - measures linear acceleration
+            GYRO,       // Gyro - measures angular acceleration
+            GPS         // GPS - measures XY position and XY speed
         };
         struct Info
         {
@@ -151,11 +151,11 @@ struct Physics : ModuleIf
         };
     };
 
-public: // Implementation of module interface
-    virtual void registerTypesAndStates(StateDb &sdb);
-    virtual bool initialize(StateDb &sdb, Assets &assets);
-    virtual void shutdown(StateDb &sdb);
-    virtual void update(StateDb &sdb, Assets &assets, Renderer &renderer, double deltaTimeInS);
+public:  // Implementation of module interface
+    virtual void registerTypesAndStates( StateDb& sdb );
+    virtual bool initialize( StateDb& sdb, Assets& assets );
+    virtual void shutdown( StateDb& sdb );
+    virtual void update( StateDb& sdb, Assets& assets, Renderer& renderer, double deltaTimeInS );
 
 private:
     struct PrivateRigidBody;
@@ -173,7 +173,7 @@ private:
     */
 
 private:
-    COMMON_DISABLE_COPY(Physics)
+    COMMON_DISABLE_COPY( Physics )
 };
 
 #endif

@@ -24,10 +24,10 @@ public:
         ERROR
     };
 
-    static void debug(const char *format, ...);
+    static void debug( const char* format, ... );
 
 private:
-    COMMON_DISABLE_COPY(Logger)
+    COMMON_DISABLE_COPY( Logger )
 };
 
 #endif

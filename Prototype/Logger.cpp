@@ -20,21 +20,20 @@ Logger::~Logger()
 }
 
 // -------------------------------------------------------------------------------------------------
-void Logger::debug(const char *format, ...)
+void Logger::debug( const char* format, ... )
 {
-    char buffer[1024];
+    char buffer[ 1024 ];
 
     va_list args;
-    va_start(args, format);
-    int ret = vsnprintf(buffer, sizeof(buffer), format, args);
-    va_end(args);
+    va_start( args, format );
+    int ret = vsnprintf( buffer, sizeof( buffer ), format, args );
+    va_end( args );
 
     int indexOfLastChar = ret - 1;
-    while (indexOfLastChar >= 0 && isspace(buffer[indexOfLastChar]))
-    {
-        buffer[indexOfLastChar--] = 0;
+    while ( indexOfLastChar >= 0 && isspace( buffer[ indexOfLastChar ] ) ) {
+        buffer[ indexOfLastChar-- ] = 0;
     }
 
-    fprintf(stdout, "%s\n", buffer);
-    fflush(stdout);
+    fprintf( stdout, "%s\n", buffer );
+    fflush( stdout );
 }

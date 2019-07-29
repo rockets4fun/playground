@@ -17,12 +17,11 @@ struct Platform
     Platform();
     virtual ~Platform();
 
-    static s64 fileModificationTime(const std::string &filename);
+    static s64 fileModificationTime( const std::string& filename );
 
 public:
-
 private:
-    COMMON_DISABLE_COPY(Platform)
+    COMMON_DISABLE_COPY( Platform )
 };
 
 #endif
