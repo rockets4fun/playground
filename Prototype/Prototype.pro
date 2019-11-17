@@ -42,9 +42,7 @@ unix {
     QMAKE_CXXFLAGS += -std=c++11
 }
 macx {
-    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.9
-    QMAKE_MAC_SDK = macosx10.9
-    QMAKE_LFLAGS += -F/Library/Frameworks
+    QMAKE_MACOSX_DEPLOYMENT_TARGET = 10.13
 
     QMAKE_CXXFLAGS_WARN_ON  = -Wall
     QMAKE_CXXFLAGS_WARN_ON += -Wno-unused-parameter -Wno-null-dereference
@@ -65,25 +63,36 @@ HEADERS += $${THIRDPARTY}/Remotery/lib/Remotery.h
 SOURCES += $${THIRDPARTY}/Remotery/lib/Remotery.c
 
 # =====  Simple Direct-Media Layer (SDL) = http://libsdl.org/ ======================================
+INCLUDEPATH += $${THIRDPARTY}/Sdl/include
 win32 {
-    INCLUDEPATH += $${THIRDPARTY}/Sdl/include
-    win32:contains(QMAKE_HOST.arch, x86_64) {
-        CONFIG(debug, debug|release) {
-            LIBS += $${THIRDPARTY}/Sdl/Build/SDL2d.lib
-            LIBS += $${THIRDPARTY}/Sdl/Build/SDL2maind.lib
-        }
-        CONFIG(release, debug|release) {
-            LIBS += $${THIRDPARTY}/Sdl/Build/SDL2.lib
-            LIBS += $${THIRDPARTY}/Sdl/Build/SDL2main.lib
-        }
+    CONFIG(debug, debug|release) {
+        LIBS += $${THIRDPARTY}/Sdl/Build/SDL2d.lib
+        LIBS += $${THIRDPARTY}/Sdl/Build/SDL2maind.lib
     }
-    else {
+    CONFIG(release, debug|release) {
+        LIBS += $${THIRDPARTY}/Sdl/Build/SDL2.lib
+        LIBS += $${THIRDPARTY}/Sdl/Build/SDL2main.lib
     }
 }
+unix {
+    CONFIG(debug, debug|release) {
+        LIBS += -L$${THIRDPARTY}/Sdl/Build
+        LIBS += -lSDL2d -lSDL2maind
+    }
+    CONFIG(release, debug|release) {
+        LIBS += -L$${THIRDPARTY}/Sdl/Build
+        LIBS += -lSDL2 -lSDL2main
+    }
+    QMAKE_LFLAGS += -liconv
+}
 macx {
-    # Install framework from "http://libsdl.org/release/SDL2-2.0.3.dmg"
-    INCLUDEPATH += /Library/Frameworks/SDL2.framework/Headers
-    LIBS += -framework SDL2
+    QMAKE_LFLAGS += -framework AudioToolbox
+    QMAKE_LFLAGS += -framework CoreAudio
+    QMAKE_LFLAGS += -framework Carbon
+    QMAKE_LFLAGS += -framework ForceFeedback
+    QMAKE_LFLAGS += -framework IOKit
+    QMAKE_LFLAGS += -framework Cocoa
+    QMAKE_LFLAGS += -framework CoreVideo
 }
 
 # =====  OpenGL Mathematics (GLM) = http://glm.g-truc.net ==========================================
@@ -94,29 +103,20 @@ win32 | unix {
 }
 
 # =====  Bullet Physics Library = http://bulletphysics.org  ========================================
+INCLUDEPATH += $${THIRDPARTY}/Bullet/src
 win32 {
-    # Check "USE_MSVC_RUNTIME_LIBRARY_DLL" before pressing "Generate"
-    INCLUDEPATH += $${THIRDPARTY}/Bullet/src
-    win32:contains(QMAKE_HOST.arch, x86_64) {
-        CONFIG(debug, debug|release) {
-            LIBS += $${THIRDPARTY}/Bullet/lib/BulletCollision_Debug.lib
-            LIBS += $${THIRDPARTY}/Bullet/lib/BulletDynamics_Debug.lib
-            LIBS += $${THIRDPARTY}/Bullet/lib/LinearMath_Debug.lib
-        }
-        CONFIG(release, debug|release) {
-            LIBS += $${THIRDPARTY}/Bullet/lib/BulletCollision.lib
-            LIBS += $${THIRDPARTY}/Bullet/lib/BulletDynamics.lib
-            LIBS += $${THIRDPARTY}/Bullet/lib/LinearMath.lib
-        }
+    CONFIG(debug, debug|release) {
+        LIBS += $${THIRDPARTY}/Bullet/lib/BulletCollision_Debug.lib
+        LIBS += $${THIRDPARTY}/Bullet/lib/BulletDynamics_Debug.lib
+        LIBS += $${THIRDPARTY}/Bullet/lib/LinearMath_Debug.lib
     }
-    else {
+    CONFIG(release, debug|release) {
+        LIBS += $${THIRDPARTY}/Bullet/lib/BulletCollision.lib
+        LIBS += $${THIRDPARTY}/Bullet/lib/BulletDynamics.lib
+        LIBS += $${THIRDPARTY}/Bullet/lib/LinearMath.lib
     }
 }
-macx {
-    # Clone branch "master" from "https://github.com/bulletphysics/bullet3.git"
-    # Use CMake to generate "Unix Makefiles" with "Use default native compilers"
-    # "Configure", "Generate" and "make" from command line
-    INCLUDEPATH += $${THIRDPARTY}/Bullet/src
+unix {
     LIBS += -L$${THIRDPARTY}/Bullet/src/BulletCollision
     LIBS += -L$${THIRDPARTY}/Bullet/src/BulletDynamics
     LIBS += -L$${THIRDPARTY}/Bullet/src/LinearMath
@@ -124,28 +124,28 @@ macx {
 }
 
 # =====  Open Asset Import Library = http://assimp.sf.net ==========================================
+INCLUDEPATH += $${THIRDPARTY}/Assimp/include
 win32 {
-    INCLUDEPATH += $${THIRDPARTY}/assimp/include
-    win32:contains(QMAKE_HOST.arch, x86_64) {
-        CONFIG(debug, debug|release) {
-            LIBS += $${THIRDPARTY}/Assimp/lib/assimp-mtd.lib
-            LIBS += $${THIRDPARTY}/Assimp/lib/zlibstaticd.lib
-            LIBS += $${THIRDPARTY}/Assimp/lib/IrrXMLd.lib
-        }
-        CONFIG(release, debug|release) {
-            LIBS += $${THIRDPARTY}/Assimp/lib/assimp-mt.lib
-            LIBS += $${THIRDPARTY}/Assimp/lib/zlibstatic.lib
-            LIBS += $${THIRDPARTY}/Assimp/lib/IrrXML.lib
-        }
+    CONFIG(debug, debug|release) {
+        LIBS += $${THIRDPARTY}/Assimp/lib/assimp-mtd.lib
+        LIBS += $${THIRDPARTY}/Assimp/lib/zlibstaticd.lib
+        LIBS += $${THIRDPARTY}/Assimp/lib/IrrXMLd.lib
+    }
+    CONFIG(release, debug|release) {
+        LIBS += $${THIRDPARTY}/Assimp/lib/assimp-mt.lib
+        LIBS += $${THIRDPARTY}/Assimp/lib/zlibstatic.lib
+        LIBS += $${THIRDPARTY}/Assimp/lib/IrrXML.lib
     }
 }
-macx {
-    # Clone branch "master" from "https://github.com/assimp/assimp.git"
-    # Use CMake to generate "Unix Makefiles" with "Use default native compilers"
-    # "Configure", uncheck "BUILD_SHARED_LIBS", "Generate" and "make" from command line
-    INCLUDEPATH += $${THIRDPARTY}/Assimp/include
-    LIBS += -L$${THIRDPARTY}/Assimp/lib
-    LIBS += -lassimp -lz
+unix {
+    CONFIG(debug, debug|release) {
+        LIBS += -L$${THIRDPARTY}/Assimp/lib
+        LIBS += -lassimp-mtd -lz -lIrrXMLd
+    }
+    CONFIG(release, debug|release) {
+        LIBS += -L$${THIRDPARTY}/Assimp/lib
+        LIBS += -lassimp-mt -lz -lIrrXML
+    }
 }
 
 # =====  ImGui - Bloat-free Immediate Mode GUI = https://github.com/ocornut/imgui  =================
