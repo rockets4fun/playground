@@ -73,6 +73,7 @@ win32 {
         LIBS += $${THIRDPARTY}/Sdl/Build/SDL2.lib
         LIBS += $${THIRDPARTY}/Sdl/Build/SDL2main.lib
     }
+    LIBS += setupapi.lib
 }
 unix {
     CONFIG(debug, debug|release) {
