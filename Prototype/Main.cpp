@@ -64,6 +64,11 @@ int main( int argc, char* argv[] )
         "OpenGL context: %d.%d (%s)", majorVersion, minorVersion,
         profileMask == SDL_GL_CONTEXT_PROFILE_CORE ? "core" : "non-core" );
 
+    if ( SDL_GL_SetSwapInterval( 1 ) == -1 ) {
+        Logger::debug("ERROR: Failed to set swap interval/enable V-sync");
+        return EXIT_FAILURE;
+    }
+
     {
         Physics physics;
         ImGuiEval imGuiEval;
