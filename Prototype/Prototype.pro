@@ -160,6 +160,9 @@ DEFINES += IMGUI_DISABLE_OBSOLETE_FUNCTIONS
 
 # ==================================================================================================
 
+INCLUDEPATH += \
+    CoreGl/
+
 HEADERS += \
     Template.hpp \
     TemplateIf.hpp \
