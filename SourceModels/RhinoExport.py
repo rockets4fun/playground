@@ -288,6 +288,9 @@ def main() :
         print(line)
         output.write(line + "\n")
 
+    # FIXME:
+    #  Sort by full instance name is ambiguous.
+    #  Many parts link to root instance (full instance name "*").
     g_parts.sort(key = partSortKey)
     for part in g_parts :
         mesh = part["mesh"]
