@@ -6,6 +6,7 @@ cloneAndClean(Assimp, https://github.com/assimp/assimp.git, tags/v5.1.4)
 
 PARAMS  = -DBUILD_SHARED_LIBS=OFF
 PARAMS += -DASSIMP_BUILD_ASSIMP_TOOLS=OFF
+PARAMS += -DASSIMP_BUILD_ASSIMP_VIEW=OFF
 PARAMS += -DASSIMP_BUILD_TESTS=OFF
 
 # Avoid VS version specific suffix for build artefacts
