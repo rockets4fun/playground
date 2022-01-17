@@ -153,7 +153,9 @@ HEADERS += $${THIRDPARTY}/ImGui/imgui.h
 SOURCES += \
     $${THIRDPARTY}/ImGui/imgui.cpp \
     $${THIRDPARTY}/ImGui/imgui_draw.cpp \
-    $${THIRDPARTY}/ImGui/imgui_widgets.cpp
+    $${THIRDPARTY}/ImGui/imgui_widgets.cpp \
+    $${THIRDPARTY}/ImGui/imgui_tables.cpp \
+    $${THIRDPARTY}/ImGui/imgui_demo.cpp
 DEFINES += IMGUI_DISABLE_OBSOLETE_FUNCTIONS
 
 # ==================================================================================================
