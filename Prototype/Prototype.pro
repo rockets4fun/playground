@@ -129,23 +129,21 @@ INCLUDEPATH += $${THIRDPARTY}/Assimp/include
 win32 {
     CONFIG(debug, debug|release) {
         LIBS += $${THIRDPARTY}/Assimp/lib/assimp-mtd.lib
-        LIBS += $${THIRDPARTY}/Assimp/lib/zlibstaticd.lib
-        LIBS += $${THIRDPARTY}/Assimp/lib/IrrXMLd.lib
+        LIBS += $${THIRDPARTY}/Assimp/contrib/zlib/zlibstaticd.lib
     }
     CONFIG(release, debug|release) {
         LIBS += $${THIRDPARTY}/Assimp/lib/assimp-mt.lib
-        LIBS += $${THIRDPARTY}/Assimp/lib/zlibstatic.lib
-        LIBS += $${THIRDPARTY}/Assimp/lib/IrrXML.lib
+        LIBS += $${THIRDPARTY}/Assimp/contrib/zlib/zlibstatic.lib
     }
 }
 unix {
     CONFIG(debug, debug|release) {
         LIBS += -L$${THIRDPARTY}/Assimp/lib
-        LIBS += -lassimp-mtd -lz -lIrrXMLd
+        LIBS += -lassimp-mtd -lz
     }
     CONFIG(release, debug|release) {
         LIBS += -L$${THIRDPARTY}/Assimp/lib
-        LIBS += -lassimp-mt -lz -lIrrXML
+        LIBS += -lassimp-mt -lz
     }
 }
 
