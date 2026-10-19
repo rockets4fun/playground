@@ -66,6 +66,9 @@ struct Physics : ModuleIf
 
             glm::fvec3 angularVelocity;
 
+            // Diagonal inertia tensor in RB local frame (set by physics module on creation)
+            glm::fvec3 inertia;
+
             // TODO(martinmo): Add additional physics state here
             // TODO(martinmo): Translation and roation are already stored in mesh
         };

@@ -222,6 +222,7 @@ Physics::PrivateRigidBody::PrivateRigidBody( PrivateState& stateInit, RigidBody:
 
     btVector3 inertia( 0, 0, 0 );
     collisionShape->calculateLocalInertia( rigidBody->mass, inertia );
+    rigidBody->inertia = fromBulletVec( inertia );
     btRigidBody::btRigidBodyConstructionInfo constructionInfo(
         rigidBody->mass, motionState.get(), collisionShape, inertia );
     constructionInfo.m_restitution     = btScalar( 0.25 );
