@@ -45,7 +45,7 @@ defineTest(buildDebugAndRelease) {
         CMAKEGEN = $$shell_quote(Unix Makefiles)
     }
 
-    CMAKEFULL = cmake -G $${CMAKEGEN} $${CMAKEPARAMS}
+    CMAKEFULL = cmake -DCMAKE_POLICY_VERSION_MINIMUM=3.5 -G $${CMAKEGEN} $${CMAKEPARAMS}
 
     system(cd $${DIRECTORY} && $${CMAKEFULL} -DCMAKE_BUILD_TYPE=Debug)
     system(cd $${DIRECTORY} && $${MAKECMD})
