@@ -74,8 +74,8 @@ int main( int argc, char* argv[] )
         ImGuiEval imGuiEval;
         Renderer renderer;
 
-        AppShipLanding app( physics );
-        //AppSpaceThrusters app(physics, imGuiEval);
+        //AppShipLanding app( physics );
+        AppSpaceThrusters app(physics, imGuiEval);
 
         StateDb sdb;
         Assets assets;
